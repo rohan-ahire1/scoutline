@@ -86,6 +86,83 @@ Object.entries(defaultSettings).forEach(([key, value]) => settingInsert.run(key,
 const app = express()
 app.use(express.json({ limit: '1mb' }))
 
+// ── Shared validation helpers (structured errors) ─────────────────────────────────
+const ALLOWED_CATEGORIES = new Set(['Roofing','HVAC','Flooring','Plumbing','Electrical','Solar','Remodeling','Landscaping','Painting','Cleaning','General','Uncategorized'])
+const ALLOWED_SALES_STAGES = new Set(['Qualified','Contacted','Replied','Meeting','Proposal','Won','Lost'])
+const ALLOWED_OUTREACH_VERSIONS = new Set(['Concise','Balanced','Detailed'])
+const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting'])
+const ALLOWED_MANUAL_ACTIONS = new Set(['refresh','audit','muse','outreach','full'])
+const ALLOWED_SETTINGS_KEYS = new Set(Object.keys(defaultSettings))
+const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus'])
+
+function isNonEmptyString(v, max = 120) {
+  return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
+}
+function isStringWithLength(v, min, max) {
+  return typeof v === 'string' && v.trim().length >= min && v.trim().length <= max
+}
+function isValidDomain(v) {
+  const s = String(v || '').trim().toLowerCase()
+  if (s.length < 3 || s.length > 253) return false
+  if (/\s/.test(s)) return false
+  if (!s.includes('.')) return false
+  if (s.startsWith('-') || s.startsWith('.') || s.endsWith('-') || s.endsWith('.')) return false
+  if (s.includes('..')) return false
+  return /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(\.[a-z]{2,})+$/i.test(s)
+}
+function isEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v || '').trim())
+}
+function isPhoneLike(v) {
+  const s = String(v || '').trim()
+  if (s.length < 7 || s.length > 30) return false
+  return /^[+\d][\d\s().\-]{5,}$/.test(s)
+}
+function clampInt(v, min, max) {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return null
+  const i = Math.round(n)
+  if (i < min || i > max) return null
+  return i
+}
+function normalizeDomainInput(v) {
+  return String(v || '').trim().replace(/^https?:\/\//i, '').replace(/\/$/, '').toLowerCase()
+}
+function badRequest(res, field, message, details) {
+  const body = { error: message, code: 'VALIDATION_ERROR' }
+  if (field) body.field = field
+  if (details && details.length) body.details = details
+  return res.status(400).json(body)
+}
+function notFound(res, message, field) {
+  const body = { error: message, code: 'NOT_FOUND' }
+  if (field) body.field = field
+  return res.status(404).json(body)
+}
+function conflict(res, message, field, code = 'CONFLICT') {
+  const body = { error: message, code }
+  if (field) body.field = field
+  return res.status(409).json(body)
+}
+function serviceUnavailable(res, message, code = 'PROVIDER_NOT_CONFIGURED', field) {
+  const body = { error: message, code }
+  if (field) body.field = field
+  return res.status(503).json(body)
+}
+function payloadTooLarge(res, message) {
+  return res.status(413).json({ error: message, code: 'PAYLOAD_TOO_LARGE' })
+}
+function unprocessable(res, message, field) {
+  const body = { error: message, code: 'UNPROCESSABLE_ENTITY' }
+  if (field) body.field = field
+  return res.status(422).json(body)
+}
+function validateIdParam(id) {
+  const s = String(id || '').trim()
+  return s.length >= 3 && s.length <= 80 && /^[a-z0-9\-_:]+$/i.test(s)
+}
+
+
 const nowIso = () => new Date().toISOString()
 const readRows = (table) => db.prepare(`SELECT payload FROM ${table} ORDER BY rowid ASC`).all().map((row) => JSON.parse(row.payload))
 const readLead = (id) => {
@@ -776,36 +853,88 @@ app.get('/api/status', (_req, res) => {
 
 app.get('/api/leads', (_req, res) => res.json(readRows('leads')))
 app.get('/api/leads/:id/events', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
   const events = db.prepare("SELECT * FROM events WHERE entity_type = 'lead' AND entity_id = ? ORDER BY created_at DESC LIMIT 100").all(req.params.id)
   res.json(events.map((event) => ({ ...event, payload: JSON.parse(event.payload) })))
 })
 app.get('/api/runs', (_req, res) => res.json(decorateRuns()))
 app.get('/api/runs/:id', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid run id format')
   const run = syncRun(req.params.id) || readRun(req.params.id)
-  if (!run) return res.status(404).json({ error: 'Run not found' })
+  if (!run) return notFound(res, 'Run not found', 'id')
   res.json(decorateRun(run))
 })
 app.get('/api/jobs/:id', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid job id format')
   const job = readJob(req.params.id)
-  if (!job) return res.status(404).json({ error: 'Job not found' })
+  if (!job) return notFound(res, 'Job not found', 'id')
   res.json(job)
 })
 app.get('/api/settings', (_req, res) => res.json(readSettings()))
 
 app.patch('/api/settings', (req, res) => {
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Settings body must be a JSON object')
+  const keys = Object.keys(body)
+  if (keys.length === 0) return badRequest(res, null, 'No settings provided', [{ field: 'body', message: 'At least one setting key is required' }])
+  if (keys.length > 20) return payloadTooLarge(res, 'Too many settings keys (max 20)')
+  const details = []
+  for (const key of keys) {
+    if (!ALLOWED_SETTINGS_KEYS.has(key)) details.push({ field: key, message: 'Unknown setting key' })
+  }
+  if (details.length) return badRequest(res, null, 'Unknown setting keys', details)
+
+  // per-key type validation
+  const vdetails = []
+  const push = (field, msg) => vdetails.push({ field, message: msg })
+  if ('defaultLocation' in body && !isStringWithLength(body.defaultLocation, 1, 120)) push('defaultLocation', 'Must be a non-empty string 1-120 chars')
+  if ('resultLimit' in body) { const n = clampInt(body.resultLimit, 1, 50); if (n == null) push('resultLimit', 'Must be an integer 1-50') }
+  if ('deepAuditLimit' in body) { const n = clampInt(body.deepAuditLimit, 1, 50); if (n == null) push('deepAuditLimit', 'Must be an integer 1-50') }
+  if ('categories' in body) {
+    if (!Array.isArray(body.categories)) push('categories', 'Must be an array')
+    else if (body.categories.length === 0) push('categories', 'Must be a non-empty array')
+    else if (body.categories.length > 20) push('categories', 'Max 20 categories')
+    else body.categories.forEach((c, i) => { if (!isStringWithLength(c, 1, 40)) push(`categories[${i}]`, 'Each category must be 1-40 chars'); else if (!/^[A-Za-z0-9 &\-/]+$/.test(String(c).trim())) push(`categories[${i}]`, 'Category contains invalid characters') })
+  }
+  if ('maxPages' in body) { const n = clampInt(body.maxPages, 1, 50); if (n == null) push('maxPages', 'Must be an integer 1-50') }
+  if ('requestDelay' in body) { const n = clampInt(body.requestDelay, 0, 10000); if (n == null) push('requestDelay', 'Must be an integer 0-10000') }
+  if ('respectRobots' in body && typeof body.respectRobots !== 'boolean') push('respectRobots', 'Must be a boolean')
+  if ('blockPrivateNetworks' in body && typeof body.blockPrivateNetworks !== 'boolean') push('blockPrivateNetworks', 'Must be a boolean')
+  if ('discoveryCountry' in body && !isStringWithLength(body.discoveryCountry, 2, 3)) push('discoveryCountry', 'Must be 2-3 character country code')
+  if ('discoveryLatitude' in body) { const n = Number(body.discoveryLatitude); if (!Number.isFinite(n) || n < -90 || n > 90) push('discoveryLatitude', 'Must be a number -90 to 90') }
+  if ('discoveryLongitude' in body) { const n = Number(body.discoveryLongitude); if (!Number.isFinite(n) || n < -180 || n > 180) push('discoveryLongitude', 'Must be a number -180 to 180') }
+  if ('discoveryZoom' in body) { const n = clampInt(body.discoveryZoom, 12, 16); if (n == null) push('discoveryZoom', 'Must be an integer 12-16') }
+  if (vdetails.length) return badRequest(res, null, 'Invalid settings values', vdetails)
+
+  // cross-field: deepAuditLimit should not exceed resultLimit if both present
+  if ('deepAuditLimit' in body && 'resultLimit' in body) {
+    if (Number(body.deepAuditLimit) > Number(body.resultLimit)) return badRequest(res, 'deepAuditLimit', 'deepAuditLimit must be <= resultLimit', [{ field: 'deepAuditLimit', message: 'Must be <= resultLimit' }])
+  }
+
   const upsert = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-  const allowed = new Set(Object.keys(defaultSettings))
-  db.transaction((entries) => entries.forEach(([key, value]) => { if (allowed.has(key)) upsert.run(key, JSON.stringify(value)) }))(Object.entries(req.body || {}))
+  db.transaction((entries) => entries.forEach(([key, value]) => { if (ALLOWED_SETTINGS_KEYS.has(key)) upsert.run(key, JSON.stringify(value)) }))(Object.entries(body))
   res.json(readSettings())
 })
 
 app.post('/api/leads', (req, res) => {
-  const body = req.body || {}
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
   const company = String(body.company || '').trim()
-  if (!company) return res.status(400).json({ error: 'Company name is required' })
-  const website = String(body.website || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
-  if (website && readRows('leads').some((lead) => String(lead.website || '').toLowerCase() === website.toLowerCase())) {
-    return res.status(409).json({ error: 'A client with this website already exists' })
+  if (!isStringWithLength(company, 2, 120)) return badRequest(res, 'company', 'Company is required and must be 2-120 characters', [{ field: 'company', message: 'Must be 2-120 characters' }])
+  const rawWebsite = String(body.website || '').trim()
+  if (!rawWebsite) return badRequest(res, 'website', 'Website is required', [{ field: 'website', message: 'Website is required (3-253 chars, domain-like)' }])
+  const website = normalizeDomainInput(rawWebsite)
+  if (!isStringWithLength(website, 3, 253) || !isValidDomain(website)) return badRequest(res, 'website', 'Website must be a valid domain (e.g. example.com)', [{ field: 'website', message: 'Must be 3-253 chars, domain-like with a TLD' }])
+  if (body.phone != null && String(body.phone).trim() && String(body.phone).trim() !== 'Not collected' && !isPhoneLike(String(body.phone))) return badRequest(res, 'phone', 'Phone number format is invalid', [{ field: 'phone', message: 'Must be 7-30 chars, digits, spaces, +, -, (), .' }])
+  if (body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) return badRequest(res, 'email', 'Email format is invalid', [{ field: 'email', message: 'Must be a valid email address' }])
+  const websiteLower = website.toLowerCase()
+  if (readRows('leads').some((lead) => String(lead.website || '').toLowerCase() === websiteLower)) {
+    return conflict(res, 'A client with this website already exists', 'website', 'DUPLICATE_WEBSITE')
+  }
+  if (readRows('leads').some((lead) => String(lead.company || '').trim().toLowerCase() === company.toLowerCase())) {
+    return conflict(res, 'A client with this company name already exists', 'company', 'DUPLICATE_COMPANY')
   }
   const lead = importedLead({ ...body, company, website }, 0, 'Manual entry')
   db.prepare('INSERT INTO leads (id, payload) VALUES (?, ?)').run(lead.id, JSON.stringify(lead))
@@ -815,72 +944,167 @@ app.post('/api/leads', (req, res) => {
 })
 
 app.post('/api/leads/import', (req, res) => {
-  const rows = Array.isArray(req.body?.rows) ? req.body.rows.slice(0, 500) : []
-  const existingDomains = new Set(readRows('leads').map((lead) => String(lead.website || '').replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase()))
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object with rows array')
+  if (!Array.isArray(body.rows)) return badRequest(res, 'rows', 'rows must be an array', [{ field: 'rows', message: 'rows must be an array of lead objects' }])
+  if (body.rows.length === 0) return badRequest(res, 'rows', 'rows must not be empty', [{ field: 'rows', message: 'Provide at least one row' }])
+  if (body.rows.length > 500) return payloadTooLarge(res, 'Import limit is 500 rows (received ' + body.rows.length + ')')
+  // Validate each row minimally before insert; per-row errors are counted as skipped
+  const rowErrors = []
+  body.rows.forEach((row, idx) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) { rowErrors.push({ field: `rows[${idx}]`, message: 'Each row must be an object' }); return }
+    const c = String(row.company || row.name || row.business || '').trim()
+    const w = normalizeDomainInput(String(row.website || row.domain || ''))
+    if (!isStringWithLength(c, 2, 120)) rowErrors.push({ field: `rows[${idx}].company`, message: 'Company must be 2-120 chars' })
+    if (!isStringWithLength(w, 3, 253) || !isValidDomain(w)) rowErrors.push({ field: `rows[${idx}].website`, message: 'Website must be 3-253 chars domain-like' })
+    if (row.phone != null && String(row.phone).trim() && String(row.phone).trim() !== 'Not collected' && !isPhoneLike(String(row.phone))) rowErrors.push({ field: `rows[${idx}].phone`, message: 'Invalid phone format' })
+    if (row.email != null && String(row.email).trim() && String(row.email).trim() !== 'Not collected' && !isEmail(String(row.email))) rowErrors.push({ field: `rows[${idx}].email`, message: 'Invalid email format' })
+  })
+  // If more than half rows are invalid, fail fast with 400 and details (helps catch bad CSV). Otherwise we still process valid ones and report skipped.
+  const rows = body.rows.slice(0, 500)
+  const existingDomains = new Set(readRows('leads').map((lead) => normalizeDomainInput(String(lead.website || ''))))
   const created = []
   let skipped = 0
+  const seenInBatch = new Set()
   rows.forEach((row, index) => {
     const company = String(row.company || row.name || row.business || '').trim()
-    const website = String(row.website || row.domain || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
-    if (!company || !website || existingDomains.has(website.toLowerCase())) { skipped += 1; return }
+    const website = normalizeDomainInput(String(row.website || row.domain || ''))
+    if (!isStringWithLength(company, 2, 120) || !isStringWithLength(website, 3, 253) || !isValidDomain(website) || existingDomains.has(website.toLowerCase()) || seenInBatch.has(website.toLowerCase())) { skipped += 1; return }
+    if (row.phone != null && String(row.phone).trim() && String(row.phone).trim() !== 'Not collected' && !isPhoneLike(String(row.phone))) { skipped += 1; return }
+    if (row.email != null && String(row.email).trim() && String(row.email).trim() !== 'Not collected' && !isEmail(String(row.email))) { skipped += 1; return }
     const lead = insertUniqueLead({ ...row, company, website }, index, 'CSV import')
     if (!lead) { skipped += 1; return }
     existingDomains.add(website.toLowerCase())
+    seenInBatch.add(website.toLowerCase())
     created.push(lead)
   })
-  res.status(201).json({ imported: created.length, skipped, leads: created })
+  res.status(201).json({ imported: created.length, skipped, leads: created, ...(rowErrors.length ? { rowErrors: rowErrors.slice(0, 20) } : {}) })
 })
 
 app.patch('/api/leads/:id', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
-  if (!lead) return res.status(404).json({ error: 'Lead not found' })
-  const updated = saveLead({ ...applyLeadWorkflowChanges(lead, req.body || {}), updated: 'Just now' })
-  recordEvent('lead', lead.id, 'updated', { fields: Object.keys(req.body || {}) })
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
+  const keys = Object.keys(body)
+  if (keys.length === 0) return badRequest(res, null, 'No fields to update', [{ field: 'body', message: 'Provide at least one allowed field' }])
+  if (keys.length > 30) return payloadTooLarge(res, 'Too many fields in patch (max 30)')
+  const unknown = keys.filter(k => !ALLOWED_LEAD_PATCH_KEYS.has(k))
+  if (unknown.length) return badRequest(res, null, 'Unknown field(s) in lead patch', unknown.map(f => ({ field: f, message: 'Unknown field' })))
+  const details = []
+  const push = (field, msg) => details.push({ field, message: msg })
+  if ('qualified' in body && typeof body.qualified !== 'boolean') push('qualified', 'Must be a boolean')
+  if ('salesStage' in body) {
+    const v = body.salesStage
+    if (v !== null && !ALLOWED_SALES_STAGES.has(v)) push('salesStage', `Must be one of: ${[...ALLOWED_SALES_STAGES].join(', ')} or null`)
+  }
+  if ('notes' in body && typeof body.notes !== 'string') push('notes', 'Must be a string')
+  else if ('notes' in body && String(body.notes).length > 5000) push('notes', 'Must be <=5000 characters')
+  if ('lostReason' in body) {
+    if (typeof body.lostReason !== 'string' || !body.lostReason.trim()) push('lostReason', 'Must be a non-empty string')
+    else if (body.lostReason.length > 500) push('lostReason', 'Must be <=500 characters')
+  }
+  if ('nextAction' in body) {
+    if (typeof body.nextAction !== 'string' || !body.nextAction.trim()) push('nextAction', 'Must be a non-empty string')
+    else if (body.nextAction.length > 500) push('nextAction', 'Must be <=500 characters')
+  }
+  if ('outreachSubject' in body && !isStringWithLength(body.outreachSubject, 3, 100)) push('outreachSubject', 'Must be 3-100 characters')
+  if ('outreachVersion' in body && !ALLOWED_OUTREACH_VERSIONS.has(body.outreachVersion)) push('outreachVersion', `Must be one of: ${[...ALLOWED_OUTREACH_VERSIONS].join(', ')}`)
+  if ('outreachDraft' in body && typeof body.outreachDraft !== 'string') push('outreachDraft', 'Must be a string')
+  else if ('outreachDraft' in body && String(body.outreachDraft).length > 10000) push('outreachDraft', 'Must be <=10000 characters')
+  if ('outreachDrafts' in body) {
+    if (!body.outreachDrafts || typeof body.outreachDrafts !== 'object' || Array.isArray(body.outreachDrafts)) push('outreachDrafts', 'Must be an object')
+    else {
+      for (const [k, v] of Object.entries(body.outreachDrafts)) {
+        if (!ALLOWED_OUTREACH_VERSIONS.has(k)) push(`outreachDrafts.${k}`, 'Unknown outreach version key')
+        else if (typeof v !== 'string' || v.trim().length < 10) push(`outreachDrafts.${k}`, 'Must be a string >=10 chars')
+      }
+    }
+  }
+  if ('outreachStatus' in body && !ALLOWED_OUTREACH_STATUS.has(body.outreachStatus)) push('outreachStatus', `Must be one of: ${[...ALLOWED_OUTREACH_STATUS].join(', ')}`)
+  if ('contactedAt' in body) {
+    const d = new Date(body.contactedAt)
+    if (Number.isNaN(d.getTime())) push('contactedAt', 'Must be a valid ISO date string')
+  }
+  if ('labels' in body) {
+    if (!Array.isArray(body.labels)) push('labels', 'Must be an array')
+    else if (body.labels.length > 20) push('labels', 'Max 20 labels')
+    else body.labels.forEach((l, i) => { if (!isStringWithLength(l, 1, 40)) push(`labels[${i}]`, 'Each label must be 1-40 chars') })
+  }
+  if ('contract' in body) {
+    const c = body.contract
+    if (c !== null && (typeof c !== 'object' || Array.isArray(c))) push('contract', 'Must be an object or null')
+    else if (c && typeof c === 'object') {
+      const allowedContractKeys = new Set(['amount','currency','scope','terms','signedOn','startDate','conditions','nextStep'])
+      for (const k of Object.keys(c)) if (!allowedContractKeys.has(k)) push(`contract.${k}`, 'Unknown contract field')
+      if ('amount' in c && c.amount != null && (!Number.isFinite(Number(c.amount)) || Number(c.amount) < 0)) push('contract.amount', 'Must be a non-negative number')
+      if ('currency' in c && c.currency != null && !/^[A-Z]{3}$/.test(String(c.currency).trim())) push('contract.currency', 'Must be a 3-letter currency code')
+      for (const k of ['scope','terms','signedOn','startDate','conditions','nextStep']) if (k in c && c[k] != null && typeof c[k] !== 'string') push(`contract.${k}`, 'Must be a string')
+      for (const k of ['scope','terms','conditions','nextStep']) if (k in c && typeof c[k] === 'string' && c[k].length > 1000) push(`contract.${k}`, 'Must be <=1000 characters')
+    }
+  }
+  if ('category' in body && typeof body.category !== 'string') push('category', 'Must be a string')
+  if ('location' in body && typeof body.location !== 'string') push('location', 'Must be a string')
+  if ('phone' in body && body.phone != null && String(body.phone).trim() && String(body.phone).trim() !== 'Not collected' && !isPhoneLike(String(body.phone))) push('phone', 'Invalid phone format')
+  if ('email' in body && body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) push('email', 'Invalid email format')
+  if (details.length) return badRequest(res, null, 'Invalid lead patch values', details)
+
+  const updated = saveLead({ ...applyLeadWorkflowChanges(lead, body), updated: 'Just now' })
+  recordEvent('lead', lead.id, 'updated', { fields: Object.keys(body) })
   res.json(updated)
 })
 
 app.post('/api/leads/:id/analyze', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  if (req.body && Object.keys(req.body).length > 20) return payloadTooLarge(res, 'Request body too large')
   const lead = readLead(req.params.id)
-  if (!lead) return res.status(404).json({ error: 'Lead not found' })
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (!lead.website || !isValidDomain(normalizeDomainInput(lead.website))) return unprocessable(res, 'Lead has no valid website to audit', 'website')
   res.status(202).json(queueAuditForLead(lead, { workflow: 'audit' }))
 })
 
 app.post('/api/leads/:id/muse/analyze', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
-  if (!lead) return res.status(404).json({ error: 'Lead not found' })
-  if (lead.opportunityScore == null) return res.status(409).json({ error: 'Complete the website audit before running Muse' })
-  if (!getOutreachConfig().configured) return res.status(503).json({ error: 'Muse is not configured' })
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before running Muse', 'opportunityScore', 'AUDIT_REQUIRED')
+  if (!getOutreachConfig().configured) return serviceUnavailable(res, 'Muse is not configured', 'MUSE_NOT_CONFIGURED')
   const result = queueMuseSynthesis(lead, { requestedManually: true })
   res.status(202).json(result)
 })
 
 app.post('/api/leads/:id/actions/:action', async (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
-  if (!lead) return res.status(404).json({ error: 'Lead not found' })
-  const action = req.params.action
-  if (!Object.hasOwn(manualActionLabels, action)) return res.status(400).json({ error: 'Unsupported client action' })
-  if (['Queued', 'Running', 'Waiting'].includes(lead.manualRun?.status)) return res.status(409).json({ error: `${lead.manualRun.label || 'Another client action'} is already running` })
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const action = String(req.params.action || '').trim().toLowerCase()
+  if (!ALLOWED_MANUAL_ACTIONS.has(action) || !Object.hasOwn(manualActionLabels, action)) return badRequest(res, 'action', 'Unsupported client action', [{ field: 'action', message: `Must be one of: ${[...ALLOWED_MANUAL_ACTIONS].join(', ')}` }])
+  if (['Queued', 'Running', 'Waiting'].includes(lead.manualRun?.status)) return conflict(res, `${lead.manualRun.label || 'Another client action'} is already running`, 'manualRun', 'ALREADY_RUNNING')
   try {
     if (action === 'refresh') {
       const brightData = getBrightDataConfig(readSettings())
-      if (!brightData.ready) return res.status(503).json({ error: 'Bright Data is not configured' })
-      if (!lead.sourceUrl) return res.status(409).json({ error: 'This client has no saved Google Maps source URL to refresh' })
+      if (!brightData.ready) return serviceUnavailable(res, 'Bright Data is not configured', 'BRIGHT_DATA_NOT_CONFIGURED', 'brightData')
+      if (!lead.sourceUrl) return conflict(res, 'This client has no saved Google Maps source URL to refresh', 'sourceUrl', 'MISSING_SOURCE_URL')
       return res.status(202).json({ ...queueRefreshForLead(lead), message: 'Business data refresh queued' })
     }
-    if (action === 'audit') return res.status(202).json({ ...queueAuditForLead(lead, { workflow: 'audit', manualAction: 'audit' }), message: 'Website audit queued' })
+    if (action === 'audit') {
+      if (!lead.website || !isValidDomain(normalizeDomainInput(lead.website))) return unprocessable(res, 'Lead has no valid website to audit', 'website')
+      return res.status(202).json({ ...queueAuditForLead(lead, { workflow: 'audit', manualAction: 'audit' }), message: 'Website audit queued' })
+    }
     if (action === 'muse') {
-      if (lead.opportunityScore == null) return res.status(409).json({ error: 'Complete the website audit before running Muse' })
-      if (!getOutreachConfig().configured) return res.status(503).json({ error: 'Muse is not configured' })
+      if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before running Muse', 'opportunityScore', 'AUDIT_REQUIRED')
+      if (!getOutreachConfig().configured) return serviceUnavailable(res, 'Muse is not configured', 'MUSE_NOT_CONFIGURED')
       return res.status(202).json({ ...queueMuseSynthesis(lead, { requestedManually: true, manualAction: 'muse' }), message: 'Muse analysis queued' })
     }
     if (action === 'outreach') {
-      if (lead.opportunityScore == null) return res.status(409).json({ error: 'Complete the website audit before generating outreach' })
+      if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before generating outreach', 'opportunityScore', 'AUDIT_REQUIRED')
       const started = saveLead({ ...lead, manualRun: manualRunState(lead, 'outreach', { reset: true, status: 'Running', progress: 25, phase: 'Generating three outreach drafts' }), updated: 'Generating outreach' })
       const updated = await generateAndSaveOutreach(started, { manualAction: 'outreach' })
       return res.json({ lead: updated, job: null, message: 'Three outreach drafts generated' })
     }
     if (action === 'full') {
-      if (!getOutreachConfig().configured) return res.status(503).json({ error: 'Muse must be configured before running the full workflow' })
+      if (!getOutreachConfig().configured) return serviceUnavailable(res, 'Muse must be configured before running the full workflow', 'MUSE_NOT_CONFIGURED')
       const brightData = getBrightDataConfig(readSettings())
       const queued = brightData.ready && lead.sourceUrl
         ? queueRefreshForLead(lead, { manualAction: 'full' })
@@ -891,13 +1115,16 @@ app.post('/api/leads/:id/actions/:action', async (req, res) => {
     const current = readLead(lead.id) || lead
     saveLead({ ...current, manualRun: manualRunState(current, action, { status: 'Failed', progress: 100, phase: error.message, error: error.message, completedAt: nowIso() }), updated: `${manualActionLabels[action]} failed` })
     recordEvent('lead', lead.id, 'manual_action_failed', { action, error: error.message })
-    res.status(502).json({ error: `${manualActionLabels[action]} failed: ${error.message}` })
+    res.status(502).json({ error: `${manualActionLabels[action]} failed: ${error.message}`, code: 'ACTION_FAILED' })
   }
 })
 
 app.post('/api/enrichment/backfill', async (req, res) => {
+  const body = req.body
+  if (body && typeof body !== 'object') return badRequest(res, null, 'Request body must be a JSON object')
+  if (body && 'regenerateMuse' in body && typeof body.regenerateMuse !== 'boolean') return badRequest(res, 'regenerateMuse', 'regenerateMuse must be a boolean', [{ field: 'regenerateMuse', message: 'Must be a boolean' }])
   const run = readRows('runs').filter((item) => item.providerSnapshotId).sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || '')))[0]
-  if (!run) return res.status(404).json({ error: 'No saved Bright Data discovery snapshot is available' })
+  if (!run) return notFound(res, 'No saved Bright Data discovery snapshot is available')
   try {
     const settings = readSettings()
     const records = await downloadDiscovery(run.providerSnapshotId, settings)
@@ -927,8 +1154,10 @@ app.post('/api/enrichment/backfill', async (req, res) => {
 })
 
 app.post('/api/leads/:id/outreach/generate', async (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
-  if (!lead) return res.status(404).json({ error: 'Lead not found' })
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before generating outreach', 'opportunityScore', 'AUDIT_REQUIRED')
   try {
     res.json(await generateAndSaveOutreach(lead))
   } catch (error) {
@@ -938,23 +1167,57 @@ app.post('/api/leads/:id/outreach/generate', async (req, res) => {
 })
 
 app.post('/api/runs', (req, res) => {
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
   const settings = readSettings()
+  const details = []
+  if ('location' in body && body.location != null) {
+    if (!isStringWithLength(String(body.location), 1, 120)) details.push({ field: 'location', message: 'Location must be a non-empty string 1-120 chars' })
+  }
+  if ('categories' in body && body.categories != null) {
+    if (!Array.isArray(body.categories)) details.push({ field: 'categories', message: 'categories must be an array' })
+    else if (body.categories.length === 0) details.push({ field: 'categories', message: 'categories must not be empty' })
+    else if (body.categories.length > 20) details.push({ field: 'categories', message: 'Max 20 categories' })
+    else body.categories.forEach((c, i) => {
+      if (!isStringWithLength(String(c), 1, 40)) details.push({ field: `categories[${i}]`, message: 'Each category must be 1-40 chars' })
+      else if (!/^[A-Za-z0-9 &\-/]+$/.test(String(c).trim())) details.push({ field: `categories[${i}]`, message: 'Category contains invalid characters' })
+    })
+  }
+  if ('limit' in body && body.limit != null) {
+    const n = clampInt(body.limit, 1, 50)
+    if (n == null) details.push({ field: 'limit', message: 'limit must be an integer 1-50' })
+  }
+  if ('deepAuditLimit' in body && body.deepAuditLimit != null) {
+    const n = clampInt(body.deepAuditLimit, 1, 50)
+    if (n == null) details.push({ field: 'deepAuditLimit', message: 'deepAuditLimit must be an integer 1-50' })
+  }
+  if ('options' in body && body.options != null) {
+    if (typeof body.options !== 'object' || Array.isArray(body.options)) details.push({ field: 'options', message: 'options must be an object' })
+    else if (Object.keys(body.options).length > 20) details.push({ field: 'options', message: 'Too many option keys (max 20)' })
+  }
+  if (details.length) return badRequest(res, null, 'Invalid run parameters', details)
+  if ('deepAuditLimit' in body && 'limit' in body && body.deepAuditLimit != null && body.limit != null) {
+    if (Number(body.deepAuditLimit) > Number(body.limit)) return badRequest(res, 'deepAuditLimit', 'deepAuditLimit must be <= limit', [{ field: 'deepAuditLimit', message: 'Must be <= limit' }])
+  }
+
   const now = new Date()
   const id = `run-${now.getTime().toString(36)}`
-  const categories = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : settings.categories
+  const categories = Array.isArray(body.categories) && body.categories.length ? body.categories.map(c=>String(c).trim()) : settings.categories
   const brightData = getBrightDataConfig(settings)
-  const requestedLimit = Math.max(1, Math.min(50, Number(req.body.limit || settings.resultLimit || 25)))
+  const requestedLimit = clampInt(body.limit ?? settings.resultLimit ?? 25, 1, 50) ?? 25
   const limit = brightData.ready ? Math.min(requestedLimit, brightData.maxRecords) : requestedLimit
-  const deepAuditLimit = Math.max(1, Math.min(limit, Number(req.body.deepAuditLimit || settings.deepAuditLimit || 10)))
+  const requestedDeep = clampInt(body.deepAuditLimit ?? settings.deepAuditLimit ?? 10, 1, 50) ?? 10
+  const deepAuditLimit = Math.max(1, Math.min(limit, requestedDeep))
+  const location = isStringWithLength(String(body.location || ''), 1, 120) ? String(body.location).trim() : settings.defaultLocation
   const run = {
     id,
     createdAt: now.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·'),
     startedAt: now.toISOString(),
-    location: req.body.location || settings.defaultLocation,
+    location,
     categories,
     source: brightData.ready ? 'Bright Data Google Maps' : 'Existing client websites',
     status: 'Running', progress: 0, discovered: 0, crawled: 0, audited: 0, failed: 0, datasets: 0, duration: 'Starting',
-    limit, deepAuditLimit, options: req.body.options || {},
+    limit, deepAuditLimit, options: (body.options && typeof body.options === 'object' && !Array.isArray(body.options)) ? body.options : {},
   }
   db.prepare('INSERT INTO runs (id, payload) VALUES (?, ?)').run(id, JSON.stringify(run))
   recordEvent('run', id, 'started', { source: run.source, categories, location: run.location })
@@ -974,10 +1237,24 @@ app.post('/api/runs', (req, res) => {
 })
 
 app.patch('/api/runs/:id', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid run id format')
   const run = readRun(req.params.id)
-  if (!run) return res.status(404).json({ error: 'Run not found' })
-  const requested = req.body?.status
-  if (!['Running', 'Paused', 'Cancelled'].includes(requested)) return res.status(400).json({ error: 'Only run pause, resume, and cancel operations are supported' })
+  if (!run) return notFound(res, 'Run not found', 'id')
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
+  const allowedKeys = new Set(['status','duration'])
+  const unknown = Object.keys(body).filter(k=>!allowedKeys.has(k))
+  if (unknown.length) return badRequest(res, null, 'Unknown field(s) in run patch', unknown.map(f=>({field:f, message:'Unknown field'})))
+  const requested = body.status
+  if (typeof requested !== 'string' || !['Running','Paused','Cancelled'].includes(requested)) return badRequest(res, 'status', 'Only run pause, resume, and cancel operations are supported', [{ field: 'status', message: 'Must be one of: Running, Paused, Cancelled' }])
+  // validate status transitions
+  const current = syncRun(run.id)?.status || run.status
+  if (['Completed','Cancelled'].includes(current) && requested !== current) {
+    return unprocessable(res, `Cannot transition run from ${current} to ${requested}`, 'status')
+  }
+  if (current === 'Paused' && !['Running','Cancelled'].includes(requested)) {
+    return unprocessable(res, `Invalid transition from Paused to ${requested}`, 'status')
+  }
   const updated = saveRun({ ...run, status: requested, duration: requested === 'Cancelled' ? 'Cancelled manually' : requested })
   if (requested === 'Cancelled') {
     db.prepare("UPDATE jobs SET status = 'Cancelled', progress = 100, updated_at = ? WHERE run_id = ? AND status IN ('Queued', 'Waiting')").run(nowIso(), run.id)
@@ -987,15 +1264,16 @@ app.patch('/api/runs/:id', (req, res) => {
 })
 
 app.post('/api/leads/:id/export', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
-  if (!lead) return res.status(404).json({ error: 'Lead not found' })
+  if (!lead) return notFound(res, 'Lead not found', 'id')
   const folder = writeLeadArtifacts(lead, true)
   const filePath = join(folder, 'profile.md')
   res.json({ markdown: leadMarkdown(lead), filePath })
 })
 
 app.use('/api', (req, res) => {
-  res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}` })
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}`, code: 'NOT_FOUND' })
 })
 
 app.use((error, req, res, next) => {
@@ -1003,9 +1281,10 @@ app.use((error, req, res, next) => {
   const invalidJson = error instanceof SyntaxError && error.status === 400 && 'body' in error
   const tooLarge = error.type === 'entity.too.large'
   const status = tooLarge ? 413 : invalidJson ? 400 : Number(error.status) || 500
-  const message = tooLarge ? 'Request body is too large' : invalidJson ? 'Request body contains invalid JSON' : status >= 500 ? 'The local API could not complete the request' : error.message
+  const code = tooLarge ? 'PAYLOAD_TOO_LARGE' : invalidJson ? 'INVALID_JSON' : status >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR'
+  const message = tooLarge ? 'Request body is too large (max 1mb)' : invalidJson ? 'Request body contains invalid JSON' : status >= 500 ? 'The local API could not complete the request' : error.message
   console.error('Scoutline API error', error)
-  res.status(status).json({ error: message })
+  res.status(status).json({ error: message, code })
 })
 
 const distDir = join(rootDir, 'dist')

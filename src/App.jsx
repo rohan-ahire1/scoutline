@@ -116,6 +116,58 @@ async function apiRequest(path, options = {}) {
   }
 }
 
+function isValidHttpUrl(value) {
+  const v = String(value || '').trim()
+  if (!v) return false
+  try { const u = new URL(v.startsWith('http') ? v : `https://${v}`); return ['http:', 'https:'].includes(u.protocol) } catch { return false }
+}
+
+function validateContractDraft(draft) {
+  const errors = {}
+  const amountRaw = String(draft.amount ?? '').trim()
+  if (amountRaw === '') errors.amount = 'Approved amount is required'
+  else { const n = Number(amountRaw); if (!Number.isFinite(n) || n < 0) errors.amount = 'Amount must be 0 or more'; else if (n > 10000000) errors.amount = 'Amount is too large' }
+  const cur = String(draft.currency || '').trim()
+  if (cur && !['USD','INR','GBP','EUR'].includes(cur)) errors.currency = 'Currency must be USD, INR, GBP, or EUR'
+  const scope = String(draft.scope || '').trim()
+  if (!scope) errors.scope = 'Approved scope is required'
+  else if (scope.length < 5) errors.scope = 'Scope must be at least 5 characters'
+  else if (scope.length > 2000) errors.scope = 'Scope must be 2000 characters or fewer'
+  const sOn = String(draft.signedOn || '').trim()
+  const sDate = String(draft.startDate || '').trim()
+  if (sOn && Number.isNaN(Date.parse(sOn))) errors.signedOn = 'Enter a valid date'
+  if (sDate && Number.isNaN(Date.parse(sDate))) errors.startDate = 'Enter a valid date'
+  if (sOn && sDate && !errors.signedOn && !errors.startDate) {
+    if (new Date(sDate) < new Date(sOn)) errors.startDate = 'Start date cannot be before signed date'
+  }
+  return { errors, isValid: Object.keys(errors).length === 0 }
+}
+
+function validateInsightDraft({ score, confidence, insight }) {
+  const errors = {}
+  const s = score === '' || score == null ? '' : String(score).trim()
+  const c = confidence === '' || confidence == null ? '' : String(confidence).trim()
+  const note = String(insight || '').trim()
+  if (s === '') errors.score = 'Score is required'
+  else { const n = Number(s); if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 100) errors.score = 'Score must be 0-100' }
+  if (c === '') errors.confidence = 'Confidence is required'
+  else { const n = Number(c); if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 100) errors.confidence = 'Confidence must be 0-100' }
+  if (!note) errors.insight = 'Review note is required'
+  else if (note.length < 5) errors.insight = 'Note must be at least 5 characters'
+  else if (note.length > 2000) errors.insight = 'Note must be 2000 characters or fewer'
+  return { errors, isValid: Object.keys(errors).length === 0 }
+}
+
+function validateFailureDraft({ reason }) {
+  const errors = {}
+  const r = String(reason || '').trim()
+  if (!r) errors.reason = 'Describe what went wrong'
+  else if (r.length < 5) errors.reason = 'Reason must be at least 5 characters'
+  else if (r.length > 2000) errors.reason = 'Reason must be 2000 characters or fewer'
+  return { errors, isValid: Object.keys(errors).length === 0 }
+}
+
+
 const statusTone = {
   Qualified: 'purple', Contacted: 'blue', Replied: 'purple', Meeting: 'amber', Proposal: 'pink', Won: 'green', Lost: 'gray',
   Running: 'orange', Queued: 'purple', Waiting: 'amber', Paused: 'amber', Completed: 'green', Cancelled: 'gray', Failed: 'red',
@@ -623,14 +675,44 @@ function ContractsPage({ leads, onOpen, onContract, goTo }) {
 function SettingsPage({ apiStatus, settings, onSave }) {
   const [draft, setDraft] = useState(settings)
   const [saving, setSaving] = useState(false)
+  const [touched, setTouched] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
   useEffect(() => setDraft(settings), [settings])
-  const save = async () => { setSaving(true); await onSave(draft); setSaving(false) }
+  const validation = validateSettingsDraft(draft)
+  const merged = { ...validation.errors, ...fieldErrors }
+  const show = (k) => (submitted || touched[k]) && merged[k]
+  const errStyle = { borderColor: '#c00', boxShadow: '0 0 0 3px rgba(204,0,0,0.08)' }
+  const handleField = (key, parse) => (event) => {
+    const raw = event.target.value
+    const val = parse ? parse(raw) : raw
+    setDraft((c) => ({ ...c, [key]: val }))
+    if (fieldErrors[key] || fieldErrors._general) setFieldErrors((p) => { const n = { ...p }; delete n[key]; delete n._general; return n })
+  }
+  const handleBlur = (key) => () => setTouched((p) => ({ ...p, [key]: true }))
+  const save = async () => {
+    setSubmitted(true)
+    setTouched({ defaultLocation: true, resultLimit: true, deepAuditLimit: true, discoveryLatitude: true, discoveryLongitude: true })
+    const v = validateSettingsDraft(draft)
+    if (!v.isValid) { setFieldErrors(v.errors); return }
+    setSaving(true)
+    setFieldErrors({})
+    try {
+      const saved = await onSave(draft)
+      if (!saved) setFieldErrors({ _general: 'Could not save settings' })
+      else setTouched({})
+    } catch (caught) {
+      const mapped = getFieldErrorsFromApiError(caught)
+      if (Object.keys(mapped).length) setFieldErrors(mapped)
+      else setFieldErrors({ _general: caught?.message || 'Could not save settings' })
+    } finally { setSaving(false) }
+  }
   return (
     <>
       <PageHeader eyebrow="Workspace" title="Simple defaults." description="Only the settings needed for day-to-day research are shown here." />
       <section className="panel minimal-settings">
         <div><h2>Research defaults</h2><p>Used when a new collection run starts.</p></div>
-        <div className="minimal-form"><label><span>Default location</span><input value={draft.defaultLocation || ''} onChange={(event) => setDraft((current) => ({ ...current, defaultLocation: event.target.value }))} /></label><div><label><span>Clients per run</span><input type="number" min="1" max="50" value={draft.resultLimit || 25} onChange={(event) => setDraft((current) => ({ ...current, resultLimit: Number(event.target.value) }))} /></label><label><span>Website audits</span><input type="number" min="1" max="25" value={draft.deepAuditLimit || 10} onChange={(event) => setDraft((current) => ({ ...current, deepAuditLimit: Number(event.target.value) }))} /></label></div><div><label><span>Discovery latitude</span><input type="number" step="any" value={draft.discoveryLatitude ?? ''} onChange={(event) => setDraft((current) => ({ ...current, discoveryLatitude: Number(event.target.value) }))} /></label><label><span>Discovery longitude</span><input type="number" step="any" value={draft.discoveryLongitude ?? ''} onChange={(event) => setDraft((current) => ({ ...current, discoveryLongitude: Number(event.target.value) }))} /></label></div><button className="button button-primary" onClick={save} disabled={saving}>{saving ? <LoaderCircle size={12} className="spin" /> : <Check size={12} />}{saving ? 'Saving…' : 'Save settings'}</button></div>
+        <div className="minimal-form"><label><span>Default location *</span><input value={draft.defaultLocation || ''} onChange={handleField('defaultLocation')} onBlur={handleBlur('defaultLocation')} style={show('defaultLocation') ? errStyle : undefined} className={show('defaultLocation') ? 'input-error' : undefined} aria-invalid={Boolean(show('defaultLocation'))} />{show('defaultLocation') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.defaultLocation}</span>}</label><div><label><span>Clients per run (1-50)</span><input type="number" min="1" max="50" value={draft.resultLimit || 25} onChange={handleField('resultLimit', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('resultLimit')} style={show('resultLimit') ? errStyle : undefined} className={show('resultLimit') ? 'input-error' : undefined} aria-invalid={Boolean(show('resultLimit'))} />{show('resultLimit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.resultLimit}</span>}</label><label><span>Website audits (1-25)</span><input type="number" min="1" max="25" value={draft.deepAuditLimit || 10} onChange={handleField('deepAuditLimit', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('deepAuditLimit')} style={show('deepAuditLimit') ? errStyle : undefined} className={show('deepAuditLimit') ? 'input-error' : undefined} aria-invalid={Boolean(show('deepAuditLimit'))} />{show('deepAuditLimit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.deepAuditLimit}</span>}</label></div><div><label><span>Discovery latitude (-90 to 90)</span><input type="number" step="any" value={draft.discoveryLatitude ?? ''} onChange={handleField('discoveryLatitude', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('discoveryLatitude')} style={show('discoveryLatitude') ? errStyle : undefined} className={show('discoveryLatitude') ? 'input-error' : undefined} aria-invalid={Boolean(show('discoveryLatitude'))} />{show('discoveryLatitude') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.discoveryLatitude}</span>}</label><label><span>Discovery longitude (-180 to 180)</span><input type="number" step="any" value={draft.discoveryLongitude ?? ''} onChange={handleField('discoveryLongitude', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('discoveryLongitude')} style={show('discoveryLongitude') ? errStyle : undefined} className={show('discoveryLongitude') ? 'input-error' : undefined} aria-invalid={Boolean(show('discoveryLongitude'))} />{show('discoveryLongitude') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.discoveryLongitude}</span>}</label></div>{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{fieldErrors._general}</div>}<button className="button button-primary" onClick={save} disabled={saving}>{saving ? <LoaderCircle size={12} className="spin" /> : <Check size={12} />}{saving ? 'Saving…' : 'Save settings'}</button></div>
       </section>
       <section className="panel connection-status"><Database size={18} /><div><strong>Local SQLite storage</strong><span>{apiStatus?.databasePath || 'data/scoutline.db'}</span></div><Badge tone="green">Healthy</Badge></section>
       <section className="panel connection-status"><WandSparkles size={18} /><div><strong>Live discovery</strong><span>{apiStatus?.brightDataAdapterReady ? `Bright Data Google Maps is ready · provider requests capped at ${apiStatus.brightDataMaxRecords || 25} records.` : 'Add BRIGHT_DATA_API_KEY to use live discovery; runs currently audit saved clients.'}</span></div><Badge tone={apiStatus?.brightDataAdapterReady ? 'green' : 'amber'}>{apiStatus?.brightDataAdapterReady ? 'Ready' : 'Local'}</Badge></section>
@@ -791,8 +873,27 @@ function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAn
 function ContractModal({ lead, close, onSave }) {
   const [draft, setDraft] = useState(() => ({ amount: '', currency: 'USD', scope: '', terms: '', startDate: '', signedOn: '', conditions: '', nextStep: '', ...(lead.contract || {}) }))
   const [saving, setSaving] = useState(false)
-  const field = (key) => (event) => setDraft((current) => ({ ...current, [key]: event.target.value }))
-  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal contract-modal" onSubmit={async (event) => { event.preventDefault(); setSaving(true); const saved = await onSave(lead.id, { salesStage: 'Won', contract: { ...draft, amount: Number(draft.amount || 0) } }); setSaving(false); if (saved) close() }}><div className="modal-header"><div><span className="modal-icon"><Trophy size={17} /></span><span><strong>Contract details</strong><small>{lead.company}</small></span></div><IconButton label="Close contract" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form"><div className="form-pair"><label><span>Approved amount</span><input required type="number" min="0" value={draft.amount} onChange={field('amount')} placeholder="12000" /></label><label><span>Currency</span><select value={draft.currency} onChange={field('currency')}><option>USD</option><option>INR</option><option>GBP</option><option>EUR</option></select></label></div><label><span>Approved scope</span><textarea required value={draft.scope} onChange={field('scope')} placeholder="What are we delivering?" /></label><label><span>Payment terms</span><input value={draft.terms} onChange={field('terms')} placeholder="50% at kickoff · 50% at launch" /></label><div className="form-pair"><label><span>Signed on</span><input type="date" value={draft.signedOn} onChange={field('signedOn')} /></label><label><span>Start date</span><input type="date" value={draft.startDate} onChange={field('startDate')} /></label></div><label><span>Conditions</span><textarea value={draft.conditions} onChange={field('conditions')} placeholder="Dependencies, approvals, exclusions…" /></label><label><span>Next step</span><input value={draft.nextStep} onChange={field('nextStep')} placeholder="Book kickoff call" /></label></div><div className="modal-footer"><div><ShieldCheck size={13} /><span>Manual record · saved locally</span></div><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <Check size={12} />}{saving ? 'Saving…' : 'Save contract'}</button></div></div></form></div>
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [touched, setTouched] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const validation = validateContractDraft(draft)
+  const merged = { ...validation.errors, ...fieldErrors }
+  const show = (k) => (submitted || touched[k]) && merged[k]
+  const errStyle = { borderColor: '#c00', boxShadow: '0 0 0 3px rgba(204,0,0,0.08)' }
+  const handleField = (key) => (event) => { setDraft((c) => ({ ...c, [key]: event.target.value })); if (fieldErrors[key] || fieldErrors._general) setFieldErrors((p) => { const n = { ...p }; delete n[key]; delete n._general; return n }) }
+  const handleBlur = (key) => () => setTouched((p) => ({ ...p, [key]: true }))
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setSubmitted(true)
+    setTouched({ amount: true, scope: true, currency: true, signedOn: true, startDate: true })
+    const v = validateContractDraft(draft)
+    if (!v.isValid) { setFieldErrors(v.errors); return }
+    setSaving(true)
+    setFieldErrors({})
+    try {
+      const saved = await onSave(lead.id, { salesStage: 'Won', contract: { ...draft, amount: Number(draft.amount || 0) } }); if (saved) close() } catch (caught) { const mapped = getFieldErrorsFromApiError(caught); if (Object.keys(mapped).length) setFieldErrors(mapped); else setFieldErrors({ _general: caught?.message || 'Could not save contract' }) } finally { setSaving(false) }
+  }
+  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal contract-modal" onSubmit={handleSubmit} noValidate><div className="modal-header"><div><span className="modal-icon"><Trophy size={17} /></span><span><strong>Contract details</strong><small>{lead.company}</small></span></div><IconButton label="Close contract" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form">{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px', marginBottom: '8px' }}>{fieldErrors._general}</div>}<div className="form-pair"><label><span>Approved amount *</span><input type="number" min="0" value={draft.amount} onChange={handleField('amount')} onBlur={handleBlur('amount')} placeholder="12000" style={show('amount') ? errStyle : undefined} className={show('amount') ? 'input-error' : undefined} aria-invalid={Boolean(show('amount'))} />{show('amount') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.amount}</span>}</label><label><span>Currency</span><select value={draft.currency} onChange={handleField('currency')} onBlur={handleBlur('currency')} style={show('currency') ? errStyle : undefined} className={show('currency') ? 'input-error' : undefined} aria-invalid={Boolean(show('currency'))}><option>USD</option><option>INR</option><option>GBP</option><option>EUR</option></select>{show('currency') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.currency}</span>}</label></div><label><span>Approved scope *</span><textarea value={draft.scope} onChange={handleField('scope')} onBlur={handleBlur('scope')} placeholder="What are we delivering?" style={show('scope') ? errStyle : undefined} className={show('scope') ? 'input-error' : undefined} aria-invalid={Boolean(show('scope'))} />{show('scope') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.scope}</span>}</label><label><span>Payment terms</span><input value={draft.terms} onChange={handleField('terms')} placeholder="50% at kickoff · 50% at launch" /></label><div className="form-pair"><label><span>Signed on</span><input type="date" value={draft.signedOn} onChange={handleField('signedOn')} onBlur={handleBlur('signedOn')} style={show('signedOn') ? errStyle : undefined} className={show('signedOn') ? 'input-error' : undefined} aria-invalid={Boolean(show('signedOn'))} />{show('signedOn') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.signedOn}</span>}</label><label><span>Start date</span><input type="date" value={draft.startDate} onChange={handleField('startDate')} onBlur={handleBlur('startDate')} style={show('startDate') ? errStyle : undefined} className={show('startDate') ? 'input-error' : undefined} aria-invalid={Boolean(show('startDate'))} />{show('startDate') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.startDate}</span>}</label></div><label><span>Conditions</span><textarea value={draft.conditions} onChange={handleField('conditions')} placeholder="Dependencies, approvals, exclusions…" /></label><label><span>Next step</span><input value={draft.nextStep} onChange={handleField('nextStep')} placeholder="Book kickoff call" /></label></div><div className="modal-footer"><div><ShieldCheck size={13} /><span>Manual record · saved locally</span></div><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <Check size={12} />}{saving ? 'Saving…' : 'Save contract'}</button></div></div></form></div>
 }
 
 function InsightModal({ lead, close, onSave }) {
@@ -800,7 +901,27 @@ function InsightModal({ lead, close, onSave }) {
   const [confidence, setConfidence] = useState(lead.confidence || '')
   const [insight, setInsight] = useState(lead.notes || '')
   const [saving, setSaving] = useState(false)
-  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal insight-modal" onSubmit={async (event) => { event.preventDefault(); setSaving(true); const saved = await onSave(lead.id, { opportunityScore: Number(score), confidence: Number(confidence), notes: insight.trim(), researchStatus: 'Analyzed', analysisSource: 'Manual adjustment' }); setSaving(false); if (saved) close() }}><div className="modal-header"><div><span className="modal-icon modal-icon-purple"><FileText size={17} /></span><span><strong>Adjust opportunity result</strong><small>{lead.company}</small></span></div><IconButton label="Close insight" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form"><div className="form-pair"><label><span>Opportunity score</span><input required type="number" min="0" max="100" value={score} onChange={(event) => setScore(event.target.value)} /></label><label><span>Confidence</span><input required type="number" min="0" max="100" value={confidence} onChange={(event) => setConfidence(event.target.value)} /></label></div><label><span>Review note</span><textarea required value={insight} onChange={(event) => setInsight(event.target.value)} placeholder="Explain why you adjusted the evidence-based result." /></label><div className="safe-note"><ShieldCheck size={14} /><p>The raw website evidence remains unchanged and the manual adjustment is labeled.</p></div></div><div className="modal-footer"><div /><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <Check size={12} />}{saving ? 'Saving…' : 'Save result'}</button></div></div></form></div>
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [touched, setTouched] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const validation = validateInsightDraft({ score, confidence, insight })
+  const merged = { ...validation.errors, ...fieldErrors }
+  const show = (k) => (submitted || touched[k]) && merged[k]
+  const errStyle = { borderColor: '#c00', boxShadow: '0 0 0 3px rgba(204,0,0,0.08)' }
+  const handleBlur = (k) => () => setTouched((p) => ({ ...p, [k]: true }))
+  const clearErr = (k) => { if (fieldErrors[k] || fieldErrors._general) setFieldErrors((p) => { const n = { ...p }; delete n[k]; delete n._general; return n }) }
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setSubmitted(true)
+    setTouched({ score: true, confidence: true, insight: true })
+    const v = validateInsightDraft({ score, confidence, insight })
+    if (!v.isValid) { setFieldErrors(v.errors); return }
+    setSaving(true)
+    setFieldErrors({})
+    try {
+      const saved = await onSave(lead.id, { opportunityScore: Number(score), confidence: Number(confidence), notes: insight.trim(), researchStatus: 'Analyzed', analysisSource: 'Manual adjustment' }); if (saved) close() } catch (caught) { const mapped = getFieldErrorsFromApiError(caught); if (Object.keys(mapped).length) setFieldErrors(mapped); else setFieldErrors({ _general: caught?.message || 'Could not save result' }) } finally { setSaving(false) }
+  }
+  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal insight-modal" onSubmit={handleSubmit} noValidate><div className="modal-header"><div><span className="modal-icon modal-icon-purple"><FileText size={17} /></span><span><strong>Adjust opportunity result</strong><small>{lead.company}</small></span></div><IconButton label="Close insight" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form">{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px', marginBottom: '8px' }}>{fieldErrors._general}</div>}<div className="form-pair"><label><span>Opportunity score *</span><input type="number" min="0" max="100" value={score} onChange={(event) => { setScore(event.target.value); clearErr('score') }} onBlur={handleBlur('score')} style={show('score') ? errStyle : undefined} className={show('score') ? 'input-error' : undefined} aria-invalid={Boolean(show('score'))} />{show('score') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.score}</span>}</label><label><span>Confidence *</span><input type="number" min="0" max="100" value={confidence} onChange={(event) => { setConfidence(event.target.value); clearErr('confidence') }} onBlur={handleBlur('confidence')} style={show('confidence') ? errStyle : undefined} className={show('confidence') ? 'input-error' : undefined} aria-invalid={Boolean(show('confidence'))} />{show('confidence') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.confidence}</span>}</label></div><label><span>Review note *</span><textarea value={insight} onChange={(event) => { setInsight(event.target.value); clearErr('insight') }} onBlur={handleBlur('insight')} placeholder="Explain why you adjusted the evidence-based result." style={show('insight') ? errStyle : undefined} className={show('insight') ? 'input-error' : undefined} aria-invalid={Boolean(show('insight'))} />{show('insight') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.insight}</span>}</label><div className="safe-note"><ShieldCheck size={14} /><p>The raw website evidence remains unchanged and the manual adjustment is labeled.</p></div></div><div className="modal-footer"><div /><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <Check size={12} />}{saving ? 'Saving…' : 'Save result'}</button></div></div></form></div>
 }
 
 function FailureModal({ lead, close, onSave }) {
@@ -808,24 +929,103 @@ function FailureModal({ lead, close, onSave }) {
   const [stage, setStage] = useState(state.done[1] ? 2 : 1)
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
-  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal failure-modal" onSubmit={async (event) => { event.preventDefault(); setSaving(true); const saved = await onSave(lead.id, { researchFailure: { stage: Number(stage), reason: reason.trim(), at: new Date().toISOString() }, researchStatus: 'Failed' }); setSaving(false); if (saved) close() }}><div className="modal-header"><div><span className="modal-icon modal-icon-red"><CircleAlert size={17} /></span><span><strong>Mark research stage failed</strong><small>{lead.company}</small></span></div><IconButton label="Close failure" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form"><label><span>Failed stage</span><select value={stage} onChange={(event) => setStage(Number(event.target.value))}>{researchLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}</select></label><label><span>What went wrong?</span><textarea required value={reason} onChange={(event) => setReason(event.target.value)} placeholder="For example: website timed out during the audit" /></label><div className="failure-note"><RefreshCcw size={14} /><p>This is an operational failure, not a rejection. Retrying will clear the failure and return the client to its last completed stage.</p></div></div><div className="modal-footer"><div /><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-failure" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <X size={12} />}{saving ? 'Saving…' : 'Mark failed'}</button></div></div></form></div>
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [touched, setTouched] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const validation = validateFailureDraft({ reason, stage })
+  const merged = { ...validation.errors, ...fieldErrors }
+  const show = (k) => (submitted || touched[k]) && merged[k]
+  const errStyle = { borderColor: '#c00', boxShadow: '0 0 0 3px rgba(204,0,0,0.08)' }
+  const handleBlur = (k) => () => setTouched((p) => ({ ...p, [k]: true }))
+  const handleChangeReason = (event) => { setReason(event.target.value); if (fieldErrors.reason || fieldErrors._general) setFieldErrors((p) => { const n = { ...p }; delete n.reason; delete n._general; return n }) }
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setSubmitted(true)
+    setTouched({ reason: true, stage: true })
+    const v = validateFailureDraft({ reason, stage })
+    if (!v.isValid) { setFieldErrors(v.errors); return }
+    setSaving(true)
+    setFieldErrors({})
+    try {
+      const saved = await onSave(lead.id, { researchFailure: { stage: Number(stage), reason: reason.trim(), at: new Date().toISOString() }, researchStatus: 'Failed' }); if (saved) close() } catch (caught) { const mapped = getFieldErrorsFromApiError(caught); if (Object.keys(mapped).length) setFieldErrors(mapped); else setFieldErrors({ _general: caught?.message || 'Could not mark failed' }) } finally { setSaving(false) }
+  }
+  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal failure-modal" onSubmit={handleSubmit} noValidate><div className="modal-header"><div><span className="modal-icon modal-icon-red"><CircleAlert size={17} /></span><span><strong>Mark research stage failed</strong><small>{lead.company}</small></span></div><IconButton label="Close failure" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form">{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px', marginBottom: '8px' }}>{fieldErrors._general}</div>}<label><span>Failed stage</span><select value={stage} onChange={(event) => setStage(Number(event.target.value))} style={show('stage') ? errStyle : undefined} className={show('stage') ? 'input-error' : undefined} aria-invalid={Boolean(show('stage'))}>{researchLabels.map((label, index) => <option key={label} value={index}>{label}</option>)}</select>{show('stage') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.stage}</span>}</label><label><span>What went wrong? *</span><textarea value={reason} onChange={handleChangeReason} onBlur={handleBlur('reason')} placeholder="For example: website timed out during the audit" style={show('reason') ? errStyle : undefined} className={show('reason') ? 'input-error' : undefined} aria-invalid={Boolean(show('reason'))} />{show('reason') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.reason}</span>}</label><div className="failure-note"><RefreshCcw size={14} /><p>This is an operational failure, not a rejection. Retrying will clear the failure and return the client to its last completed stage.</p></div></div><div className="modal-footer"><div /><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-failure" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <X size={12} />}{saving ? 'Saving…' : 'Mark failed'}</button></div></div></form></div>
 }
 
 function ManualLeadModal({ close, onSave }) {
   const [draft, setDraft] = useState({ company: '', website: '', category: '', location: '', address: '', sourceUrl: '', email: '', phone: '' })
   const [saving, setSaving] = useState(false)
-  const field = (key) => (event) => setDraft((current) => ({ ...current, [key]: event.target.value }))
-  const submit = async (event) => { event.preventDefault(); setSaving(true); const saved = await onSave(draft); setSaving(false); if (saved) close() }
-  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal manual-lead-modal" onSubmit={submit}><div className="modal-header"><div><span className="modal-icon"><Plus size={17} /></span><span><strong>Add client manually</strong><small>Start with the information you already have</small></span></div><IconButton label="Close add client" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form"><div className="form-pair"><label><span>Company name</span><input required value={draft.company} onChange={field('company')} placeholder="Salt City Plumbing" /></label><label><span>Website</span><input value={draft.website} onChange={field('website')} placeholder="example.com" /></label></div><div className="form-pair"><label><span>Category</span><input value={draft.category} onChange={field('category')} placeholder="Plumbing" /></label><label><span>Location</span><input value={draft.location} onChange={field('location')} placeholder="Salt Lake City, Utah" /></label></div><label><span>Address</span><input value={draft.address} onChange={field('address')} placeholder="47 S Orange St A8" /></label><div className="form-pair"><label><span>Email</span><input type="email" value={draft.email} onChange={field('email')} placeholder="hello@example.com" /></label><label><span>Phone</span><input value={draft.phone} onChange={field('phone')} placeholder="(801) 555-0100" /></label></div><label><span>Google Maps URL</span><input value={draft.sourceUrl} onChange={field('sourceUrl')} placeholder="https://maps.google.com/..." /></label><div className="safe-note"><Database size={14} /><p>The client will be added as collected. Add a website later to start the audit.</p></div></div><div className="modal-footer"><div /><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <Plus size={12} />}{saving ? 'Saving…' : 'Add client'}</button></div></div></form></div>
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [touched, setTouched] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const validation = validateLeadDraft(draft)
+  const merged = { ...validation.errors, ...fieldErrors }
+  const show = (k) => (submitted || touched[k]) && merged[k]
+  const errStyle = { borderColor: '#c00', boxShadow: '0 0 0 3px rgba(204,0,0,0.08)' }
+  const handleField = (key) => (event) => { setDraft((c) => ({ ...c, [key]: event.target.value })); if (fieldErrors[key] || fieldErrors._general) setFieldErrors((p) => { const n = { ...p }; delete n[key]; delete n._general; return n }) }
+  const handleBlur = (key) => () => setTouched((p) => ({ ...p, [key]: true }))
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setSubmitted(true)
+    setTouched({ company: true, website: true, email: true, sourceUrl: true })
+    const v = validateLeadDraft(draft)
+    if (!v.isValid) { setFieldErrors(v.errors); return }
+    setSaving(true)
+    setFieldErrors({})
+    try {
+      const saved = await onSave(draft)
+      if (saved) close()
+      else setFieldErrors({ _general: 'Could not add the client' })
+    } catch (caught) {
+      const mapped = getFieldErrorsFromApiError(caught)
+      if (Object.keys(mapped).length) setFieldErrors(mapped)
+      else setFieldErrors({ _general: caught?.message || 'Could not add the client' })
+    } finally { setSaving(false) }
+  }
+  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal manual-lead-modal" onSubmit={handleSubmit} noValidate><div className="modal-header"><div><span className="modal-icon"><Plus size={17} /></span><span><strong>Add client manually</strong><small>Start with the information you already have</small></span></div><IconButton label="Close add client" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form">{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px', marginBottom: '8px' }}>{fieldErrors._general}</div>}<div className="form-pair"><label><span>Company name *</span><input value={draft.company} onChange={handleField('company')} onBlur={handleBlur('company')} placeholder="Salt City Plumbing" style={show('company') ? errStyle : undefined} className={show('company') ? 'input-error' : undefined} aria-invalid={Boolean(show('company'))} />{show('company') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.company}</span>}</label><label><span>Website</span><input value={draft.website} onChange={handleField('website')} onBlur={handleBlur('website')} placeholder="example.com" style={show('website') ? errStyle : undefined} className={show('website') ? 'input-error' : undefined} aria-invalid={Boolean(show('website'))} />{show('website') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.website}</span>}</label></div><div className="form-pair"><label><span>Category</span><input value={draft.category} onChange={handleField('category')} placeholder="Plumbing" /></label><label><span>Location</span><input value={draft.location} onChange={handleField('location')} placeholder="Salt Lake City, Utah" /></label></div><label><span>Address</span><input value={draft.address} onChange={handleField('address')} placeholder="47 S Orange St A8" /></label><div className="form-pair"><label><span>Email</span><input type="email" value={draft.email} onChange={handleField('email')} onBlur={handleBlur('email')} placeholder="hello@example.com" style={show('email') ? errStyle : undefined} className={show('email') ? 'input-error' : undefined} aria-invalid={Boolean(show('email'))} />{show('email') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.email}</span>}</label><label><span>Phone</span><input value={draft.phone} onChange={handleField('phone')} placeholder="(801) 555-0100" /></label></div><label><span>Google Maps URL</span><input value={draft.sourceUrl} onChange={handleField('sourceUrl')} onBlur={handleBlur('sourceUrl')} placeholder="https://maps.google.com/..." style={show('sourceUrl') ? errStyle : undefined} className={show('sourceUrl') ? 'input-error' : undefined} aria-invalid={Boolean(show('sourceUrl'))} />{show('sourceUrl') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.sourceUrl}</span>}</label><div className="safe-note"><Database size={14} /><p>The client will be added as collected. Add a website later to start the audit.</p></div></div><div className="modal-footer"><div /><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <Plus size={12} />}{saving ? 'Saving…' : 'Add client'}</button></div></div></form></div>
 }
 
 function NewRunModal({ close, onStart, connected, maxRecords = 25, defaults }) {
   const [location, setLocation] = useState(defaults.defaultLocation || 'Salt Lake City, Utah')
   const [categories, setCategories] = useState(defaults.categories || ['Roofing', 'HVAC', 'Flooring'])
   const [limit, setLimit] = useState(connected ? Math.min(5, maxRecords) : defaults.resultLimit || 25)
+  const [saving, setSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [touched, setTouched] = useState({})
+  const [submitted, setSubmitted] = useState(false)
   const allCategories = ['Roofing', 'HVAC', 'Flooring', 'Remodeling', 'Electrical', 'Landscaping']
-  const toggle = (item) => setCategories((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])
-  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && close()}><form className="run-modal minimal-run-modal" onSubmit={(event) => { event.preventDefault(); onStart({ location, categories, limit, deepAuditLimit: Math.min(defaults.deepAuditLimit || 10, limit) }) }}><div className="modal-header"><div><span className="modal-icon"><Activity size={17} /></span><span><strong>Add client data</strong><small>Start a focused collection run</small></span></div><IconButton label="Close run" type="button" onClick={close}><X size={16} /></IconButton></div><div className="modal-body contract-form">{!connected ? <div className="preview-banner"><WandSparkles size={16} /><div><strong>Saved-client mode</strong><p>Live discovery is not configured. This run will safely audit matching websites already in your workspace.</p></div></div> : <div className="preview-banner"><ShieldCheck size={16} /><div><strong>Live test mode</strong><p>Starts at 5 clients and Bright Data is hard-capped at {maxRecords} records per run.</p></div></div>}<label><span>Location</span><input value={location} onChange={(event) => setLocation(event.target.value)} /></label><label><span>Business types</span><div className="category-selector">{allCategories.map((item) => <button key={item} type="button" className={categories.includes(item) ? 'selected' : ''} onClick={() => toggle(item)}>{categories.includes(item) && <Check size={11} />}{item}</button>)}</div></label><label><span>Maximum clients</span><input type="number" min="1" max={connected ? maxRecords : 50} value={limit} onChange={(event) => setLimit(Number(event.target.value))} /></label></div><div className="modal-footer"><div><ShieldCheck size={13} /><span>No automatic outreach</span></div><div><button className="button button-secondary" type="button" onClick={close}>Cancel</button><button className="button button-primary" disabled={!categories.length}><Play size={12} />{connected ? 'Start live run' : 'Audit saved clients'}</button></div></div></form></div>
+  const validation = validateRunConfig({ location, categories, limit, maxRecords, connected })
+  const merged = { ...validation.errors, ...fieldErrors }
+  const show = (k) => (submitted || touched[k]) && merged[k]
+  const errStyle = { borderColor: '#c00', boxShadow: '0 0 0 3px rgba(204,0,0,0.08)' }
+  const toggle = (item) => {
+    setCategories((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])
+    if (touched.categories || submitted) {
+      const nextCats = categories.includes(item) ? categories.filter((v) => v !== item) : [...categories, item]
+      if (nextCats.length) setFieldErrors((p) => { const n = { ...p }; delete n.categories; delete n._general; return n })
+    }
+  }
+  const handleBlur = (k) => () => setTouched((p) => ({ ...p, [k]: true }))
+  const handleLocationChange = (event) => { setLocation(event.target.value); if (fieldErrors.location || fieldErrors._general) setFieldErrors((p) => { const n = { ...p }; delete n.location; delete n._general; return n }) }
+  const handleLimitChange = (event) => { setLimit(event.target.value === '' ? '' : Number(event.target.value)); if (fieldErrors.limit || fieldErrors._general) setFieldErrors((p) => { const n = { ...p }; delete n.limit; delete n._general; return n }) }
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setSubmitted(true)
+    setTouched({ location: true, categories: true, limit: true })
+    const v = validateRunConfig({ location, categories, limit, maxRecords, connected })
+    if (!v.isValid) { setFieldErrors(v.errors); return }
+    setSaving(true)
+    setFieldErrors({})
+    try {
+      const saved = await onStart({ location, categories, limit: Number(limit), deepAuditLimit: Math.min(Number(defaults.deepAuditLimit) || 10, Number(limit) || 5) })
+      if (!saved) setFieldErrors({ _general: 'Could not start the run — check connection and try again' })
+    } catch (caught) {
+      const mapped = getFieldErrorsFromApiError(caught)
+      if (Object.keys(mapped).length) setFieldErrors(mapped)
+      else setFieldErrors({ _general: caught?.message || 'Could not start the run' })
+    } finally { setSaving(false) }
+  }
+  return <div className="modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && !saving && close()}><form className="run-modal minimal-run-modal" onSubmit={handleSubmit} noValidate><div className="modal-header"><div><span className="modal-icon"><Activity size={17} /></span><span><strong>Add client data</strong><small>Start a focused collection run</small></span></div><IconButton label="Close run" type="button" onClick={close} disabled={saving}><X size={16} /></IconButton></div><div className="modal-body contract-form">{!connected ? <div className="preview-banner"><WandSparkles size={16} /><div><strong>Saved-client mode</strong><p>Live discovery is not configured. This run will safely audit matching websites already in your workspace.</p></div></div> : <div className="preview-banner"><ShieldCheck size={16} /><div><strong>Live test mode</strong><p>Starts at 5 clients and Bright Data is hard-capped at {maxRecords} records per run.</p></div></div>}{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px', marginBottom: '8px' }}>{fieldErrors._general}</div>}<label><span>Location *</span><input value={location} onChange={handleLocationChange} onBlur={handleBlur('location')} placeholder="Salt Lake City, Utah" style={show('location') ? errStyle : undefined} className={show('location') ? 'input-error' : undefined} aria-invalid={Boolean(show('location'))} />{show('location') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.location}</span>}</label><label><span>Business types *</span><div className="category-selector">{allCategories.map((item) => <button key={item} type="button" className={categories.includes(item) ? 'selected' : ''} onClick={() => toggle(item)}>{categories.includes(item) && <Check size={11} />}{item}</button>)}</div>{show('categories') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.categories}</span>}</label><label><span>Maximum clients (1-50)</span><input type="number" min="1" max={connected ? maxRecords : 50} value={limit} onChange={handleLimitChange} onBlur={handleBlur('limit')} style={show('limit') ? errStyle : undefined} className={show('limit') ? 'input-error' : undefined} aria-invalid={Boolean(show('limit'))} />{show('limit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.limit}</span>}</label></div><div className="modal-footer"><div><ShieldCheck size={13} /><span>No automatic outreach</span></div><div><button className="button button-secondary" type="button" onClick={close} disabled={saving}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={12} /> : <Play size={12} />}{saving ? 'Starting…' : connected ? 'Start live run' : 'Audit saved clients'}</button></div></div></form></div>
 }
 
 function CommandMenu({ leads, close, onOpen, goTo, onNewRun }) {
@@ -916,7 +1116,9 @@ export default function App() {
     }
   }
   const showActionError = (caught, fallback) => {
-    setToast({ message: caught?.message || fallback, tone: 'error' })
+    const fieldErrors = getFieldErrorsFromApiError(caught)
+    const fieldMsg = Object.values(fieldErrors).join(' \u00b7 ')
+    setToast({ message: fieldMsg || caught?.message || fallback, tone: 'error' })
     return null
   }
 
@@ -1011,14 +1213,27 @@ export default function App() {
       setSelectedLead((current) => current?.id === id ? updated : current)
       setToast(changes.contract ? `${updated.company} contract saved` : changes.opportunityScore != null ? `${updated.company} insight saved` : changes.salesStage ? `${updated.company} moved to ${changes.salesStage}` : `${updated.company} updated`)
       return updated
-    } catch (caught) { return showActionError(caught, 'Could not update the client') }
+    } catch (caught) {
+      const fieldErrors = getFieldErrorsFromApiError(caught)
+      if (Object.keys(fieldErrors).length) setToast({ message: Object.values(fieldErrors).join(' \u00b7 ') || caught.message, tone: 'error' })
+      else showActionError(caught, 'Could not update the client')
+      return null
+    }
   }
   const startRun = async (config) => {
     try {
       const run = await apiRequest('/api/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) })
       setRuns((current) => [run, ...current]); setActiveRunId(run.id); setRunModalOpen(false); navigate('Research'); setToast(`${run.source} run started`)
       return run
-    } catch (caught) { return showActionError(caught, 'Could not start the run') }
+    } catch (caught) {
+      const fieldErrors = getFieldErrorsFromApiError(caught)
+      if (Object.keys(fieldErrors).length) {
+        setToast({ message: Object.values(fieldErrors).join(' \u00b7 ') || caught.message, tone: 'error' })
+        throw caught
+      }
+      showActionError(caught, 'Could not start the run')
+      throw caught
+    }
   }
   const toggleRunPause = async () => {
     if (!activeRunId) return
@@ -1091,14 +1306,35 @@ export default function App() {
   const importCsv = async (event) => {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file) return
+    if (!file) return setToast({ message: 'Choose a CSV file to import', tone: 'error' })
+    let rows
     try {
-      const rows = parseCsv(await file.text())
-      if (!rows.length) return setToast({ message: 'CSV needs a header and at least one client', tone: 'error' })
+      const text = await file.text()
+      if (!text.trim()) return setToast({ message: 'CSV file is empty', tone: 'error' })
+      rows = parseCsv(text)
+    } catch {
+      return setToast({ message: 'Could not read the CSV file', tone: 'error' })
+    }
+    const validation = validateImportRows(rows)
+    if (validation.headerError) return setToast({ message: validation.headerError, tone: 'error' })
+    if (validation.rowErrors.length) {
+      const preview = validation.rowErrors.slice(0, 3).map((e) => `Row ${e.row}: ${e.reasons.join(', ')}`).join(' \u00b7 ')
+      const more = validation.rowErrors.length > 3 ? ` (+${validation.rowErrors.length - 3} more rows)` : ''
+      setToast({ message: `${preview}${more} \u2014 these rows will be skipped`, tone: 'error' })
+    }
+    if (!rows.length) return setToast({ message: 'CSV needs a header and at least one client', tone: 'error' })
+    try {
       const result = await apiRequest('/api/leads/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows }) })
       setLeads((current) => [...current, ...result.leads])
-      setToast(`Imported ${result.imported} clients${result.skipped ? ` · ${result.skipped} skipped` : ''}`)
-    } catch (caught) { showActionError(caught, 'CSV import failed') }
+      const reasons = result.rowReasons || result.reasons || result.skippedReasons || null
+      const detail = reasons && Array.isArray(reasons) && reasons.length ? ` \u00b7 ${reasons.slice(0, 3).join('; ')}` : validation.rowErrors.length ? ` \u00b7 ${validation.rowErrors.slice(0,2).map((e)=>`row ${e.row} ${e.reasons.join(', ')}`).join('; ')}` : ''
+      if (result.imported === 0 && result.skipped) return setToast({ message: `No clients imported \u00b7 ${result.skipped} skipped${detail}`, tone: 'error' })
+      setToast({ message: `Imported ${result.imported} clients${result.skipped ? ` \u00b7 ${result.skipped} skipped${detail}` : ''}`, tone: result.skipped ? 'error' : 'success' })
+    } catch (caught) {
+      const mapped = getFieldErrorsFromApiError(caught)
+      if (Object.keys(mapped).length) setToast({ message: Object.values(mapped).join(' \u00b7 ') || caught.message, tone: 'error' })
+      else showActionError(caught, 'CSV import failed')
+    }
   }
   const openImport = () => csvInput.current?.click()
   const createManualLead = async (draft) => {
@@ -1107,7 +1343,15 @@ export default function App() {
       setLeads((current) => [...current, created])
       setToast(`${created.company} added to the client database`)
       return created
-    } catch (caught) { return showActionError(caught, 'Could not add the client') }
+    } catch (caught) {
+      const fieldErrors = getFieldErrorsFromApiError(caught)
+      if (Object.keys(fieldErrors).length) {
+        setToast({ message: Object.values(fieldErrors).join(' \u00b7 ') || caught.message, tone: 'error' })
+        throw caught
+      }
+      showActionError(caught, 'Could not add the client')
+      throw caught
+    }
   }
   const exportCsv = () => {
     const headers = ['company', 'category', 'location', 'website', 'email', 'opportunity_score', 'research_phase', 'sales_phase', 'contract_value']
@@ -1120,7 +1364,15 @@ export default function App() {
     try {
       const saved = await apiRequest('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
       setSettingsData(saved); setToast('Settings saved'); return saved
-    } catch (caught) { return showActionError(caught, 'Could not save settings') }
+    } catch (caught) {
+      const fieldErrors = getFieldErrorsFromApiError(caught)
+      if (Object.keys(fieldErrors).length) {
+        setToast({ message: Object.values(fieldErrors).join(' \u00b7 ') || caught.message, tone: 'error' })
+        throw caught
+      }
+      showActionError(caught, 'Could not save settings')
+      throw caught
+    }
   }
 
   if (loading) return <div className="app-loading" role="status" aria-live="polite"><Logo /><LoaderCircle className="spin" size={18} /><span>Opening local workspace…</span></div>
