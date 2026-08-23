@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Salt Lake City Remodels (slcremodels.com) is a 4.8-star (46 reviews) contractor with claimed Google profile and 96% positive review share. Site audit is Partial (5 pages crawled) due to Lighthouse Failed. Homepage returned HTTP 200 but shows hierarchy/clarity issues flagged as main issue: Homepage H1 count: 2 and Meta description length: 67 characters ('At SLC Remodels it is our goals to make your dreams become reality!'). One broken internal link of 5 checked ( /search 403 ) plus thin supporting pages and no phone/email signal on homepage create straightforward, addressable opportunities.",
+  "topOpportunities": [
+    {
+      "title": "Fix homepage content hierarchy and heading structure",
+      "severity": "High",
+      "evidence": "Homepage H1 count: 2 (mainIssue: 'The homepage does not use one clear primary heading.') and Page title: Salt Lake City Remodels",
+      "whyItMatters": "A single clear H1 helps visitors and search engines understand the primary offer immediately. Current 2 H1s dilutes focus for a contractor where clarity on services/area matters.",
+      "recommendation": "Consolidate homepage to one clear primary H1 that states service + market (e.g., Kitchen & Bath Remodels in Salt Lake City) and demote other headings to H2s. Keep hierarchy consistent on /contact (currently H1Count 1) vs /gallery and /search (H1Count 0)."
+    },
+    {
+      "title": "Strengthen homepage description for clarity (SEO + user)",
+      "severity": "High",
+      "evidence": "Meta description length: 67 characters and description: 'At SLC Remodels it is our goals to make your dreams become reality!'",
+      "whyItMatters": "Current description is brief and contains grammatical error ('it is our goals'). A clearer description may improve click-through from search and set expectation before scroll.",
+      "recommendation": "Rewrite meta description to 140-160 characters that explains what you do, where, and next step, matching new single H1. Add visible above-the-fold summary to match. Keep canonical true."
+    },
+    {
+      "title": "Repair single broken internal link",
+      "severity": "Medium",
+      "evidence": "Broken internal links: 1 of 5 checked and brokenLinkDetails: https://www.slcremodels.com/search status 403 and Internal links observed on homepage: 5",
+      "whyItMatters": "One broken link in a small site (5 links checked across 5 pages) is proportionally large and can frustrate users and waste crawl budget.",
+      "recommendation": "Fix or remove link to /search (returns 403). Since crawled /search title: Salt Lake City Remodels / H1Count 0 / wordCount 198 and is likely Squarespace system search, either noindex it and remove from nav/sitemap or ensure it returns 200."
+    },
+    {
+      "title": "Make contact path obvious and expand lead capture",
+      "severity": "Medium",
+      "evidence": "homepageSignals hasPhone: false and hasEmail: false and hasPhone false on homepage with forms 1 and inputCount 1 and No booking or online-estimate signal (Online customer action points 0/10)",
+      "whyItMatters": "With 120 images and gallery before/after page (wordCount 250), visitors are likely evaluating work but have limited direct contact signals on homepage, which could add friction to next step.",
+      "recommendation": "Add persistent phone/email in header/footer, ensure contact page form is fuller than single input, and consider adding 'Request estimate' CTA to match 3 existing CTA phrases. Do not assume current conversion rate."
+    }
+  ],
+  "strengths": [
+    "Strong reputation foundation: publicRating 4.8 with publicReviewCount 46 and Four- and five-star review share: 96% with latest sampled review 2026-06-16T22:40:25.115Z and Google Business Profile: claimed",
+    "Technical foundation present: Structured data: found and hasSchema true with GA4 detected in detectedStack and HTTPS true and viewport true",
+    "Content depth on homepage: wordCount 1064 on / and Image alt-text coverage: 90% with Lighthouse accessibility 89 and seo 82",
+    "Navigation and conversion elements present: Internal links observed on homepage: 5 and Homepage CTA phrases detected: 3 and forms 1 on homepage"
+  ],
+  "unknowns": [
+    "Performance and Best Practices not measured: performance null, bestPractices null due to Lighthouse Failed (error: The CHROME_PATH environment variable must be set...) - real mobile speed unknown despite MobileQuality Good and viewport true",
+    "Actual traffic, conversion rate, and lead source - GA4 detected but no metrics provided",
+    "Reason for /search 403 - whether template-linked or intentional block",
+    "Service details and pricing: services [] and no onlineBooking false / onlineEstimates false signals - scope of work not in packet",
+    "Company metrics: employeeCount value null, annualRevenue value null, foundedYear value null - scale unknown"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Opportunity Score 54 (Confidence 84, source: Multi-page website audit + Lighthouse) with main issue 'Content hierarchy: The homepage does not use one clear primary heading.' Evidence shows clear, low-effort fixes (2 H1s, 67-char meta description, 1 broken of 5 links) but Lighthouse performance/bestPractices not measured (Failed: ERR_LAUNCHER_PATH_NOT_SET) and site has solid foundation (claimed GBP, 96% 4-5 star share, 90% alt-coverage, schema found, GA4). => Review: worth human review, not auto蒲",
+  "outreachAngles": [
+    "Noted homepage has 2 H1s and 67-character meta description 'At SLC Remodels it is our goals...' - quick clarity pass could help visitors understand offer faster",
+    "Observed 1 of 5 internal links returns 403 on /search - quick link hygiene fix",
+    "Site shows strong 4.8 rating (46 reviews) and structured data found - opportunity to make that proof more prominent on homepage"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1b-312b-7553-af4c-b45a6ee2e7c5",
+    "generatedAt": "2026-08-23T10:12:09.236Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

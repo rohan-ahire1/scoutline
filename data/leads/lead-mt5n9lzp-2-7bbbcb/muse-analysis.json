@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Utah Wildflower Company (utahwildflowercompany.com) is an Active, claimed landscaper at 515 S 700 E, Salt Lake City with 4.8 stars (71 reviews, 96% 4-5 stars). The site scores Established on digitalMaturity (62) with SEO 90/100, Accessibility 95/100, and Structured data: found, plus GA4 detected. The evidence is mixed: the homepage title is 70 characters ('Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower') and deterministic assessment still flags 'The homepage title is missing or outside a useful descriptive range' as mainIssue (opportunityScore 45, confidence 90). Conversion paths look thin - 0 forms and 0 inputs on homepage and across 10 crawled service pages, with businessIntelligence showing No booking or online-estimate signal - despite 3 CTA phrases and contact",
+  "topOpportunities": [
+    {
+      "title": "Clarify search targeting despite 70-character title flag",
+      "severity": "High",
+      "evidence": "Deterministic finding: 'The homepage title is missing or outside a useful descriptive range.' with evidence 'Homepage title length: 70 characters' and 'Page title: Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower' and homepage description: 'Utah Wildflower specializes in eco-friendly xeriscaping and native landscape design in Salt Lake City and across the Wasatch Front...'",
+      "whyItMatters": "Title/description are the primary search snippet signals. The packet flags search clarity as mainIssue even though length measures 70 characters and SEO is 90/100, suggesting a relevance or truncation risk that could limit discovery for high-intent local queries.",
+      "recommendation": "Validate and tighten search clarity: confirm homepage title (70 chars) and meta description alignment to core terms (xeriscaping, sustainable landscaping, Salt Lake City/Wasatch Front) across the 10 crawled pages which all have 1-2 H1s and 2800+ words. Do not change URL structure; check Search Console for impressions vs clicks before editing."
+    },
+    {
+      "title": "Turn CTAs into measurable quote requests",
+      "severity": "High",
+      "evidence": "Homepage: forms 0, inputCount 0, ctaCount 3, hasPhone true, hasEmail true; All 10 crawled pages show forms 0, inputCount 0; businessIntelligence: 'No booking or online-estimate signal' and onlineBooking false, onlineEstimates false",
+      "whyItMatters": "With 25 internal links and 3 CTAs but 0 forms observed across 10 pages, visitor intent has no on-site conversion point to measure. Adding a form creates an 'Online customer action' signal currently scored 0/10 and enables follow-up without relying solely on phone/email.",
+      "recommendation": "Add a lightweight online estimate/quote capture: place a single form (name, address/zip, service interest, photo upload optional) above fold on homepage and /services, linked from existing 3 CTA phrases. Route to email/phone already present and log in GA4 (detectedStack includes GA4)."
+    },
+    {
+      "title": "Close alt-text gap and re-establish performance measurement",
+      "severity": "Medium",
+      "evidence": "Image alt-text coverage: 87% on homepage with 15 images; Lighthouse Accessibility 95/100 (measured) vs businessIntelligence component Mobile performance 4/20 from 'Lighthouse 0/100' is not measured per measuredAudit lighthouse Failed with code ERR_LAUNCHER_PATH_NOT_SET",
+      "whyItMatters": "Accessibility is already high at 95/100; finishing the last ~13% is low effort and supports image search and screen readers. Performance and best practices are currently null/0 due to measurement failure, so no optimization decision should be made until a successful audit exists.",
+      "recommendation": "Complete accessibility pass on remaining 13% of images (2 of 15): add descriptive alt for remaining images, keep existing 87% coverage intact. Re-run Lighthouse once CHROME_PATH is set (measuredAudit shows Failed) to obtain valid performance/bestPractices scores before optimizing."
+    },
+    {
+      "title": "Align sitemap with crawled site structure",
+      "severity": "Low",
+      "evidence": "Crawl: pagesCrawled 10 (truncated, pageLimit 10), sitemapPageCount 2 vs pagesCrawled 10, linksChecked 26, brokenLinks 0",
+      "whyItMatters": "A sitemap with only 2 entries for a 10+ page service site may slow discovery of deeper service pages (all 2800-3600 words) by search engines, despite clean link health (0 broken of 26).",
+      "recommendation": "Update sitemap to reflect actual site (10 pages crawled vs sitemapPageCount 2): ensure all 10 service pages like /services/drip-irrigation, /services/patios-pavers, etc. are listed and submitted, then verify no broken links remain (currently 0 of 26)."
+    }
+  ],
+  "strengths": [
+    "Strong reputation: publicRating 4.8 with publicReviewCount 71 and 96% four- and five-star share, latest sampled review 2026-07-25T16:17:22.914Z - Google Business Profile: claimed",
+    "Search foundation present: SEO 90/100, hasSchema true (Structured data: found), canonical true, viewport true, mobileQuality Good, Homepage returned HTTP 200",
+    "Site maintenance intact: 0 broken of 26 checked and crawl completed 10 pages with 0 errors, detectedStack includes GA4 for measurement",
+    "Accessibility strong: Accessibility 95/100 with 87% alt coverage on 15 homepage images"
+  ],
+  "unknowns": [
+    "Lighthouse performance and bestPractices are null - measuredAudit lighthouse status Failed with error 'The CHROME_PATH environment variable must be set...'",
+    "Actual traffic, conversion rates, revenue, profit, employeeCount, foundedYear, branchCount - all companyMetrics values are null",
+    "Customer behavior and lead volume from existing 3 CTA phrases, phone, email - not measured",
+    "Whether online booking/estimates are handled off-site or via phone - only on-site signal observed is false",
+    "Hosting costs and page speed timings - timings are null"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Established business with strong signals - Google Business Profile: claimed, 4.8 stars with 71 reviews and 96% 4-5 star share, HTTPS true, SEO 90/100, Accessibility 95/100, 0 broken of 26 checked - but opportunityScore 45 reflects mixed opportunity. Homepage presents useful signals (title 70 characters, description present about eco-friendly xeriscaping, 25 internal links, 3 CTAs) yet deterministic assessment flags 'The homepage title is missing or outside a useful descriptive range.' and audit_",
+  "outreachAngles": [
+    "Noted homepage title 'Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower' at 70 characters - offer to align title/description for search clarity",
+    "Observed 3 CTA phrases but 0 forms and 0 inputs on homepage and 10 crawled pages - offer to add online estimate/quote flow",
+    "Measured 87% image alt-text coverage across 15 images on homepage - offer quick accessibility pass"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1b-8b7d-74f1-86c5-30c0a09331e7",
+    "generatedAt": "2026-08-23T10:12:32.346Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

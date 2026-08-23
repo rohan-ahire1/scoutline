@@ -1,0 +1,196 @@
+{
+  "preliminaryScore": 49,
+  "opportunityScore": 49,
+  "confidence": 90,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Enquiry friction",
+  "issueDetail": "The first website form asks for many details at once.",
+  "pageCount": 10,
+  "sitemapPageCount": 6,
+  "performance": null,
+  "accessibility": 100,
+  "seo": 100,
+  "mobileQuality": "Good",
+  "https": true,
+  "checkedLinks": 50,
+  "brokenLinks": 0,
+  "rebuild": "Easy",
+  "stack": [
+    "WordPress",
+    "Elementor",
+    "GA4"
+  ],
+  "problems": [
+    "The first website form asks for many details at once."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://bdexperts.com/",
+    "Page title: Black Diamond Experts | Plumbing, HVAC & Electric In SLC",
+    "Internal links observed on homepage: 134",
+    "Homepage CTA phrases detected: 9",
+    "Image alt-text coverage: 100%",
+    "Structured data: found",
+    "Form field count on homepage: 34",
+    "Crawled 10 same-site pages and checked 50 internal links"
+  ],
+  "auditSummary": {
+    "title": "Black Diamond Experts | Plumbing, HVAC & Electric In SLC",
+    "description": "Black Diamond Experts provides trusted plumbing, HVAC, electrical, and drain services in Salt Lake City. Fast service, honest pricing, and expert technicians.",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 1,
+    "forms": 2,
+    "inputCount": 34,
+    "images": 26,
+    "altCoverage": 100,
+    "ctaCount": 9,
+    "hasSchema": true,
+    "hasPhone": true,
+    "hasEmail": false,
+    "internalLinks": 134,
+    "sitemapPageCount": 6,
+    "pagesCrawled": 10,
+    "linksChecked": 50,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "auditStatus": "Partial",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 10,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": true
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 50,
+      "broken": 0,
+      "truncated": true
+    },
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://bdexperts.com/",
+      "path": "/",
+      "title": "Black Diamond Experts | Plumbing, HVAC & Electric In SLC",
+      "h1Count": 1,
+      "wordCount": 12015,
+      "forms": 2,
+      "inputCount": 34
+    },
+    {
+      "url": "https://bdexperts.com/contact-us/customer-service/",
+      "path": "/contact-us/customer-service/",
+      "title": "Customer Service | Black Diamond Experts Support",
+      "h1Count": 1,
+      "wordCount": 11957,
+      "forms": 2,
+      "inputCount": 34
+    },
+    {
+      "url": "https://bdexperts.com/hvac-services/",
+      "path": "/hvac-services/",
+      "title": "HVAC Services | Black Diamond Experts Heating & Cooling",
+      "h1Count": 1,
+      "wordCount": 12307,
+      "forms": 1,
+      "inputCount": 17
+    },
+    {
+      "url": "https://bdexperts.com/hvac-services/air-conditioning-repair/",
+      "path": "/hvac-services/air-conditioning-repair/",
+      "title": "Save On Air Conditioning Repair In Salt Lake City, UT",
+      "h1Count": 1,
+      "wordCount": 11236,
+      "forms": 1,
+      "inputCount": 17
+    },
+    {
+      "url": "https://bdexperts.com/hvac-services/air-conditioning-installation/",
+      "path": "/hvac-services/air-conditioning-installation/",
+      "title": "Best Air Conditioning Installation In Salt Lake City, UT",
+      "h1Count": 1,
+      "wordCount": 11299,
+      "forms": 1,
+      "inputCount": 17
+    },
+    {
+      "url": "https://bdexperts.com/hvac-services/air-conditioning-maintenance/",
+      "path": "/hvac-services/air-conditioning-maintenance/",
+      "title": "Local Air Conditioning Maintenance In Salt Lake City, UT",
+      "h1Count": 1,
+      "wordCount": 11246,
+      "forms": 1,
+      "inputCount": 17
+    },
+    {
+      "url": "https://bdexperts.com/hvac-services/mini-split-repair/",
+      "path": "/hvac-services/mini-split-repair/",
+      "title": "Save On Mini Split Repair In Salt Lake City, UT",
+      "h1Count": 1,
+      "wordCount": 11264,
+      "forms": 1,
+      "inputCount": 17
+    },
+    {
+      "url": "https://bdexperts.com/hvac-services/mini-split-installation/",
+      "path": "/hvac-services/mini-split-installation/",
+      "title": "Save On Mini-Split Installation In Salt Lake City, UT",
+      "h1Count": 1,
+      "wordCount": 11259,
+      "forms": 1,
+      "inputCount": 17
+    },
+    {
+      "url": "https://bdexperts.com/hvac-services/smart-thermostat-installation/",
+      "path": "/hvac-services/smart-thermostat-installation/",
+      "title": "Top-Rated Thermostat Installation In Salt Lake City, UT",
+      "h1Count": 1,
+      "wordCount": 11216,
+      "forms": 1,
+      "inputCount": 17
+    },
+    {
+      "url": "https://bdexperts.com/hvac-services/humidifier-repair/",
+      "path": "/hvac-services/humidifier-repair/",
+      "title": "Best Humidifier Repair In Salt Lake City, UT",
+      "h1Count": 1,
+      "wordCount": 11240,
+      "forms": 1,
+      "inputCount": 17
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Failed",
+    "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+    "code": "ERR_LAUNCHER_PATH_NOT_SET"
+  },
+  "auditedUrl": "https://bdexperts.com/",
+  "auditedAt": "2026-08-23T10:09:36.158Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-7120fb23-7c54-4268-a356-2ae1419c2a76",
+      "at": "2026-08-23T10:09:36.158Z",
+      "url": "https://bdexperts.com/",
+      "score": 49,
+      "performance": null,
+      "pages": 10,
+      "brokenLinks": 0
+    }
+  ]
+}

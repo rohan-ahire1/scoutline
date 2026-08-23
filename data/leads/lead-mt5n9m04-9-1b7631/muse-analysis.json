@@ -1,0 +1,65 @@
+{
+  "status": "Completed",
+  "summary": "Roof-It, Inc. (saltlakecityroofs.com) shows a strong offline reputation (4.9, 245 reviews) and claimed profile with online estimates offered, but the site has clear, fixable website opportunities. Deterministic audit (Opportunity Score 59, Confidence 88) flags Content hierarchy as main issue: The homepage does not use one clear primary heading. Measured signals confirm this with accessibility and SEO gaps addressable without rebuild.",
+  "topOpportunities": [
+    {
+      "title": "Fix homepage heading hierarchy (7 H1s)",
+      "severity": "High",
+      "evidence": "Homepage H1 count: 7 - deterministic finding: The homepage does not use one clear primary heading.",
+      "whyItMatters": "Multiple H1s dilute topical focus and screen-reader navigation. A single clear hierarchy could help both SEO clarity and accessibility without changing design.",
+      "recommendation": "Consolidate to one H1 that matches primary intent (e.g., Roofing Contractors in Salt Lake City, UT) and convert other 6 H1s to H2/H3 in logical outline. Verify in crawl after change."
+    },
+    {
+      "title": "Complete image alternative text",
+      "severity": "High",
+      "evidence": "Image alt-text coverage: 23% across 22 images on homepage",
+      "whyItMatters": "Low coverage contributes to Accessibility 65 and limits image search relevance. Improving alt text is a low-effort accessibility and SEO win.",
+      "recommendation": "Add descriptive alt text to the ~17 images missing it, prioritizing service/before-after and hero images. Keep decorative images with empty alt=\"\"."
+    },
+    {
+      "title": "Add structured data on homepage",
+      "severity": "Medium",
+      "evidence": "Structured data: not found and JSON-LD structured data blocks: 0 and hasSchema false",
+      "whyItMatters": "No schema limits eligibility for enhanced search results. For a Developing digital maturity (score 48) business with no structured data points, this is a foundational fix.",
+      "recommendation": "Add JSON-LD LocalBusiness/RoofingContractor schema with name, address 3424 W 2400 S Ste B, West Valley City, UT 84119, phone, areaServed, and sameAs links. Validate with Google Rich Results Test."
+    },
+    {
+      "title": "Repair broken link and add canonical",
+      "severity": "Medium",
+      "evidence": "Broken internal links: 1 of 6 checked (https://saltlakecityroofs.com/cdn-cgi/l/email-protection returned HTTP 404)",
+      "whyItMatters": "One broken link of six degrades crawl quality and user experience, noted as Page crawl warnings: 1. Canonical false may affect duplicate handling for / and /home-8981 which share title and wordCount 2458.",
+      "recommendation": "Fix or remove the broken email-protection link and re-check all 6 internal links. Also investigate why Canonical URL: not found to ensure proper canonical tag on homepage."
+    }
+  ],
+  "strengths": [
+    "Strong reputation signal: 4.9 rating across 245 reviews with 99% four- and five-star review share",
+    "Active and claimed digital presence: Google Business Profile: claimed and Online estimates: offered",
+    "Solid on-page foundation: Page title: Roofing Contractors | Roof-It, Inc. | Salt Lake City, Utah and Homepage returned HTTP 200 at https://saltlakecityroofs.com/ with viewport true and https true",
+    "Content depth and engagement hooks: wordCount 2458 on homepage and Homepage CTA phrases detected: 10 and hasPhone true",
+    "Measurement in place: GA4 detected and Latest sampled Google review: 2026-06-29T20:00:56.798Z indicates recent activity"
+  ],
+  "unknowns": [
+    "Performance, Best Practices not measured - Lighthouse status: Failed with ERR_LAUNCHER_PATH_NOT_SET",
+    "Actual mobile usability issues beyond MobileQuality: Fair and viewport true",
+    "Conversion rate for Online estimates: offered - GA4 present but no funnel data",
+    "Whether /home-8981 is intentional duplicate of / - both show wordCount 2458",
+    "Hosting cost, traffic, or revenue - not in packet"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Opportunity Score 59 with Confidence 88 indicates mixed, addressable issues rather than clear pass. Evidence shows solid business signals (4.9 rating, 245 reviews, claimed profile) but website has content hierarchy, accessibility, and technical gaps. Advisory Review for human follow-up.",
+  "outreachAngles": [
+    "Noted homepage has 7 H1s vs one clear primary heading best practice - quick hierarchy cleanup",
+    "Image alt-text coverage at 23% across 22 homepage images - accessibility/SEO improvement",
+    "No structured data detected on homepage - opportunity to add LocalBusiness schema for Roofing contractor"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1d-ed35-7ed1-8e41-586ef26302dd",
+    "generatedAt": "2026-08-23T10:15:08.449Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

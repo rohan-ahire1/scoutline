@@ -1,0 +1,65 @@
+{
+  "status": "Completed",
+  "summary": "Mr. Electric of Salt Lake City (www.mrelectricutah.com) is an Established digital presence - Digital Maturity 64/100, Active with 1 location observed - scoring 43 opportunity with 90 confidence. Main addressable issue is Local search context: No structured data was detected on the homepage. (JSON-LD structured data blocks: 0). Fundamentals are solid: HTTPS true, viewport true, canonical true, 0 broken links of 50 checked, and SEO 90 but Lighthouse performance/bestPractices were not measured due to launcher error. Booking is off-site with no on-page forms detected, creating a prioritized set of implementation fixes.",
+  "topOpportunities": [
+    {
+      "title": "Add LocalBusiness structured data for local search context",
+      "severity": "High",
+      "evidence": "Deterministic finding: No structured data was detected on the homepage. and homepageSignals hasSchema: false with JSON-LD structured data blocks: 0",
+      "whyItMatters": "Without schema, search engines must infer location/service relevance from text alone. Adding valid JSON-LD is a low-risk way to support rich results and improve consistency with the claimed Google Business Profile.",
+      "recommendation": "Add LocalBusiness + Electrician JSON-LD to homepage and core service pages (NAP matching 925 E 900 S Suite 201, Salt Lake City) to give Google explicit local context. Keep existing title/description and H1Count: 1 structure."
+    },
+    {
+      "title": "Fix sitemap completeness vs discovered site",
+      "severity": "Medium",
+      "evidence": "measuredAudit homepageSignals sitemapPageCount: 2 vs pagesCrawled: 10 and Crawled 10 same-site pages and checked 50 internal links with Internal links observed on homepage: 57",
+      "whyItMatters": "A sitemap listing only 2 pages while 10 same-site pages were crawled may limit crawl efficiency for new service pages. Complete sitemap helps discovery without changing design.",
+      "recommendation": "Reconcile sitemap.xml to include all indexable service pages discovered (e.g., /electrical-repair, /commercial-service and the 6x Salt Lake City service URLs crawled) and resubmit in Search Console. Ensure canonical true remains."
+    },
+    {
+      "title": "Add on-site lead capture alongside off-site booking",
+      "severity": "Medium",
+      "evidence": "homepageSignals forms: 0, inputCount: 0, hasEmail: false on all 10 crawled pages (each forms: 0) despite hasPhone: true, CTA phrases detected: 4, and businessIntelligence Online booking or request link: detected",
+      "whyItMatters": "Current conversion relies on phone and off-site booking link. An on-page form provides a measurable alternative path that can be tracked in the existing GA4 stack and may capture users who prefer not to call.",
+      "recommendation": "Add a native on-site estimate/request form (with hasEmail contact option) alongside the existing booking link and phone CTA. Keep GA4 tracking and test form completion as a conversion in GA4."
+    },
+    {
+      "title": "Validate real mobile performance - audit was not measured",
+      "severity": "Low",
+      "evidence": "measuredAudit componentStatus lighthouse status: Failed with error: The CHROME_PATH environment variable must be set ... and businessIntelligence Digital Maturity Mobile performance points: 4/20 with evidence Lighthouse 0/100 and Lighthouse bestPractices/performance null",
+      "whyItMatters": "Performance and bestPractices are unknown due to launcher failure, so optimization can't be prioritized accurately. A clean re-test will confirm if the heavy homepage (wordCount 3086) needs speed work.",
+      "recommendation": "Re-run Lighthouse/PageSpeed in a proper Chrome environment to get real Performance and Best Practices scores, then prioritize image/script optimization for the 42 images on homepage if scores are low. MobileQuality is Good per audit but not lab-verified."
+    }
+  ],
+  "strengths": [
+    "Search readiness strong: Lighthouse SEO 90/100 with Page title: Trusted Local Electricians | Mr. Electric and H1Count: 1",
+    "Accessibility 100/100 and Image alt-text coverage: 100% across 42 images",
+    "Site maintenance clean: 0 broken of 50 checked and Homepage returned HTTP 200",
+    "Business trust signals: Google Business Profile: claimed, 318 reviews at 5 stars, Four- and five-star review share: 100%",
+    "Conversion infrastructure present: Online booking or request link: detected, Online estimates: offered, GA4 detected, hasPhone: true"
+  ],
+  "unknowns": [
+    "Actual Lighthouse Performance and Best Practices scores - lighthouse status: Failed (ERR_LAUNCHER_PATH_NOT_SET), not measured",
+    "Traffic, conversion rate, revenue, or customer behavior - not in packet",
+    "Hosting costs, CMS details, or decision-maker names - not in packet",
+    "Full site size beyond 10 page crawl limit (crawl truncated: true) and complete broken-link status beyond 50 checked (truncated: true)",
+    "Employee count, annual revenue/profit, founded year, branch count - all value: null in companyMetrics"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "OpportunityScore 43 / Confidence 90 with mainIssue 'No structured data was detected on the homepage.' Evidence shows solid fundamentals - SEO 90, Accessibility 100, 0 broken of 50 checked, 100% alt coverage, claimed Google profile and 318 reviews at 5 stars - but key local search context is missing. Sitemap vs crawl mismatch and zero on-site forms suggest addressable implementation work rather than rebuild, warranting human review not auto-pass.",
+  "outreachAngles": [
+    "Noticed homepage has Structured data: not found / JSON-LD structured data blocks: 0 - quick win to add LocalBusiness schema",
+    "Saw sitemapPageCount: 2 but Crawled 10 same-site pages - sitemap may be incomplete",
+    "Homepage shows hasPhone: true and 4 CTA phrases but forms: 0 and hasEmail: false on the site we checked"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1c-f293-7951-b552-8d6ebeafe471",
+    "generatedAt": "2026-08-23T10:14:04.248Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

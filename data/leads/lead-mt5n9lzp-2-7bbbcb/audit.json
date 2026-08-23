@@ -1,0 +1,196 @@
+{
+  "preliminaryScore": 45,
+  "opportunityScore": 45,
+  "confidence": 90,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Search clarity",
+  "issueDetail": "The homepage title is missing or outside a useful descriptive range.",
+  "pageCount": 10,
+  "sitemapPageCount": 2,
+  "performance": null,
+  "accessibility": 95,
+  "seo": 90,
+  "mobileQuality": "Good",
+  "https": true,
+  "checkedLinks": 26,
+  "brokenLinks": 0,
+  "rebuild": "Easy",
+  "stack": [
+    "Elementor",
+    "Wix",
+    "GA4"
+  ],
+  "problems": [
+    "The homepage title is missing or outside a useful descriptive range."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://www.utahwildflowercompany.com/",
+    "Page title: Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower",
+    "Internal links observed on homepage: 25",
+    "Homepage CTA phrases detected: 3",
+    "Image alt-text coverage: 87%",
+    "Structured data: found",
+    "Homepage title length: 70 characters",
+    "Crawled 10 same-site pages and checked 26 internal links"
+  ],
+  "auditSummary": {
+    "title": "Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower",
+    "description": "Utah Wildflower specializes in eco-friendly xeriscaping and native landscape design in Salt Lake City and across the Wasatch Front. Save water and boost curb appeal. Get your free design quote today!",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 1,
+    "forms": 0,
+    "inputCount": 0,
+    "images": 15,
+    "altCoverage": 87,
+    "ctaCount": 3,
+    "hasSchema": true,
+    "hasPhone": true,
+    "hasEmail": true,
+    "internalLinks": 25,
+    "sitemapPageCount": 2,
+    "pagesCrawled": 10,
+    "linksChecked": 26,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "auditStatus": "Partial",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 10,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": true
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 26,
+      "broken": 0,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://www.utahwildflowercompany.com/",
+      "path": "/",
+      "title": "Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower",
+      "h1Count": 1,
+      "wordCount": 3182,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services",
+      "path": "/services",
+      "title": "Salt Lake Xeriscaping & Sustainable Landscaping Design | Utah Wildflower Co.",
+      "h1Count": 1,
+      "wordCount": 3633,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services/drip-irrigation",
+      "path": "/services/drip-irrigation",
+      "title": "Drip Irrigation & Water-Wise Systems Salt Lake City | Utah Wildflower Co.",
+      "h1Count": 1,
+      "wordCount": 2955,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services/tree-stump-removal",
+      "path": "/services/tree-stump-removal",
+      "title": "Tree Removal & Stump Grinding Salt Lake City | Utah Wildflower Co.",
+      "h1Count": 1,
+      "wordCount": 2959,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services/xeriscape-maintenance",
+      "path": "/services/xeriscape-maintenance",
+      "title": "Xeriscape Maintenance & Drought-Tolerant Plant Care in Salt Lake City | Utah Wildflower Co.",
+      "h1Count": 1,
+      "wordCount": 2978,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services/retaining-walls-salt-lake-city",
+      "path": "/services/retaining-walls-salt-lake-city",
+      "title": "Retaining Wall Design & Installation | Utah Wildflower",
+      "h1Count": 2,
+      "wordCount": 3007,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services/concrete-contractors-salt-lake-city",
+      "path": "/services/concrete-contractors-salt-lake-city",
+      "title": "Custom Concrete Services in Salt Lake City | Utah Wildflower",
+      "h1Count": 2,
+      "wordCount": 2812,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services/patios-pavers",
+      "path": "/services/patios-pavers",
+      "title": "Salt Lake City Paver Installation & Patio Design | Utah Wildflower",
+      "h1Count": 1,
+      "wordCount": 3079,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services/custom-cedar-pergolas-salt-lake-city",
+      "path": "/services/custom-cedar-pergolas-salt-lake-city",
+      "title": "Custom Cedar Pergolas & Shade Structures | Salt Lake City",
+      "h1Count": 1,
+      "wordCount": 2924,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.utahwildflowercompany.com/services/fence-installation-salt-lake-city",
+      "path": "/services/fence-installation-salt-lake-city",
+      "title": "Fence Installation & Custom Fencing in Salt Lake City | Utah Wildflower",
+      "h1Count": 1,
+      "wordCount": 2831,
+      "forms": 0,
+      "inputCount": 0
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Failed",
+    "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+    "code": "ERR_LAUNCHER_PATH_NOT_SET"
+  },
+  "auditedUrl": "https://www.utahwildflowercompany.com/",
+  "auditedAt": "2026-08-23T10:09:19.329Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-ba123a3d-4a5d-4a4c-817a-e94039aea555",
+      "at": "2026-08-23T10:09:19.329Z",
+      "url": "https://www.utahwildflowercompany.com/",
+      "score": 45,
+      "performance": null,
+      "pages": 10,
+      "brokenLinks": 0
+    }
+  ]
+}

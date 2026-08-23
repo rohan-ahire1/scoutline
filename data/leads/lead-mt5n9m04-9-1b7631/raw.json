@@ -1,0 +1,169 @@
+{
+  "id": "lead-mt5n9m04-9-1b7631",
+  "company": "Roof-It, Inc.",
+  "category": "Roofing contractor",
+  "location": "3424 W 2400 S Ste B, West Valley City, UT 84119, United States",
+  "website": "saltlakecityroofs.com",
+  "address": "3424 W 2400 S Ste B, West Valley City, UT 84119, United States",
+  "phone": "+1 801-809-7663",
+  "email": "Not collected",
+  "rating": 4.9,
+  "reviews": 245,
+  "collectedAt": "8/23/2026, 10:08:28 AM",
+  "sourceUrl": "https://www.google.com/maps/place/Roof-It%2C%20Inc./data=!4m7!3m6!1s0x87528d0293ee80fd:0xc73865d9e4609e0e!8m2!3d40.7192041!4d-111.9729519!16s%2Fg%2F1262mcbr6!19sChIJ_YDukwKNUocRDp5g5NllOMc?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-23T10:06:10.699Z",
+    "placeId": "ChIJ_YDukwKNUocRDp5g5NllOMc",
+    "cid": "14355335798757301774",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "8 am–6 pm",
+      "Friday": "8 am–6 pm",
+      "Thursday": "8 am–6 pm",
+      "Wednesday": "8 am–6 pm",
+      "Tuesday": "8 am–6 pm",
+      "Monday": "8 am–6 pm"
+    },
+    "open24Hours": false,
+    "services": [
+      "Online estimates",
+      "On-site services",
+      "Wheelchair-accessible car park"
+    ],
+    "categories": [
+      "Roofing contractor",
+      "Gutter service",
+      "Siding contractor"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": true,
+    "reservationLink": null,
+    "photosObserved": 5,
+    "distribution": {
+      "1_star_reviews": 1,
+      "2_star_reviews": 1,
+      "3_star_reviews": 1,
+      "4_star_reviews": 4,
+      "5_star_reviews": 238
+    },
+    "positiveReviewShare": 99,
+    "latestObservedReviewAt": "2026-06-29T20:00:56.798Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJ_YDukwKNUocRDp5g5NllOMc",
+        "cid": "14355335798757301774",
+        "address": "3424 W 2400 S Ste B, West Valley City, UT 84119, United States",
+        "latitude": 40.7192041,
+        "longitude": -111.9729519,
+        "rating": 4.9,
+        "reviews": 245
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Online estimates: offered",
+      "Four- and five-star review share: 99%",
+      "Latest sampled Google review: 2026-06-29T20:00:56.798Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 48,
+      "band": "Developing",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 2,
+          "maximum": 10,
+          "evidence": "Lighthouse 65/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 7,
+          "maximum": 12,
+          "evidence": "Lighthouse 80/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Online estimates offered"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 2,
+          "maximum": 4,
+          "evidence": "1 broken of 6 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-23T10:11:23.728Z"
+    }
+  }
+}

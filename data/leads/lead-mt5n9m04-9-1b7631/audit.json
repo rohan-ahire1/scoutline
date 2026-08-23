@@ -1,0 +1,178 @@
+{
+  "preliminaryScore": 59,
+  "opportunityScore": 59,
+  "confidence": 88,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Content hierarchy",
+  "issueDetail": "The homepage does not use one clear primary heading.",
+  "pageCount": 6,
+  "sitemapPageCount": null,
+  "performance": null,
+  "accessibility": 65,
+  "seo": 80,
+  "mobileQuality": "Fair",
+  "https": true,
+  "checkedLinks": 6,
+  "brokenLinks": 1,
+  "rebuild": "Moderate",
+  "stack": [
+    "GA4"
+  ],
+  "problems": [
+    "1 broken internal link was found across the crawled pages.",
+    "The homepage does not use one clear primary heading.",
+    "Many homepage images do not have useful alternative text.",
+    "No structured data was detected on the homepage."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://saltlakecityroofs.com/",
+    "Page title: Roofing Contractors | Roof-It, Inc. | Salt Lake City, Utah",
+    "Internal links observed on homepage: 6",
+    "Canonical URL: not found",
+    "Homepage CTA phrases detected: 10",
+    "Image alt-text coverage: 23%",
+    "Structured data: not found",
+    "Homepage H1 count: 7",
+    "JSON-LD structured data blocks: 0",
+    "Crawled 6 same-site pages and checked 6 internal links",
+    "Broken internal links: 1 of 6 checked",
+    "Page crawl warnings: 1"
+  ],
+  "auditSummary": {
+    "title": "Roofing Contractors | Roof-It, Inc. | Salt Lake City, Utah",
+    "description": "Specializing in Residential and Commercial Roofs, we offer Installation and Repairs to the Greater Salt Lake City Area. Finance Options Available! Call Today!",
+    "viewport": true,
+    "canonical": false,
+    "h1Count": 7,
+    "forms": 0,
+    "inputCount": 0,
+    "images": 22,
+    "altCoverage": 23,
+    "ctaCount": 10,
+    "hasSchema": false,
+    "hasPhone": true,
+    "hasEmail": false,
+    "internalLinks": 6,
+    "sitemapPageCount": null,
+    "pagesCrawled": 6,
+    "linksChecked": 6,
+    "brokenLinks": 1,
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "auditStatus": "Partial",
+  "auditComponents": {
+    "crawl": {
+      "status": "Partial",
+      "pagesCrawled": 6,
+      "pageLimit": 10,
+      "errors": 1,
+      "truncated": false
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 6,
+      "broken": 1,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://saltlakecityroofs.com/",
+      "path": "/",
+      "title": "Roofing Contractors | Roof-It, Inc. | Salt Lake City, Utah",
+      "h1Count": 7,
+      "wordCount": 2458,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://saltlakecityroofs.com/home-8981",
+      "path": "/home-8981",
+      "title": "Roofing Contractors | Roof-It, Inc. | Salt Lake City, Utah",
+      "h1Count": 7,
+      "wordCount": 2458,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://saltlakecityroofs.com/about-us-1040",
+      "path": "/about-us-1040",
+      "title": "",
+      "h1Count": 5,
+      "wordCount": 1579,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://saltlakecityroofs.com/services-9597",
+      "path": "/services-9597",
+      "title": "",
+      "h1Count": 6,
+      "wordCount": 1239,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://saltlakecityroofs.com/contact-us",
+      "path": "/contact-us",
+      "title": "",
+      "h1Count": 4,
+      "wordCount": 1118,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://saltlakecityroofs.com/instant-quote",
+      "path": "/instant-quote",
+      "title": "",
+      "h1Count": 0,
+      "wordCount": 190,
+      "forms": 0,
+      "inputCount": 0
+    }
+  ],
+  "crawlErrors": [
+    {
+      "url": "https://saltlakecityroofs.com/cdn-cgi/l/email-protection",
+      "code": "HTTP_ERROR",
+      "error": "The website returned HTTP 404"
+    }
+  ],
+  "brokenLinkDetails": [
+    {
+      "url": "https://saltlakecityroofs.com/cdn-cgi/l/email-protection",
+      "status": 404,
+      "broken": true,
+      "error": null
+    }
+  ],
+  "lighthouse": {
+    "status": "Failed",
+    "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+    "code": "ERR_LAUNCHER_PATH_NOT_SET"
+  },
+  "auditedUrl": "https://saltlakecityroofs.com/",
+  "auditedAt": "2026-08-23T10:11:23.728Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-4eefcf08-ebf6-429d-96dc-3848cb57d54a",
+      "at": "2026-08-23T10:11:23.728Z",
+      "url": "https://saltlakecityroofs.com/",
+      "score": 59,
+      "performance": null,
+      "pages": 6,
+      "brokenLinks": 1
+    }
+  ]
+}

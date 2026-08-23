@@ -1,0 +1,152 @@
+{
+  "source": "Bright Data Google Maps",
+  "fetchedAt": "2026-08-23T10:03:58.765Z",
+  "placeId": "ChIJaYha-OO5yGgRHptaLu6y634",
+  "cid": "9145600204355574558",
+  "claimed": true,
+  "businessStatus": "Active",
+  "openHours": {
+    "Sunday": "Open 24 hours",
+    "Saturday": "Open 24 hours",
+    "Friday": "Open 24 hours",
+    "Thursday": "Open 24 hours",
+    "Wednesday": "Open 24 hours",
+    "Tuesday": "Open 24 hours",
+    "Monday": "Open 24 hours"
+  },
+  "open24Hours": true,
+  "services": [
+    "Wheelchair-accessible car park"
+  ],
+  "categories": [
+    "Landscaper",
+    "Landscape architect",
+    "Landscape designer"
+  ],
+  "onlineBooking": false,
+  "onlineEstimates": false,
+  "reservationLink": null,
+  "photosObserved": 4,
+  "distribution": {
+    "1_star_reviews": 2,
+    "2_star_reviews": 0,
+    "3_star_reviews": 1,
+    "4_star_reviews": 3,
+    "5_star_reviews": 65
+  },
+  "positiveReviewShare": 96,
+  "latestObservedReviewAt": "2026-07-25T16:17:22.914Z",
+  "sampledReviewCount": 8,
+  "locations": [
+    {
+      "placeId": "ChIJaYha-OO5yGgRHptaLu6y634",
+      "cid": "9145600204355574558",
+      "address": "515 S 700 E, Salt Lake City, UT 84102, United States",
+      "latitude": 40.7578479,
+      "longitude": -111.8703661,
+      "rating": 4.8,
+      "reviews": 71
+    }
+  ],
+  "companyMetrics": {
+    "employeeCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualRevenue": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualProfit": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "foundedYear": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "branchCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    }
+  },
+  "evidence": [
+    "Google Business Profile: claimed",
+    "Four- and five-star review share: 96%",
+    "Latest sampled Google review: 2026-07-25T16:17:22.914Z"
+  ],
+  "locationsObserved": 1,
+  "digitalMaturity": {
+    "score": 62,
+    "band": "Established",
+    "version": 1,
+    "components": [
+      {
+        "label": "Mobile performance",
+        "points": 4,
+        "maximum": 20,
+        "evidence": "Lighthouse 0/100"
+      },
+      {
+        "label": "Accessibility",
+        "points": 10,
+        "maximum": 10,
+        "evidence": "Lighthouse 95/100"
+      },
+      {
+        "label": "Search readiness",
+        "points": 12,
+        "maximum": 12,
+        "evidence": "Lighthouse 90/100"
+      },
+      {
+        "label": "Technical best practices",
+        "points": 0,
+        "maximum": 8,
+        "evidence": "Not measured"
+      },
+      {
+        "label": "Structured data",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "Detected"
+      },
+      {
+        "label": "Measurement stack",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "GA4"
+      },
+      {
+        "label": "Online customer action",
+        "points": 0,
+        "maximum": 10,
+        "evidence": "No booking or online-estimate signal"
+      },
+      {
+        "label": "Business profile ownership",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "Google profile claimed"
+      },
+      {
+        "label": "Mobile foundation",
+        "points": 6,
+        "maximum": 6,
+        "evidence": "Responsive viewport detected"
+      },
+      {
+        "label": "Site maintenance",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "0 broken of 26 checked"
+      }
+    ],
+    "calculatedAt": "2026-08-23T10:09:19.329Z"
+  }
+}

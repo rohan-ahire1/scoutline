@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Green Salt Lake Landscaping is Established (Digital Maturity 62) with a technically sound, well-maintained site: lighthouse seo 100, accessibility 100, 0 broken of 34 checked, and strong reputation (5.0 stars, 29 reviews). Deterministic OpportunityScore 38 flags 'Website clarity' as main issue, suggesting finer UX and conversion-path refinement rather than a broken site. Priorities require human visual review because measured Lighthouse performance failed to run.",
+  "topOpportunities": [
+    {
+      "title": "Verify real mobile performance - automated Lighthouse did not run",
+      "severity": "Medium",
+      "evidence": "Lighthouse status: Failed with error 'The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.' - performance null, bestPractices null; Digital Maturity Mobile performance: 4/20 with evidence 'Lighthouse 0/100' is imputed not measured",
+      "whyItMatters": "Measured audit shows performance null and lighthouse Failed, so true load speed on mobile in Salt Lake City area is unknown. Possibility is slow media or script weight could affect quote inquiries, but no measurement confirms it.",
+      "recommendation": "Do a manual visual/performance check on mobile before pitching speed work: test Core Web Vital-heavy pages (/ , /services, /gallery) on device, review image size on 7 homepage images and template weight. Do not quote a Lighthouse score until a successful run completes."
+    },
+    {
+      "title": "Clarify quote/estimate flow - strong CTAs but fragmented forms",
+      "severity": "Medium",
+      "evidence": "Homepage: forms 0, inputCount 0 despite CTA count 21 and hasPhone true, hasEmail true; /contact: forms 0, inputCount 0; /quote: forms 2, inputCount 12, wordCount 3897; BusinessIntelligence onlineBooking false, onlineEstimates false with evidence 'No booking or online-estimate signal'",
+      "whyItMatters": "Homepage shows 21 CTA phrases and Free Estimates positioning, but crawl detected no homepage form and no form on /contact, while /quote holds the actual forms. Visitors may need to hunt for the form, which could add friction to free-estimate requests.",
+      "recommendation": "Audit the conversion path: confirm whether homepage and /contact CTAs link cleanly to /quote (which has 2 forms) or to phone/email only. If cross-linking is weak, propose adding a single persistent 'Free Estimates' button to header and in-content CTAs on service pages that deep-link to /quote with service pre-selected."
+    },
+    {
+      "title": "Tighten heading hierarchy and sitemap coverage",
+      "severity": "Low",
+      "evidence": "Crawled pages: /services h1Count 0, /gallery h1Count 0, /reviews h1Count 0, /quote h1Count 0, /contact h1Count 0 vs homepage h1Count 1; sitemapPageCount 30 but pagesCrawled 10 with crawl truncated true",
+      "whyItMatters": "Five key pages report h1Count 0, which may reduce clarity for users and search engines about page purpose, even though overall seo 100. Completing the 30-page sitemap review ensures no orphan or thin service-location pages.",
+      "recommendation": "Add distinct H1s to the five pages missing them (/services, /gallery, /reviews, /quote, /contact) and verify the remaining 20 sitemap pages not crawled due to truncation for duplicates/thin Titles. Keep the homepage H1 model: 'Landscaping Salt Lake City UT | Free Estimates'."
+    },
+    {
+      "title": "Surface core services and service-area clarity on Services hub",
+      "severity": "Low",
+      "evidence": "Description: 'Green Salt Lake Landscaping: lawn mowing, yard cleanup, tree trimming, mulch, sprinkler repair, pavers & fences in Salt Lake City, Murray, Sandy, West Jordan & Utah County. Free estimates.'; Top-level /services title 'Services | Green Salt Lake Landscaping' with h1Count 0 and services subpages exist for Lawn & Garden Care, Tree & Plant Services, Outdoor Projects, Maintenance & Repa",
+      "whyItMatters": "Description already advertises breadth and coverage across Salt Lake City, Murray, Sandy, West Jordan & Utah County, but /services as hub shows h1Count 0 and may hide specific services. Clearer service blocks could help visitors self-select faster before requesting a quote.",
+      "recommendation": "Make individual high-demand services (sprinkler repair, pavers/fences, mulch, yard cleanup) scannable on /services with anchor links to subpages. Use the existing service footprint (4 pillars) to add clear sections for Utah County cities listed in description to aid local findability."
+    }
+  ],
+  "strengths": [
+    "Strong reputation: publicRating 5 from publicReviewCount 29 with 100% Four- and five-star review share and Google Business Profile: claimed",
+    "Solid technical hygiene: Homepage returned HTTP 200 at https://www.gslscape.com/ with 0 broken of 34 checked, Image alt-text coverage: 100%, Structured data: found, HTTPS true, and internal links observed on homepage: 19",
+    "Search & accessibility foundation: Lighthouse seo 100 and accessibility 100 in partial audit, with Page title: Landscaping Salt Lake City UT | Free Estimates and hasSchema true, GA4 detected",
+    "Content depth: 10 pages crawled of sitemapPageCount 30, with /services and 4 sub-service pages (/services/lawn-garden-care etc.) each ~3766-4124 words and dedicated quote page at /quote with Title: Get a Quote | Green Salt Lake Landscaping"
+  ],
+  "unknowns": [
+    "True mobile performance and best-practices scores - Lighthouse code ERR_LAUNCHER_PATH_NOT_SET, scores null",
+    "Actual conversion rate, traffic, or inquiry volume - not in packet",
+    "Whether /gallery form (forms 1, inputCount 2) and /reviews form (forms 1, inputCount 4) function correctly and how they compare to /quote forms",
+    "Content/quality of the 20 sitemap pages not crawled (pagesCrawled 10 of 30, truncated true)",
+    "Hosting costs, decision-maker name, and revenue/employee metrics - companyMetrics value null"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Low addressability despite Established digital maturity. Core technical foundations are solid (SEO 100, Accessibility 100, 0 broken of 34 checked, structured data found, GA4 present, HTTPS true). OpportunityScore 38 with mainIssue 'Website clarity' reflects nuanced clarity/UX polish rather than broken fundamentals, compounded by incomplete measurement (lighthouse Failed to run). Good for human review but not a clear Pursue for website rebuild work.",
+  "outreachAngles": [
+    "Homepage already shows 21 CTA phrases and Free Estimates in title - refine CTAs / quote flow for clarity",
+    "Quote page present at /quote with 2 forms but homepage and /contact show 0 forms in crawl - streamline contact/quote path",
+    "Digital maturity Established (62) with 5.0 rating from 29 reviews - leverage social proof on site"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1d-46b8-79e1-97ef-1c589b42e6be",
+    "generatedAt": "2026-08-23T10:14:25.764Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

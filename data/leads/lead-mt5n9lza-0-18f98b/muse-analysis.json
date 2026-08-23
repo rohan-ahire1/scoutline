@@ -1,0 +1,65 @@
+{
+  "status": "Completed",
+  "summary": "SameDay Heating & Air, Plumbing, and Electrical (samedayutah.com) is Established (Digital Maturity 71) with strong trust signals - 4.8 stars from 10197 reviews, claimed profile, and Lighthouse SEO 100 / Accessibility 98. Deterministic assessment flags Website clarity (OpportunityScore 41) but notes 'The homepage passed the lightweight checks; a deeper visual and performance review is still recommended.' Evidence supports limited, addressable fixes rather than a rebuild.",
+  "topOpportunities": [
+    {
+      "title": "Fix broken internal /schedule link (404)",
+      "severity": "Medium",
+      "evidence": "Broken internal links: 1 of 50 checked - URL https://samedayutah.com/schedule status 404",
+      "whyItMatters": "A single 404 on a booking-intent path (/schedule) can block the 'Online booking or request link: detected' flow and is the only broken-link finding in the audit",
+      "recommendation": "Fix or 301 redirect /schedule and re-check 50 links - likely a booking-related URL so verify button/link targets in header/footer/CTAs"
+    },
+    {
+      "title": "Reduce homepage clarity load - 86 internal links & 17 CTAs",
+      "severity": "Medium",
+      "evidence": "Internal links observed on homepage: 86 and Homepage CTA phrases detected: 17 with wordCount 13436 on /",
+      "whyItMatters": "High link/CTA density aligns with deterministic mainIssue 'Website clarity' and may dilute the 10/10 Online customer action score despite booking link detected",
+      "recommendation": "Deeper visual review to prioritize primary CTAs (e.g., call/book) above the fold and consolidate duplicative footer/nav links - do not remove without UX review"
+    },
+    {
+      "title": "Align sitemap with actual site size",
+      "severity": "Low",
+      "evidence": "SitemapPageCount 3 vs Crawled 10 same-site pages and pagesCrawled 10 truncated true with pageLimit 10",
+      "whyItMatters": "Search readiness is 12/12 with Lighthouse SEO 100 and hasSchema true, but sitemap covering only 3 pages understates the 10+ page site observed",
+      "recommendation": "Expand and resubmit sitemap.xml to cover all indexed service pages (/heating /cooling /plumbing /electrical etc.) and verify crawl allows full coverage beyond truncated 10-page limit"
+    },
+    {
+      "title": "Close alt-text gap to 100%",
+      "severity": "Low",
+      "evidence": "Image alt-text coverage: 93% (14 images on homepage, 7% without alt)",
+      "whyItMatters": "Accessibility already 98/100 - completing alt coverage protects that score and aids SEO 100 retention",
+      "recommendation": "Add descriptive alt text to remaining ~1 image and spot-check other 9 crawled pages for same gap"
+    }
+  ],
+  "strengths": [
+    "Homepage returned HTTP 200 at https://samedayutah.com/ with SEO 100 and Accessibility 98",
+    "Structured data: found and HTTPS true with viewport true - Mobile Quality Good",
+    "Public rating 4.8 from 10197 reviews with 95% four- and five-star share and latest review 2026-08-06T18:03:43.733Z",
+    "Online booking or request link: detected and Online estimates: offered with Google Business Profile: claimed",
+    "Measurement stack GA4 detected on WordPress + Elementor"
+  ],
+  "unknowns": [
+    "Lighthouse performance and bestPractices are null - lighthouse status Failed with error 'The CHROME_PATH environment variable must be set' so performance not measured",
+    "Links checked 50 truncated true - full broken-link count beyond sample of 1 of 50 unknown",
+    "Pages crawled 10 truncated true with pageLimit 10 - total site size unknown beyond sitemapPageCount 3",
+    "Crawl found forms 0 and inputCount 0 on all 10 pages despite Online booking link detected - booking form location/mechanism unknown",
+    "HasPhone true but hasEmail false - alternate contact coverage unknown"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "OpportunityScore 41 with confidence 90 and mainIssue 'Website clarity'. Verified signals show a fundamentally sound site: Homepage returned HTTP 200, SEO 100, Accessibility 98, structured data found, HTTPS true, and viewport true. Digital Maturity 71/Established with 95% positive review share. Limiters are narrow and maintenance-related: 1 broken internal link of 50 checked and high link/CTA density. Requires human review to assess whether 'Website clarity' (homepage internal links 86, CTA count",
+  "outreachAngles": [
+    "Noticed your homepage returns HTTP 200 with 4.8 stars from 10197 reviews - quick site tune-up to fix a broken /schedule link",
+    "Saw 93% image alt-text coverage and structured data found - close the last gaps on accessibility/clarity",
+    "Your 17 homepage CTAs and 86 internal links vs 3-page sitemap suggests a chance to simplify navigation"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1a-d60c-79d3-aa3d-cb7bcfcc8776",
+    "generatedAt": "2026-08-23T10:11:45.864Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

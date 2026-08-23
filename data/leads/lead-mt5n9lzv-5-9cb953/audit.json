@@ -1,0 +1,200 @@
+{
+  "preliminaryScore": 62,
+  "opportunityScore": 62,
+  "confidence": 88,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Content hierarchy",
+  "issueDetail": "The homepage does not use one clear primary heading.",
+  "pageCount": 10,
+  "sitemapPageCount": null,
+  "performance": null,
+  "accessibility": 73,
+  "seo": 62,
+  "mobileQuality": "Fair",
+  "https": true,
+  "checkedLinks": 50,
+  "brokenLinks": 0,
+  "rebuild": "Moderate",
+  "stack": [
+    "GA4"
+  ],
+  "problems": [
+    "The homepage does not use one clear primary heading.",
+    "Many homepage images do not have useful alternative text.",
+    "The homepage description is missing or too brief to explain the offer clearly.",
+    "No structured data was detected on the homepage."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://www.rockymountainpower.net/",
+    "Page title: Rocky Mountain Power",
+    "Internal links observed on homepage: 87",
+    "Canonical URL: not found",
+    "Homepage CTA phrases detected: 4",
+    "Image alt-text coverage: 46%",
+    "Structured data: not found",
+    "Homepage H1 count: 13",
+    "Meta description length: 0 characters",
+    "JSON-LD structured data blocks: 0",
+    "Crawled 10 same-site pages and checked 50 internal links"
+  ],
+  "auditSummary": {
+    "title": "Rocky Mountain Power",
+    "description": "",
+    "viewport": true,
+    "canonical": false,
+    "h1Count": 13,
+    "forms": 2,
+    "inputCount": 2,
+    "images": 28,
+    "altCoverage": 46,
+    "ctaCount": 4,
+    "hasSchema": false,
+    "hasPhone": false,
+    "hasEmail": false,
+    "internalLinks": 87,
+    "sitemapPageCount": null,
+    "pagesCrawled": 10,
+    "linksChecked": 50,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "auditStatus": "Partial",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 10,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": true
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 50,
+      "broken": 0,
+      "truncated": true
+    },
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://www.rockymountainpower.net/",
+      "path": "/",
+      "title": "Rocky Mountain Power",
+      "h1Count": 13,
+      "wordCount": 704,
+      "forms": 2,
+      "inputCount": 2
+    },
+    {
+      "url": "https://csapps.rockymountainpower.net/idm/my-account",
+      "path": "/idm/my-account",
+      "title": "",
+      "h1Count": 0,
+      "wordCount": 6,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://csapps.rockymountainpower.net/idm/my-account/payments",
+      "path": "/idm/my-account/payments",
+      "title": "",
+      "h1Count": 0,
+      "wordCount": 6,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://csapps.rockymountainpower.net/idm/guest-pay-login",
+      "path": "/idm/guest-pay-login",
+      "title": "",
+      "h1Count": 0,
+      "wordCount": 6,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://csapps.rockymountainpower.net/idm/my-account/payments/payment-arrangements",
+      "path": "/idm/my-account/payments/payment-arrangements",
+      "title": "",
+      "h1Count": 0,
+      "wordCount": 6,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.rockymountainpower.net/my-account/payments/pay-in-person.html",
+      "path": "/my-account/payments/pay-in-person.html",
+      "title": "Pay Stations and Drop Boxes",
+      "h1Count": 1,
+      "wordCount": 470,
+      "forms": 3,
+      "inputCount": 4
+    },
+    {
+      "url": "https://www.rockymountainpower.net/my-account/payments/bill-payment-assistance.html",
+      "path": "/my-account/payments/bill-payment-assistance.html",
+      "title": "Bill Payment Assistance",
+      "h1Count": 5,
+      "wordCount": 1277,
+      "forms": 2,
+      "inputCount": 2
+    },
+    {
+      "url": "https://csapps.rockymountainpower.net/idm/login",
+      "path": "/idm/login",
+      "title": "",
+      "h1Count": 0,
+      "wordCount": 6,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.rockymountainpower.net/my-account/energy-usage/meter-upgrade.html",
+      "path": "/my-account/energy-usage/meter-upgrade.html",
+      "title": "Meter Upgrade",
+      "h1Count": 9,
+      "wordCount": 1721,
+      "forms": 2,
+      "inputCount": 2
+    },
+    {
+      "url": "https://csapps.rockymountainpower.net/idm/login",
+      "path": "/idm/login",
+      "title": "",
+      "h1Count": 0,
+      "wordCount": 6,
+      "forms": 0,
+      "inputCount": 0
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Failed",
+    "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+    "code": "ERR_LAUNCHER_PATH_NOT_SET"
+  },
+  "auditedUrl": "https://www.rockymountainpower.net/",
+  "auditedAt": "2026-08-23T10:10:18.418Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-aa45a412-1cfa-41bf-b81c-c03e11a78e80",
+      "at": "2026-08-23T10:10:18.418Z",
+      "url": "https://www.rockymountainpower.net/",
+      "score": 62,
+      "performance": null,
+      "pages": 10,
+      "brokenLinks": 0
+    }
+  ]
+}

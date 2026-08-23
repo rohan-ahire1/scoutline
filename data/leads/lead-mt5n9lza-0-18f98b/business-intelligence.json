@@ -1,0 +1,162 @@
+{
+  "source": "Bright Data Google Maps",
+  "fetchedAt": "2026-08-23T10:03:50.573Z",
+  "placeId": "ChIJAX6JrOWKUocR7gvDQpxHC8g",
+  "cid": "14414693768789953518",
+  "claimed": true,
+  "businessStatus": "Active",
+  "openHours": {
+    "Sunday": "Open 24 hours",
+    "Saturday": "Open 24 hours",
+    "Friday": "Open 24 hours",
+    "Thursday": "Open 24 hours",
+    "Wednesday": "Open 24 hours",
+    "Tuesday": "Open 24 hours",
+    "Monday": "Open 24 hours"
+  },
+  "open24Hours": true,
+  "services": [
+    "Online estimates",
+    "On-site services",
+    "Wheelchair-accessible entrance",
+    "Installation services",
+    "Repair services"
+  ],
+  "categories": [
+    "HVAC contractor",
+    "Air conditioning repair shop",
+    "Air conditioning system supplier",
+    "Electrician",
+    "Furnace repair service",
+    "Central Heating Service",
+    "Plumber"
+  ],
+  "onlineBooking": true,
+  "onlineEstimates": true,
+  "reservationLink": "https://book.servicetitan.com/gjihciabyp4xvdvp71f9zbde?rwg_token=AE37R_hZQbXHw2Sb6FKBnvRldej2QODw2g4G9jsrzANWhvGMeiTZCrCnKMj0jk81bKkD4hSmxkvJoN_VFb6IlL78dwD0JzwwVg%3D%3D",
+  "photosObserved": 5,
+  "distribution": {
+    "1_star_reviews": 382,
+    "2_star_reviews": 67,
+    "3_star_reviews": 52,
+    "4_star_reviews": 220,
+    "5_star_reviews": 9476
+  },
+  "positiveReviewShare": 95,
+  "latestObservedReviewAt": "2026-08-06T18:03:43.733Z",
+  "sampledReviewCount": 8,
+  "locations": [
+    {
+      "placeId": "ChIJAX6JrOWKUocR7gvDQpxHC8g",
+      "cid": "14414693768789953518",
+      "address": "3020 S W Temple St, Salt Lake City, UT 84115, United States",
+      "latitude": 40.7055081,
+      "longitude": -111.8945476,
+      "rating": 4.8,
+      "reviews": 10197
+    }
+  ],
+  "companyMetrics": {
+    "employeeCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualRevenue": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualProfit": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "foundedYear": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "branchCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    }
+  },
+  "evidence": [
+    "Google Business Profile: claimed",
+    "Online booking or request link: detected",
+    "Online estimates: offered",
+    "Four- and five-star review share: 95%",
+    "Latest sampled Google review: 2026-08-06T18:03:43.733Z"
+  ],
+  "locationsObserved": 1,
+  "digitalMaturity": {
+    "score": 71,
+    "band": "Established",
+    "version": 1,
+    "components": [
+      {
+        "label": "Mobile performance",
+        "points": 4,
+        "maximum": 20,
+        "evidence": "Lighthouse 0/100"
+      },
+      {
+        "label": "Accessibility",
+        "points": 10,
+        "maximum": 10,
+        "evidence": "Lighthouse 98/100"
+      },
+      {
+        "label": "Search readiness",
+        "points": 12,
+        "maximum": 12,
+        "evidence": "Lighthouse 100/100"
+      },
+      {
+        "label": "Technical best practices",
+        "points": 0,
+        "maximum": 8,
+        "evidence": "Not measured"
+      },
+      {
+        "label": "Structured data",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "Detected"
+      },
+      {
+        "label": "Measurement stack",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "GA4"
+      },
+      {
+        "label": "Online customer action",
+        "points": 10,
+        "maximum": 10,
+        "evidence": "Booking link detected"
+      },
+      {
+        "label": "Business profile ownership",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "Google profile claimed"
+      },
+      {
+        "label": "Mobile foundation",
+        "points": 6,
+        "maximum": 6,
+        "evidence": "Responsive viewport detected"
+      },
+      {
+        "label": "Site maintenance",
+        "points": 2,
+        "maximum": 4,
+        "evidence": "1 broken of 50 checked"
+      }
+    ],
+    "calculatedAt": "2026-08-23T10:08:48.475Z"
+  }
+}

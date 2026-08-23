@@ -1,0 +1,194 @@
+{
+  "preliminaryScore": 43,
+  "opportunityScore": 43,
+  "confidence": 90,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Local search context",
+  "issueDetail": "No structured data was detected on the homepage.",
+  "pageCount": 10,
+  "sitemapPageCount": 2,
+  "performance": null,
+  "accessibility": 100,
+  "seo": 90,
+  "mobileQuality": "Good",
+  "https": true,
+  "checkedLinks": 50,
+  "brokenLinks": 0,
+  "rebuild": "Moderate",
+  "stack": [
+    "GA4"
+  ],
+  "problems": [
+    "No structured data was detected on the homepage."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://www.mrelectricutah.com/",
+    "Page title: Trusted Local Electricians | Mr. Electric",
+    "Internal links observed on homepage: 57",
+    "Homepage CTA phrases detected: 4",
+    "Image alt-text coverage: 100%",
+    "Structured data: not found",
+    "JSON-LD structured data blocks: 0",
+    "Crawled 10 same-site pages and checked 50 internal links"
+  ],
+  "auditSummary": {
+    "title": "Trusted Local Electricians | Mr. Electric",
+    "description": "Looking for an electrician in Utah. Our team of professional technicians provide reliable electrical repair services in the state of Utah. Hire local electricians in your area today.",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 1,
+    "forms": 0,
+    "inputCount": 0,
+    "images": 42,
+    "altCoverage": 100,
+    "ctaCount": 4,
+    "hasSchema": false,
+    "hasPhone": true,
+    "hasEmail": false,
+    "internalLinks": 57,
+    "sitemapPageCount": 2,
+    "pagesCrawled": 10,
+    "linksChecked": 50,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "auditStatus": "Partial",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 10,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": true
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 50,
+      "broken": 0,
+      "truncated": true
+    },
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://www.mrelectricutah.com/",
+      "path": "/",
+      "title": "Trusted Local Electricians | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 3086,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/appliance-circuit-installation-salt-lake-city-ut",
+      "path": "/appliance-circuit-installation-salt-lake-city-ut",
+      "title": "Appliance Circuit Installation in Salt Lake City, UT | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1289,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/circuit-breaker-installation-salt-lake-city-ut",
+      "path": "/circuit-breaker-installation-salt-lake-city-ut",
+      "title": "Dependable Circuit Installation in Salt Lake City, UT | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1312,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/ceiling-fan-installation-replacement-salt-lake-city-ut",
+      "path": "/ceiling-fan-installation-replacement-salt-lake-city-ut",
+      "title": "Trusted Ceiling Fan Replacement in Salt Lake City, UT | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1365,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/commercial-service",
+      "path": "/commercial-service",
+      "title": "Commercial Service | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1306,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/electrical-repair",
+      "path": "/electrical-repair",
+      "title": "Electrical Repair | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1419,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/whole-house-electrical-wiring-salt-lake-city-ut",
+      "path": "/whole-house-electrical-wiring-salt-lake-city-ut",
+      "title": "Whole House Electrical Rewiring in Salt Lake City, UT | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1375,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/electrical-outlet-replacement-installation-salt-lake-city-ut",
+      "path": "/electrical-outlet-replacement-installation-salt-lake-city-ut",
+      "title": "Reliable Electrical Outlet Replacement in Salt Lake City, UT | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1278,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/electrical-panel-replacement-installation-salt-lake-city-ut",
+      "path": "/electrical-panel-replacement-installation-salt-lake-city-ut",
+      "title": "Best Electrical Panel Replacement in Salt Lake City, UT | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1437,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.mrelectricutah.com/electrical-upgrades",
+      "path": "/electrical-upgrades",
+      "title": "Electrical Upgrades | Mr. Electric",
+      "h1Count": 1,
+      "wordCount": 1294,
+      "forms": 0,
+      "inputCount": 0
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Failed",
+    "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+    "code": "ERR_LAUNCHER_PATH_NOT_SET"
+  },
+  "auditedUrl": "https://www.mrelectricutah.com/",
+  "auditedAt": "2026-08-23T10:10:35.017Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-4280441b-e0bc-4070-bd13-7ac377d15dd1",
+      "at": "2026-08-23T10:10:35.017Z",
+      "url": "https://www.mrelectricutah.com/",
+      "score": 43,
+      "performance": null,
+      "pages": 10,
+      "brokenLinks": 0
+    }
+  ]
+}

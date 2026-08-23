@@ -1,0 +1,165 @@
+{
+  "id": "lead-mt5n9lzv-5-9cb953",
+  "company": "Rocky Mountain Power",
+  "category": "Electric utility company",
+  "location": "1407 W North Temple St, Salt Lake City, UT 84116, United States",
+  "website": "www.rockymountainpower.net",
+  "address": "1407 W North Temple St, Salt Lake City, UT 84116, United States",
+  "phone": "+1 888-221-7070",
+  "email": "Not collected",
+  "rating": 2,
+  "reviews": 496,
+  "collectedAt": "8/23/2026, 10:08:28 AM",
+  "sourceUrl": "https://www.google.com/maps/place/Rocky%20Mountain%20Power/data=!4m7!3m6!1s0x8752f466fcb3c509:0x8aeac26e8047acd5!8m2!3d40.7709729!4d-111.9316000!16s%2Fg%2F11b6hnnby_!19sChIJCcWz_Gb0UocR1axHgG7C6oo?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-23T10:04:23.922Z",
+    "placeId": "ChIJCcWz_Gb0UocR1axHgG7C6oo",
+    "cid": "10010026901638720725",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Open 24 hours",
+      "Saturday": "Open 24 hours",
+      "Friday": "Open 24 hours",
+      "Thursday": "Open 24 hours",
+      "Wednesday": "Open 24 hours",
+      "Tuesday": "Open 24 hours",
+      "Monday": "Open 24 hours"
+    },
+    "open24Hours": true,
+    "services": [
+      "Wheelchair-accessible car park",
+      "Wheelchair-accessible entrance"
+    ],
+    "categories": [
+      "Electric utility company"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": false,
+    "reservationLink": null,
+    "photosObserved": 2,
+    "distribution": {
+      "1_star_reviews": 349,
+      "2_star_reviews": 20,
+      "3_star_reviews": 7,
+      "4_star_reviews": 11,
+      "5_star_reviews": 109
+    },
+    "positiveReviewShare": 24,
+    "latestObservedReviewAt": "2026-07-23T17:45:42.669Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJCcWz_Gb0UocR1axHgG7C6oo",
+        "cid": "10010026901638720725",
+        "address": "1407 W North Temple St, Salt Lake City, UT 84116, United States",
+        "latitude": 40.7709729,
+        "longitude": -111.9316,
+        "rating": 2,
+        "reviews": 496
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Four- and five-star review share: 24%",
+      "Latest sampled Google review: 2026-07-23T17:45:42.669Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 33,
+      "band": "Foundational",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 2,
+          "maximum": 10,
+          "evidence": "Lighthouse 73/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 2,
+          "maximum": 12,
+          "evidence": "Lighthouse 62/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 0,
+          "maximum": 10,
+          "evidence": "No booking or online-estimate signal"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "0 broken of 50 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-23T10:10:18.418Z"
+    }
+  }
+}

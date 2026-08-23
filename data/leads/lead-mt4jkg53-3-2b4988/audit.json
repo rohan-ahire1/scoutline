@@ -1,24 +1,4 @@
 {
-  "preliminaryScore": 93,
-  "opportunityScore": null,
-  "confidence": null,
-  "status": "Failed",
-  "mainIssue": "Audit pending",
-  "issueDetail": "Business data was saved; website evidence has not been collected yet.",
-  "pageCount": null,
-  "performance": null,
-  "accessibility": null,
-  "seo": null,
-  "mobileQuality": "Unknown",
-  "https": null,
-  "checkedLinks": null,
-  "brokenLinks": null,
-  "rebuild": "Unknown",
-  "stack": [],
-  "problems": [],
-  "evidence": [
-    "Business record saved from Bright Data Google Maps"
-  ],
   "auditSummary": null,
   "auditStatus": null,
   "auditComponents": null,
@@ -28,12 +8,6 @@
   "lighthouse": null,
   "auditedUrl": null,
   "auditedAt": null,
-  "researchFailure": {
-    "stage": 1,
-    "reason": "The website returned HTTP 403",
-    "code": "HTTP_ERROR",
-    "at": "2026-08-22T15:39:35.173Z",
-    "jobId": "job-76e7f62a-fbf7-431c-81e2-6f64cfe4c51a"
-  },
+  "researchFailure": null,
   "history": []
 }

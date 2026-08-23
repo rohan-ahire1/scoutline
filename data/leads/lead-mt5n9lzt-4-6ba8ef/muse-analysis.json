@@ -1,0 +1,63 @@
+{
+  "status": "Completed",
+  "summary": "Utah Remodel Works shows strong offline trust (4.9 from 31 reviews, 97% 4-5 star, claimed profile) but the website has addressable search-clarity gaps. Deterministic audit flags Search clarity as mainIssue: title at 116 characters, 2 H1s on homepage, empty meta description, and SEO 52/100. Structured data not found and homepage has no form despite 6 CTA phrases. Lighthouse run failed, so performance is unknown. Fixing title/description/H1 and adding LocalBusiness schema plus a homepage lead form are practical next steps.",
+  "topOpportunities": [
+    {
+      "title": "Clarify homepage search signals (title / meta description / H1)",
+      "severity": "High",
+      "evidence": "Meta description length: 0 characters and Homepage H1 count: 2 and Page title: General Contractor Salt Lake City Utah \u0017 Kitchen Remodeling, Bathroom Remodeling & home remodeling in Salt Lake City (116 characters)",
+      "whyItMatters": "Deterministic finding flags 'The homepage description is missing or too brief' and 'The homepage does not use one clear primary heading' - with seo 52/100, search readiness suffers and click-through from search is likely weaker than reputation suggests.",
+      "recommendation": "Tighten homepage search clarity: rewrite title to ~50-60 chars with one primary service + location, write a 140-155 char meta description explaining offer, and consolidate to one clear H1."
+    },
+    {
+      "title": "Add structured data for local SEO",
+      "severity": "High",
+      "evidence": "Structured data: not found and JSON-LD structured data blocks: 0 and hasSchema false",
+      "whyItMatters": "No structured data was detected despite 3009 words on homepage - adding markup is a low-effort way to help search engines understand location/services and support rich results.",
+      "recommendation": "Add JSON-LD LocalBusiness + GeneralContractor schema on homepage (name, address 32 W 200 S #348b, Salt Lake City, UT 84101, phone, service area, opening hours) and Service schema on /kitchen-remodeling-salt-lake-city/, /bathroom-remodeling-salt-lake-city/, /home-remodeling-salt-lake-city-utah/."
+    },
+    {
+      "title": "Make homepage actionable - add primary lead form",
+      "severity": "Medium",
+      "evidence": "Homepage CTA phrases detected: 6 and forms: 0 and inputCount: 0 on homepage vs forms: 1 and inputCount: 9 on /contact/",
+      "whyItMatters": "Homepage relies on 6 text CTAs with no form and hasPhone true but hasEmail false - visitors must navigate to /contact/ to convert, which may create friction despite strong review profile.",
+      "recommendation": "Add a single primary conversion path on homepage - embed a short estimate form (name/phone/email/project type) above the fold alongside existing phone, keep secondary CTAs, and link CTAs to anchor."
+    },
+    {
+      "title": "Finish accessibility polish (alt-text + headings)",
+      "severity": "Low",
+      "evidence": "Image alt-text coverage: 89% and images: 9 on homepage and Accessibility 88/100",
+      "whyItMatters": "89% alt coverage and 88 accessibility are already Good, but closing the gap supports both accessibility and image search relevance.",
+      "recommendation": "Complete alt-text for the remaining ~11% of images with descriptive, keyword-light text and re-check heading hierarchy after H1 fix."
+    }
+  ],
+  "strengths": [
+    "Strong reputation - publicRating 4.9 from publicReviewCount 31 and Four- and five-star review share: 97%",
+    "Site maintenance and navigation intact - 0 broken of 18 checked and Homepage returned HTTP 200 at https://general-contractors-utah.com/",
+    "Owned and measurable foundation - Google Business Profile: claimed and detectedStack includes GA4 and HTTPS true and viewport true"
+  ],
+  "unknowns": [
+    "Lighthouse performance, bestPractices and timings were not measured - lighthouse Failed with error ERR_LAUNCHER_PATH_NOT_SET (no CHROME_PATH) so mobile performance is unknown",
+    "Actual search rankings, traffic, and conversion rate - not in packet",
+    "Hosting cost, CMS ownership, and who manages WordPress/Elementor stack - not measured",
+    "Revenue, employeeCount, foundedYear - businessIntelligence companyMetrics all value null",
+    "Whether phone leads are tracked in GA4 - GA4 detected but event configuration unknown"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "OpportunityScore 63 / Confidence 90 with mainIssue 'Search clarity' - evidence shows clear, fixable search/presentation gaps (empty meta description, 2 H1s, 116-char title, 0 JSON-LD blocks) alongside strong trust signals (4.9 from 31 reviews, Google profile claimed, 0 broken of 18 links checked) but mixed measurement (Lighthouse failed to run) and limited online action (no booking/estimate signal). Advisory - human should Review and validate scope before pursuing.",
+  "outreachAngles": [
+    "Website shows strong reviews (4.9 from 31, 97% 4-5 star) - homepage SEO signals are weak (SEO 52/100, empty meta description)",
+    "No structured data detected on homepage - opportunity to add LocalBusiness/Contractor markup",
+    "Homepage has 6 CTA phrases but 0 forms - contact form only found on /contact/ (1 form, 9 inputs)"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1c-5542-79c2-b10c-8a5816b28fc5",
+    "generatedAt": "2026-08-23T10:13:23.983Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

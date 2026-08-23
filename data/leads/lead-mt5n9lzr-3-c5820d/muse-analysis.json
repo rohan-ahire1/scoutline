@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Black Diamond Experts is an Established (Digital Maturity 73) HVAC/plumbing/electric contractor in Salt Lake City with exceptional reputation (4.8/6483 reviews) and strong site fundamentals (SEO 100, Accessibility 100, 0/50 broken links). Deterministic audit flags a single priority issue: Enquiry friction - 'The first website form asks for many details at once.' Measured homepage shows 34 inputs across 2 forms and 134 internal links may dilute primary action. Best opportunity is staged form simplification, not platform migration.",
+  "topOpportunities": [
+    {
+      "title": "Reduce initial form friction",
+      "severity": "High",
+      "evidence": "Deterministic finding: 'The first website form asks for many details at once' + homepageSignals inputCount: 34 across forms: 2",
+      "whyItMatters": "Long first forms correlate with abandonment; shortening first step can increase completion without losing qualification data collected after intent.",
+      "recommendation": "Reduce initial enquiry to 3-5 fields (name, phone, zip/service needed) and move 34-field detail to step 2/confirmed booking. Test on homepage and /contact-us/customer-service/ (also 34 inputs) before rolling to /hvac-services/ templates (17 inputs)."
+    },
+    {
+      "title": "Prioritize primary booking CTA hierarchy",
+      "severity": "Medium",
+      "evidence": "Homepage CTA phrases detected: 9 and internal links observed on homepage: 134",
+      "whyItMatters": "134 internal links and 9 competing CTAs can distract from the booking action detected; clear hierarchy focuses user toward online booking link already present.",
+      "recommendation": "Establish single primary CTA ('Book Online' / 'Get Estimate') with sticky header + above-fold button, demote secondary links to footer/secondary nav. Reduce competing CTAs from 9 to 2-3 distinct actions."
+    },
+    {
+      "title": "Surface reputation proof at point of enquiry",
+      "severity": "Medium",
+      "evidence": "Business has 4.8 rating from 6483 reviews and 96% four- and five-star share with structured data found",
+      "whyItMatters": "Trust signal is already earned but not necessarily visible at friction point; placing proven 6483-review strength next to shortened form may offset hesitation.",
+      "recommendation": "Add review and schema proof near primary form: show total count, rating, and recent review date near booking CTA. Ensure LocalBusiness + AggregateRating schema is validated for SLC location."
+    },
+    {
+      "title": "Validate performance and content density",
+      "severity": "Low",
+      "evidence": "Crawled 10 same-site pages with wordCount 11216-12307 per page and h1Count 1 on each; Lighthouse status Failed due to CHROME_PATH not set",
+      "whyItMatters": "Very long pages may dilute conversions and performance not yet measured; confirming load speed ensures friction fix isn't undermined by slow mobile rendering.",
+      "recommendation": "Keep template structure but tighten service page copy and re-run full performance audit (performance and best practices were not measured) to check mobile load with 26 images despite altCoverage 100% and mobileQuality Good."
+    }
+  ],
+  "strengths": [
+    "Strong reputation: 4.8 stars from 6483 reviews with 96% four- and five-star share and latest sampled review 2026-08-06T22:18:31.881Z",
+    "Solid technical SEO foundation: Lighthouse accessibility 100, SEO 100, structured data: found, alt-text coverage 100% on 26 images",
+    "Credible site maintenance: 0 broken of 50 checked, HTTPS true, responsive viewport true, sitemap detected",
+    "Commercial intent signals present: Online booking or request link detected, Online estimates offered, Google Business Profile claimed, 9 CTA phrases detected and hasPhone true"
+  ],
+  "unknowns": [
+    "Actual conversion rate, traffic, or drop-off on 34-field form - not measured",
+    "Lighthouse performance and best practices scores - audit failed: ERR_LAUNCHER_PATH_NOT_SET",
+    "Full site coverage - crawl truncated at 10 pages vs 6 sitemap pages, only 50 links checked",
+    "Company metrics: employeeCount, annualRevenue, foundedYear not provided",
+    "Form field specifics and required vs optional counts not enumerated"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Opportunity Score 49 with 90% confidence signals moderate, specific friction vs broad failure. Main issue is 'The first website form asks for many details at once' supported by measured 34 inputs on homepage. Technical foundations are strong (SEO 100, Accessibility 100, 0 broken of 50 checked, structured data found, claimed profile) limiting scope to UX/conversion refinement not rebuild. Verdict: Review - addressable enquiry friction worth discussion if owner wants more online bookings.",
+  "outreachAngles": [
+    "Noticed homepage has 34 form fields across 2 forms - quick idea to reduce initial fields",
+    "Saw 4.8 stars from 6483 reviews with 96% 4-5 star share - opportunity to surface that trust signal nearer booking",
+    "Site has 134 internal links and 9 CTA phrases - chance to prioritize primary booking action"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1b-ec4e-7210-877f-3eda70cbacff",
+    "generatedAt": "2026-08-23T10:12:57.096Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Rocky Mountain Power (www.rockymountainpower.net, Electric utility, Active) shows a functional site (HTTP 200, 0/50 broken links, claimed profile) but Foundational digital maturity (33/100 band). Deterministic audit (confidence 88) flags content hierarchy as main issue: Homepage H1 count: 13 and Meta description length: 0 characters, plus Image alt-text coverage: 46% and Structured data: not found. Useful to address but limited complexity - opportunity score 62 suggests Review rather than immediate Pursue.",
+  "topOpportunities": [
+    {
+      "title": "Fix content hierarchy - reduce 13 H1s to one primary heading",
+      "severity": "High",
+      "evidence": "Homepage H1 count: 13 - deterministic finding: The homepage does not use one clear primary heading.",
+      "whyItMatters": "Multiple H1s dilute topical focus and screen-reader navigation. A single clear H1 may improve SEO clarity (current SEO 62/100) and accessibility without redesign.",
+      "recommendation": "Consolidate to a single H1 that states the core offer for residential/business customers in Utah, convert remaining 12 H1s to H2/H3 in logical order. Validate on https://www.rockymountainpower.net/ and key templates like /my-account/payments/bill-payment-assistance.html (H1 count: 5) and /my-account/energy-usage/meter-upgrade.html (H1 count: 9)."
+    },
+    {
+      "title": "Add meta description and canonical tag to homepage",
+      "severity": "High",
+      "evidence": "Meta description length: 0 characters - deterministic finding: The homepage description is missing or too brief to explain the offer clearly.",
+      "whyItMatters": "Missing description and canonical weakens search snippet control and duplicate handling. Small metadata lift that could aid the 62/100 SEO score.",
+      "recommendation": "Write a 140-160 character meta description for homepage (title: Rocky Mountain Power) and add missing Canonical URL: not found. Prioritize homepage and top pay/account pages: /my-account/payments/pay-in-person.html, /my-account/payments/bill-payment-assistance.html."
+    },
+    {
+      "title": "Raise alt-text coverage from 46% to improve accessibility",
+      "severity": "Medium",
+      "evidence": "Image alt-text coverage: 46% across 28 images on homepage - measured accessibility 73/100",
+      "whyItMatters": "46% coverage contributes to accessibility 73/100 (Fair mobileQuality) and impacts screen-reader users at a utility serving the public.",
+      "recommendation": "Audit 28 homepage images, add descriptive alt text where informative and empty alt where decorative. Start with homepage then roll to high-image pages. Recheck altCoverage target >90%."
+    },
+    {
+      "title": "Implement structured data (Organization/LocalBusiness)",
+      "severity": "Medium",
+      "evidence": "JSON-LD structured data blocks: 0 and Structured data: not found",
+      "whyItMatters": "Zero schema blocks means missed opportunity for richer search results; foundational technical SEO work that complements GA4 already detected.",
+      "recommendation": "Add Organization and LocalBusiness/Energy utility JSON-LD (name, address: 1407 W North Temple St, Salt Lake City, UT 84116, website: www.rockymountainpower.net) to homepage. Add FAQ or Service schema to assistance pages if applicable."
+    }
+  ],
+  "strengths": [
+    "Functional baseline: Homepage returned HTTP 200 at https://www.rockymountainpower.net/ and 0 broken of 50 internal links checked",
+    "Mobile foundation: Responsive viewport detected and Crawled 10 same-site pages (mobileQuality: Fair)",
+    "Measurement and ownership: GA4 detected and Google Business Profile: claimed",
+    "Site maintenance signal: 0 broken of 50 checked and Crawled 10 same-site pages with 87 internal links observed on homepage"
+  ],
+  "unknowns": [
+    "Lighthouse performance and bestPractices scores: null - lighthouse status Failed with error ERR_LAUNCHER_PATH_NOT_SET - not measured",
+    "Sitemap page count: null - actual site size unknown; crawl truncated at 10 pages and links checked truncated at 50",
+    "Traffic, conversion rates, revenue, or customer behavior - not in packet",
+    "Decision-maker name/contact and hosting costs - not in packet",
+    "Employee count, annual revenue/profit, founded year, branch count - all value: null in packet"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Opportunity Score 62 indicates moderate website opportunity (deterministic assessment, confidence 88). SAAS not flagged as tech-heavy. Evidence shows clear, addressable content/SEO issues (13 H1s, 0-char meta description, 0 schema blocks, 46% alt coverage) with low-risk implementation. Review - not Pass - because issues are measurable but site is functional (HTTP 200, 0 broken of 50 checked, claimed profile, GA4 present).",
+  "outreachAngles": [
+    "Homepage shows 13 H1s and a 0-character meta description on https://www.rockymountainpower.net/ - quick hierarchy and metadata cleanup opportunity",
+    "Noted 46% image alt-text coverage across 28 images on the homepage - accessibility enhancement angle",
+    "No JSON-LD structured data blocks (0) detected on homepage - suggestion to add Organization/Utility schema"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1c-89ab-7e82-88be-52d3ed4204b9",
+    "generatedAt": "2026-08-23T10:13:37.435Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

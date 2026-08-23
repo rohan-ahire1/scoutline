@@ -1,0 +1,161 @@
+{
+  "preliminaryScore": 54,
+  "opportunityScore": 54,
+  "confidence": 84,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Content hierarchy",
+  "issueDetail": "The homepage does not use one clear primary heading.",
+  "pageCount": 5,
+  "sitemapPageCount": null,
+  "performance": null,
+  "accessibility": 89,
+  "seo": 82,
+  "mobileQuality": "Good",
+  "https": true,
+  "checkedLinks": 5,
+  "brokenLinks": 1,
+  "rebuild": "Easy",
+  "stack": [
+    "Squarespace",
+    "GA4"
+  ],
+  "problems": [
+    "1 broken internal link was found across the crawled pages.",
+    "The homepage does not use one clear primary heading.",
+    "The homepage description is missing or too brief to explain the offer clearly."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://www.slcremodels.com/",
+    "Page title: Salt Lake City Remodels",
+    "Internal links observed on homepage: 5",
+    "Homepage CTA phrases detected: 3",
+    "Image alt-text coverage: 90%",
+    "Structured data: found",
+    "Homepage H1 count: 2",
+    "Meta description length: 67 characters",
+    "Crawled 5 same-site pages and checked 5 internal links",
+    "Broken internal links: 1 of 5 checked"
+  ],
+  "auditSummary": {
+    "title": "Salt Lake City Remodels",
+    "description": "At SLC Remodels it is our goals to make your dreams become reality!",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 2,
+    "forms": 1,
+    "inputCount": 1,
+    "images": 120,
+    "altCoverage": 90,
+    "ctaCount": 3,
+    "hasSchema": true,
+    "hasPhone": false,
+    "hasEmail": false,
+    "internalLinks": 5,
+    "sitemapPageCount": null,
+    "pagesCrawled": 5,
+    "linksChecked": 5,
+    "brokenLinks": 1,
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "auditStatus": "Partial",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 5,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": false
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 5,
+      "broken": 1,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Failed",
+      "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+      "code": "ERR_LAUNCHER_PATH_NOT_SET"
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://www.slcremodels.com/",
+      "path": "/",
+      "title": "Salt Lake City Remodels",
+      "h1Count": 2,
+      "wordCount": 1064,
+      "forms": 1,
+      "inputCount": 1
+    },
+    {
+      "url": "https://www.slcremodels.com/search",
+      "path": "/search",
+      "title": "Salt Lake City Remodels",
+      "h1Count": 0,
+      "wordCount": 198,
+      "forms": 1,
+      "inputCount": 1
+    },
+    {
+      "url": "https://www.slcremodels.com/contact",
+      "path": "/contact",
+      "title": "Contact — Salt Lake City Remodels",
+      "h1Count": 1,
+      "wordCount": 641,
+      "forms": 1,
+      "inputCount": 1
+    },
+    {
+      "url": "https://www.slcremodels.com/gallery",
+      "path": "/gallery",
+      "title": "Before and After — Salt Lake City Remodels",
+      "h1Count": 0,
+      "wordCount": 250,
+      "forms": 1,
+      "inputCount": 1
+    },
+    {
+      "url": "https://www.slcremodels.com/testimonials",
+      "path": "/testimonials",
+      "title": "Testimonials — Salt Lake City Remodels",
+      "h1Count": 1,
+      "wordCount": 301,
+      "forms": 1,
+      "inputCount": 1
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [
+    {
+      "url": "https://www.slcremodels.com/search",
+      "status": 403,
+      "broken": true,
+      "error": null
+    }
+  ],
+  "lighthouse": {
+    "status": "Failed",
+    "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
+    "code": "ERR_LAUNCHER_PATH_NOT_SET"
+  },
+  "auditedUrl": "https://www.slcremodels.com/",
+  "auditedAt": "2026-08-23T10:08:55.344Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-b067ccd3-94d1-4b7f-95e4-aae78f36255a",
+      "at": "2026-08-23T10:08:55.344Z",
+      "url": "https://www.slcremodels.com/",
+      "score": 54,
+      "performance": null,
+      "pages": 5,
+      "brokenLinks": 1
+    }
+  ]
+}

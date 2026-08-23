@@ -1,0 +1,178 @@
+{
+  "id": "lead-mt5n9lzr-3-c5820d",
+  "company": "Black Diamond Experts, Electric, Plumbing, HVAC",
+  "category": "HVAC contractor",
+  "location": "2001 Warm Springs Rd Suite B, Salt Lake City, UT 84116, United States",
+  "website": "bdexperts.com",
+  "address": "2001 Warm Springs Rd Suite B, Salt Lake City, UT 84116, United States",
+  "phone": "+1 801-386-8645",
+  "email": "Not collected",
+  "rating": 4.8,
+  "reviews": 6483,
+  "collectedAt": "8/23/2026, 10:08:28 AM",
+  "sourceUrl": "https://www.google.com/maps/place/Black%20Diamond%20Experts%2C%20Electric%2C%20Plumbing%2C%20HVAC/data=!4m7!3m6!1s0x87528ae3415d155d:0x90615f67f653f03f!8m2!3d40.8104820!4d-111.9228897!16s%2Fg%2F1hc0w64zs!19sChIJXRVdQeOKUocRP_BT9mdfYZA?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-23T10:04:03.874Z",
+    "placeId": "ChIJXRVdQeOKUocRP_BT9mdfYZA",
+    "cid": "10403701514321522751",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Open 24 hours",
+      "Saturday": "Open 24 hours",
+      "Friday": "Open 24 hours",
+      "Thursday": "Open 24 hours",
+      "Wednesday": "Open 24 hours",
+      "Tuesday": "Open 24 hours",
+      "Monday": "Open 24 hours"
+    },
+    "open24Hours": true,
+    "services": [
+      "Online estimates",
+      "Onsite services",
+      "Installation service",
+      "Repair services"
+    ],
+    "categories": [
+      "HVAC contractor",
+      "Air conditioning contractor",
+      "Air conditioning repair service",
+      "Air conditioning system supplier",
+      "Electrical installation service",
+      "Electrician",
+      "Furnace repair service",
+      "Hot water system supplier",
+      "Insulation contractor",
+      "Plumber"
+    ],
+    "onlineBooking": true,
+    "onlineEstimates": true,
+    "reservationLink": "https://book.broccoli.com/widget/8bee8d5d-c288-46ce-8ff0-981cd1cee27c?rwg_token=AE37R_haoZfGSyAP60FSUYkyUBwJn8NvKjHupAPFayRuj1eYeRU5-yZ60Dld2AJkiiCdHos9b-SdSqVQqcyB2-lopI3hmCjIdg%3D%3D",
+    "photosObserved": 7,
+    "distribution": {
+      "1_star_reviews": 191,
+      "2_star_reviews": 47,
+      "3_star_reviews": 36,
+      "4_star_reviews": 119,
+      "5_star_reviews": 6090
+    },
+    "positiveReviewShare": 96,
+    "latestObservedReviewAt": "2026-08-06T22:18:31.881Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJXRVdQeOKUocRP_BT9mdfYZA",
+        "cid": "10403701514321522751",
+        "address": "2001 Warm Springs Rd Suite B, Salt Lake City, UT 84116, United States",
+        "latitude": 40.810482,
+        "longitude": -111.9228897,
+        "rating": 4.8,
+        "reviews": 6483
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Online booking or request link: detected",
+      "Online estimates: offered",
+      "Four- and five-star review share: 96%",
+      "Latest sampled Google review: 2026-08-06T22:18:31.881Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 73,
+      "band": "Established",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Lighthouse 100/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 12,
+          "maximum": 12,
+          "evidence": "Lighthouse 100/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Booking link detected"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "0 broken of 50 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-23T10:09:36.159Z"
+    }
+  }
+}

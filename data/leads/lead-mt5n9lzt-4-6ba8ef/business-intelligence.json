@@ -1,0 +1,150 @@
+{
+  "source": "Bright Data Google Maps",
+  "fetchedAt": "2026-08-23T10:04:04.862Z",
+  "placeId": "ChIJcWRJew_1UocRc-y1-dxUhoo",
+  "cid": "9981758932172270707",
+  "claimed": true,
+  "businessStatus": "Active",
+  "openHours": {
+    "Sunday": "8 AM–5 PM",
+    "Saturday": "8 AM–6 PM",
+    "Friday": "8 AM–5 PM",
+    "Thursday": "8 AM–5 PM",
+    "Wednesday": "8 AM–5 PM",
+    "Tuesday": "8 AM–5 PM",
+    "Monday": "8 AM–5 PM"
+  },
+  "open24Hours": false,
+  "services": [
+    "Wheelchair-accessible car park"
+  ],
+  "categories": [
+    "General contractor"
+  ],
+  "onlineBooking": false,
+  "onlineEstimates": false,
+  "reservationLink": null,
+  "photosObserved": 3,
+  "distribution": {
+    "1_star_reviews": 1,
+    "2_star_reviews": 0,
+    "3_star_reviews": 0,
+    "4_star_reviews": 0,
+    "5_star_reviews": 30
+  },
+  "positiveReviewShare": 97,
+  "latestObservedReviewAt": "2024-06-23T17:19:19.468Z",
+  "sampledReviewCount": 8,
+  "locations": [
+    {
+      "placeId": "ChIJcWRJew_1UocRc-y1-dxUhoo",
+      "cid": "9981758932172270707",
+      "address": "32 W 200 S #348b, Salt Lake City, UT 84101, United States",
+      "latitude": 40.765496,
+      "longitude": -111.89218,
+      "rating": 4.9,
+      "reviews": 31
+    }
+  ],
+  "companyMetrics": {
+    "employeeCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualRevenue": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualProfit": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "foundedYear": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "branchCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    }
+  },
+  "evidence": [
+    "Google Business Profile: claimed",
+    "Four- and five-star review share: 97%",
+    "Latest sampled Google review: 2024-06-23T17:19:19.468Z"
+  ],
+  "locationsObserved": 1,
+  "digitalMaturity": {
+    "score": 38,
+    "band": "Foundational",
+    "version": 1,
+    "components": [
+      {
+        "label": "Mobile performance",
+        "points": 4,
+        "maximum": 20,
+        "evidence": "Lighthouse 0/100"
+      },
+      {
+        "label": "Accessibility",
+        "points": 6,
+        "maximum": 10,
+        "evidence": "Lighthouse 88/100"
+      },
+      {
+        "label": "Search readiness",
+        "points": 2,
+        "maximum": 12,
+        "evidence": "Lighthouse 52/100"
+      },
+      {
+        "label": "Technical best practices",
+        "points": 0,
+        "maximum": 8,
+        "evidence": "Not measured"
+      },
+      {
+        "label": "Structured data",
+        "points": 0,
+        "maximum": 8,
+        "evidence": "Not detected"
+      },
+      {
+        "label": "Measurement stack",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "GA4"
+      },
+      {
+        "label": "Online customer action",
+        "points": 0,
+        "maximum": 10,
+        "evidence": "No booking or online-estimate signal"
+      },
+      {
+        "label": "Business profile ownership",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "Google profile claimed"
+      },
+      {
+        "label": "Mobile foundation",
+        "points": 6,
+        "maximum": 6,
+        "evidence": "Responsive viewport detected"
+      },
+      {
+        "label": "Site maintenance",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "0 broken of 18 checked"
+      }
+    ],
+    "calculatedAt": "2026-08-23T10:09:56.147Z"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Nelson Roofing Salt Lake City (nelsonroofingslc.com) is an Established (Digital Maturity 69) roofing contractor with strong search and reputation signals but clear enquiry friction. DeterministicAssessment OpportunityScore 56 / confidence 90 flags the mainIssue 'Enquiry friction' - 'The first website form asks for many details at once.' Audit is Partial but confirms solid SEO and technical health, leaving focused conversion and accessibility improvements as the priority.",
+  "topOpportunities": [
+    {
+      "title": "Reduce initial form friction",
+      "severity": "High",
+      "evidence": "DeterministicAssessment mainIssue: 'Enquiry friction' with issueDetail: 'The first website form asks for many details at once.' and Form field count on homepage: 12",
+      "whyItMatters": "12 fields at first contact can deter mobile users from starting an estimate request, even though demand signals are strong.",
+      "recommendation": "Test a 2-step enquiry: shorten first step to name/phone/address or zip + roof need with clear 'Online estimates offered' CTA, keeping full details for step 2. Use existing GA4 to measure start vs completion."
+    },
+    {
+      "title": "Complete image alt text for accessibility",
+      "severity": "Medium",
+      "evidence": "Image alt-text coverage: 68% with 47 images observed on homepage and Accessibility 89 per measuredAudit",
+      "whyItMatters": "Improves accessibility score from 89 and helps search understanding without design changes.",
+      "recommendation": "Add descriptive alt text to the ~32% of homepage images missing it (47 images total). Prioritize hero, service, and before/after images for screen readers and SEO."
+    },
+    {
+      "title": "Clarify and improve mobile experience",
+      "severity": "Medium",
+      "evidence": "mobileQuality: 'Fair' in measuredAudit and Responsive viewport detected but Lighthouse status: Failed (ERR_LAUNCHER_PATH_NOT_SET - not measured)",
+      "whyItMatters": "Most roofing estimate requests start on mobile; a Fair experience plus long forms can reduce completions.",
+      "recommendation": "Review mobile experience given 'Fair' rating: check tap targets, form usability with 12 inputs, and page speed on Webflow template. Re-run Lighthouse once Chrome path is available to quantify performance."
+    },
+    {
+      "title": "Close sitemap vs crawl coverage gap",
+      "severity": "Low",
+      "evidence": "Crawled 10 same-site pages and checked 17 internal links with sitemapPageCount: 16 and pagesCrawled: 10 (truncated: true) and Internal links observed on homepage: 16",
+      "whyItMatters": "Helps ensure service and location pages are found by search and visitors; currently 16 in sitemap but only 10 crawled in sample.",
+      "recommendation": "Ensure all 16 sitemap pages are discoverable via internal links (only 10 crawled in 10-page limit). Strengthen interlinking from homepage and service pages (roof-replacement, roof-repair, emergency-roof-repair etc) to location pages like /south-salt-lake."
+    }
+  ],
+  "strengths": [
+    "Search readiness strong: Lighthouse SEO 100 observed and Page title: Salt Lake City Roofing Contractor | Nelson Roofing Salt Lake City with canonical true",
+    "Technical foundation solid: Homepage returned HTTP 200 at https://www.nelsonroofingslc.com/, HTTPS true, Structured data: found, 0 broken of 17 checked",
+    "Reputation strong: publicRating 5 and publicReviewCount 182 with Four- and five-star review share: 99%",
+    "Measurement and action ready: Detected Stack includes GA4 and Online estimates: offered and Google Business Profile: claimed"
+  ],
+  "unknowns": [
+    "Actual conversion rate or abandonment for the 12-field form - not measured in packet",
+    "Mobile performance, best practices, and timing scores - Lighthouse failed: 'The CHROME_PATH environment variable must be set'",
+    "Traffic volume and source mix - no traffic data provided",
+    "Hosting costs, employee count, annual revenue/profit, foundedYear - all null in companyMetrics",
+    "Content of 6 un-crawled sitemap pages - truncated at 10 pages crawled"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "OpportunityScore 56 with confidence 90 indicates moderate, well-evidenced opportunity. MainIssue is 'Enquiry friction' defined as 'The first website form asks for many details at once.' Evidence is strong for form and accessibility fixes, SEO and technical foundation are already solid (SEO 100/100, structured data found, 0 broken of 17 checked), so addressable work is focused rather than rebuild.",
+  "outreachAngles": [
+    "Noted your homepage form has 12 fields - opportunity to test a shorter first step",
+    "Noted image alt-text coverage is 68% on homepage - quick accessibility win",
+    "Noted 5 stars from 182 reviews and online estimates offered - website can surface this more"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02e1d-a59f-70a2-9f7a-aedf10f0c303",
+    "generatedAt": "2026-08-23T10:14:50.072Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}
