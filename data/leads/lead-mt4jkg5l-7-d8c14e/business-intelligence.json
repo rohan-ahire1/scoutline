@@ -1,0 +1,154 @@
+{
+  "source": "Bright Data Google Maps",
+  "fetchedAt": "2026-08-22T15:32:28.513Z",
+  "placeId": "ChIJDU-JPaeKUocR3Hsk_vIZCqE",
+  "cid": "11604115921310088156",
+  "claimed": true,
+  "businessStatus": "Active",
+  "openHours": {
+    "Sunday": "Closed",
+    "Saturday": "Closed",
+    "Friday": "9 AM–4:30 PM",
+    "Thursday": "9 AM–4:30 PM",
+    "Wednesday": "9 AM–4:30 PM",
+    "Tuesday": "9 AM–4:30 PM",
+    "Monday": "9 AM–4:30 PM"
+  },
+  "open24Hours": false,
+  "services": [
+    "No online estimates",
+    "On-site services not available"
+  ],
+  "categories": [
+    "Custom home builder",
+    "Construction company",
+    "Remodeler"
+  ],
+  "onlineBooking": false,
+  "onlineEstimates": true,
+  "reservationLink": null,
+  "photosObserved": 4,
+  "distribution": {
+    "1_star_reviews": 2,
+    "2_star_reviews": 0,
+    "3_star_reviews": 1,
+    "4_star_reviews": 1,
+    "5_star_reviews": 32
+  },
+  "positiveReviewShare": 92,
+  "latestObservedReviewAt": "2026-03-26T04:46:29.082Z",
+  "sampledReviewCount": 8,
+  "locations": [
+    {
+      "placeId": "ChIJDU-JPaeKUocR3Hsk_vIZCqE",
+      "cid": "11604115921310088156",
+      "address": "2019 S Main St, Salt Lake City, UT 84115, United States",
+      "latitude": 40.72623,
+      "longitude": -111.890592,
+      "rating": 4.7,
+      "reviews": 36
+    }
+  ],
+  "companyMetrics": {
+    "employeeCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualRevenue": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualProfit": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "foundedYear": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "branchCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    }
+  },
+  "evidence": [
+    "Google Business Profile: claimed",
+    "Online estimates: offered",
+    "Four- and five-star review share: 92%",
+    "Latest sampled Google review: 2026-03-26T04:46:29.082Z"
+  ],
+  "locationsObserved": 1,
+  "digitalMaturity": {
+    "score": 82,
+    "band": "Advanced",
+    "version": 1,
+    "components": [
+      {
+        "label": "Mobile performance",
+        "points": 12,
+        "maximum": 20,
+        "evidence": "Lighthouse 58/100"
+      },
+      {
+        "label": "Accessibility",
+        "points": 10,
+        "maximum": 10,
+        "evidence": "Lighthouse 96/100"
+      },
+      {
+        "label": "Search readiness",
+        "points": 12,
+        "maximum": 12,
+        "evidence": "Lighthouse 100/100"
+      },
+      {
+        "label": "Technical best practices",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "Lighthouse 100/100"
+      },
+      {
+        "label": "Structured data",
+        "points": 0,
+        "maximum": 8,
+        "evidence": "Not detected"
+      },
+      {
+        "label": "Measurement stack",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "GA4"
+      },
+      {
+        "label": "Online customer action",
+        "points": 10,
+        "maximum": 10,
+        "evidence": "Online estimates offered"
+      },
+      {
+        "label": "Business profile ownership",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "Google profile claimed"
+      },
+      {
+        "label": "Mobile foundation",
+        "points": 6,
+        "maximum": 6,
+        "evidence": "Responsive viewport detected"
+      },
+      {
+        "label": "Site maintenance",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "0 broken of 48 checked"
+      }
+    ],
+    "calculatedAt": "2026-08-22T15:40:36.214Z"
+  }
+}

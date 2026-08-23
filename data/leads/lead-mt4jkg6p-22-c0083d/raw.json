@@ -1,0 +1,164 @@
+{
+  "id": "lead-mt4jkg6p-22-c0083d",
+  "company": "Mountain Standard Metal Roofing Salt Lake City",
+  "category": "Roofing contractor",
+  "location": "765 S 500 E #1, Salt Lake City, UT 84102, United States",
+  "website": "saltlakecitymetalroofing.com",
+  "address": "765 S 500 E #1, Salt Lake City, UT 84102, United States",
+  "phone": "+1 801-618-2587",
+  "email": "Not collected",
+  "rating": 4.9,
+  "reviews": 29,
+  "collectedAt": "8/22/2026, 9:07:09 PM",
+  "sourceUrl": "https://www.google.com/maps/place/Mountain%20Standard%20Metal%20Roofing%20Salt%20Lake%20City/data=!4m7!3m6!1s0x8752f59f3d10cf33:0x64ffc25b3d0f78dc!8m2!3d40.7525178!4d-111.8764127!16s%2Fg%2F11rylj6lfc!19sChIJM88QPZ_1UocR3HgPPVvC_2Q?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:33:34.959Z",
+    "placeId": "ChIJM88QPZ_1UocR3HgPPVvC_2Q",
+    "cid": "7277749219976247516",
+    "claimed": false,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "7 AM–7 PM",
+      "Friday": "7 AM–7 PM",
+      "Thursday": "7 AM–7 PM",
+      "Wednesday": "7 AM–7 PM",
+      "Tuesday": "7 AM–7 PM",
+      "Monday": "7 AM–7 PM"
+    },
+    "open24Hours": false,
+    "services": [
+      "Wheelchair-accessible car park"
+    ],
+    "categories": [
+      "Roofing contractor"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": false,
+    "reservationLink": null,
+    "photosObserved": 2,
+    "distribution": {
+      "1_star_reviews": 1,
+      "2_star_reviews": 0,
+      "3_star_reviews": 0,
+      "4_star_reviews": 0,
+      "5_star_reviews": 28
+    },
+    "positiveReviewShare": 97,
+    "latestObservedReviewAt": "2026-04-20T16:59:35.189Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJM88QPZ_1UocR3HgPPVvC_2Q",
+        "cid": "7277749219976247516",
+        "address": "765 S 500 E #1, Salt Lake City, UT 84102, United States",
+        "latitude": 40.7525178,
+        "longitude": -111.8764127,
+        "rating": 4.9,
+        "reviews": 29
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: not claimed",
+      "Four- and five-star review share: 97%",
+      "Latest sampled Google review: 2026-04-20T16:59:35.189Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 9,
+      "band": "Foundational",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 2,
+          "maximum": 10,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 2,
+          "maximum": 12,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "No analytics signal detected"
+        },
+        {
+          "label": "Online customer action",
+          "points": 0,
+          "maximum": 10,
+          "evidence": "No booking or online-estimate signal"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 0,
+          "maximum": 4,
+          "evidence": "Not confirmed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 0,
+          "maximum": 6,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 0,
+          "maximum": 4,
+          "evidence": "Links not checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.362Z"
+    }
+  }
+}

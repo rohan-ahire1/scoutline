@@ -1,0 +1,157 @@
+{
+  "source": "Bright Data Google Maps",
+  "fetchedAt": "2026-08-22T15:33:36.418Z",
+  "placeId": "ChIJ_YDukwKNUocRDp5g5NllOMc",
+  "cid": "14355335798757301774",
+  "claimed": true,
+  "businessStatus": "Active",
+  "openHours": {
+    "Sunday": "Closed",
+    "Saturday": "8 AM–6 PM",
+    "Friday": "8 AM–6 PM",
+    "Thursday": "8 AM–6 PM",
+    "Wednesday": "8 AM–6 PM",
+    "Tuesday": "8 AM–6 PM",
+    "Monday": "8 AM–6 PM"
+  },
+  "open24Hours": false,
+  "services": [
+    "Online estimates",
+    "Onsite services",
+    "Wheelchair accessible parking lot",
+    "On-site services",
+    "Wheelchair-accessible car park"
+  ],
+  "categories": [
+    "Roofing contractor",
+    "Gutter service",
+    "Siding contractor"
+  ],
+  "onlineBooking": false,
+  "onlineEstimates": true,
+  "reservationLink": null,
+  "photosObserved": 5,
+  "distribution": {
+    "1_star_reviews": 1,
+    "2_star_reviews": 1,
+    "3_star_reviews": 1,
+    "4_star_reviews": 4,
+    "5_star_reviews": 238
+  },
+  "positiveReviewShare": 99,
+  "latestObservedReviewAt": "2026-06-29T20:00:56.798Z",
+  "sampledReviewCount": 8,
+  "locations": [
+    {
+      "placeId": "ChIJ_YDukwKNUocRDp5g5NllOMc",
+      "cid": "14355335798757301774",
+      "address": "3424 W 2400 S Ste B, West Valley City, UT 84119, United States",
+      "latitude": 40.7192041,
+      "longitude": -111.9729519,
+      "rating": 4.9,
+      "reviews": 245
+    }
+  ],
+  "companyMetrics": {
+    "employeeCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualRevenue": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualProfit": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "foundedYear": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "branchCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    }
+  },
+  "evidence": [
+    "Google Business Profile: claimed",
+    "Online estimates: offered",
+    "Four- and five-star review share: 99%",
+    "Latest sampled Google review: 2026-06-29T20:00:56.798Z"
+  ],
+  "locationsObserved": 1,
+  "digitalMaturity": {
+    "score": 63,
+    "band": "Established",
+    "version": 1,
+    "components": [
+      {
+        "label": "Mobile performance",
+        "points": 4,
+        "maximum": 20,
+        "evidence": "Lighthouse 44/100"
+      },
+      {
+        "label": "Accessibility",
+        "points": 6,
+        "maximum": 10,
+        "evidence": "Lighthouse 77/100"
+      },
+      {
+        "label": "Search readiness",
+        "points": 12,
+        "maximum": 12,
+        "evidence": "Lighthouse 91/100"
+      },
+      {
+        "label": "Technical best practices",
+        "points": 5,
+        "maximum": 8,
+        "evidence": "Lighthouse 73/100"
+      },
+      {
+        "label": "Structured data",
+        "points": 0,
+        "maximum": 8,
+        "evidence": "Not detected"
+      },
+      {
+        "label": "Measurement stack",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "GA4"
+      },
+      {
+        "label": "Online customer action",
+        "points": 10,
+        "maximum": 10,
+        "evidence": "Online estimates offered"
+      },
+      {
+        "label": "Business profile ownership",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "Google profile claimed"
+      },
+      {
+        "label": "Mobile foundation",
+        "points": 6,
+        "maximum": 6,
+        "evidence": "Responsive viewport detected"
+      },
+      {
+        "label": "Site maintenance",
+        "points": 2,
+        "maximum": 4,
+        "evidence": "1 broken of 6 checked"
+      }
+    ],
+    "calculatedAt": "2026-08-22T15:37:09.365Z"
+  }
+}

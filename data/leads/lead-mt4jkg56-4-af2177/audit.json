@@ -1,0 +1,209 @@
+{
+  "preliminaryScore": 67,
+  "opportunityScore": 67,
+  "confidence": 95,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Mobile performance",
+  "issueDetail": "The measured mobile Lighthouse performance score is 45/100 with a 25.2s largest contentful paint.",
+  "pageCount": 6,
+  "sitemapPageCount": 5,
+  "performance": 45,
+  "accessibility": 84,
+  "seo": 92,
+  "mobileQuality": "Poor",
+  "https": true,
+  "checkedLinks": 6,
+  "brokenLinks": 0,
+  "rebuild": "Moderate",
+  "stack": [
+    "Shopify",
+    "GA4"
+  ],
+  "problems": [
+    "The measured mobile Lighthouse performance score is 45/100 with a 25.2s largest contentful paint.",
+    "Many homepage images do not have useful alternative text.",
+    "The homepage description is missing or too brief to explain the offer clearly.",
+    "No structured data was detected on the homepage."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://tor-electric.com/",
+    "Page title: Tor Electric – TOR-Electric",
+    "Internal links observed on homepage: 7",
+    "Homepage CTA phrases detected: 8",
+    "Image alt-text coverage: 25%",
+    "Structured data: not found",
+    "Meta description length: 58 characters",
+    "JSON-LD structured data blocks: 0",
+    "Lighthouse mobile performance: 45/100; largest contentful paint: 25.2s",
+    "Crawled 6 same-site pages and checked 6 internal links"
+  ],
+  "auditSummary": {
+    "title": "Tor Electric – TOR-Electric",
+    "description": "Trusted Electricians Bringing Unparalleled Service to Utah",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 1,
+    "forms": 2,
+    "inputCount": 3,
+    "images": 8,
+    "altCoverage": 25,
+    "ctaCount": 8,
+    "hasSchema": false,
+    "hasPhone": true,
+    "hasEmail": false,
+    "internalLinks": 7,
+    "sitemapPageCount": 5,
+    "pagesCrawled": 6,
+    "linksChecked": 6,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://tor-electric.com/",
+      "fetchedAt": "2026-08-22T15:38:57.312Z",
+      "scores": {
+        "performance": 45,
+        "accessibility": 84,
+        "bestPractices": 54,
+        "seo": 92
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 10249,
+        "largestContentfulPaintMs": 25155,
+        "speedIndexMs": 12460,
+        "totalBlockingTimeMs": 435,
+        "cumulativeLayoutShift": 0,
+        "interactiveMs": 25178
+      }
+    }
+  },
+  "auditStatus": "Completed",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 6,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": false
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 6,
+      "broken": 0,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://tor-electric.com/",
+      "fetchedAt": "2026-08-22T15:38:57.312Z",
+      "scores": {
+        "performance": 45,
+        "accessibility": 84,
+        "bestPractices": 54,
+        "seo": 92
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 10249,
+        "largestContentfulPaintMs": 25155,
+        "speedIndexMs": 12460,
+        "totalBlockingTimeMs": 435,
+        "cumulativeLayoutShift": 0,
+        "interactiveMs": 25178
+      }
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://tor-electric.com/",
+      "path": "/",
+      "title": "Tor Electric – TOR-Electric",
+      "h1Count": 1,
+      "wordCount": 849,
+      "forms": 2,
+      "inputCount": 3
+    },
+    {
+      "url": "https://tor-electric.com/pages/services",
+      "path": "/pages/services",
+      "title": "TOR Electrical Services – TOR-Electric",
+      "h1Count": 1,
+      "wordCount": 272,
+      "forms": 2,
+      "inputCount": 3
+    },
+    {
+      "url": "https://tor-electric.com/pages/ev-charger-installation-across-wasatch-front",
+      "path": "/pages/ev-charger-installation-across-wasatch-front",
+      "title": "EV Charger Installation Across the Wasatch Front | Tor Electric – TOR-Electric",
+      "h1Count": 0,
+      "wordCount": 455,
+      "forms": 2,
+      "inputCount": 3
+    },
+    {
+      "url": "https://tor-electric.com/pages/meter-main-upgrade",
+      "path": "/pages/meter-main-upgrade",
+      "title": "Meter Main Upgrade – TOR-Electric",
+      "h1Count": 0,
+      "wordCount": 464,
+      "forms": 2,
+      "inputCount": 3
+    },
+    {
+      "url": "https://tor-electric.com/pages/electric-panel-upgrade",
+      "path": "/pages/electric-panel-upgrade",
+      "title": "Electric Panel Upgrade – TOR-Electric",
+      "h1Count": 0,
+      "wordCount": 444,
+      "forms": 2,
+      "inputCount": 3
+    },
+    {
+      "url": "https://tor-electric.com/pages/contact",
+      "path": "/pages/contact",
+      "title": "Contact – TOR-Electric",
+      "h1Count": 0,
+      "wordCount": 247,
+      "forms": 3,
+      "inputCount": 8
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Completed",
+    "version": "13.4.1",
+    "finalUrl": "https://tor-electric.com/",
+    "fetchedAt": "2026-08-22T15:38:57.312Z",
+    "scores": {
+      "performance": 45,
+      "accessibility": 84,
+      "bestPractices": 54,
+      "seo": 92
+    },
+    "metrics": {
+      "firstContentfulPaintMs": 10249,
+      "largestContentfulPaintMs": 25155,
+      "speedIndexMs": 12460,
+      "totalBlockingTimeMs": 435,
+      "cumulativeLayoutShift": 0,
+      "interactiveMs": 25178
+    }
+  },
+  "auditedUrl": "https://tor-electric.com/",
+  "auditedAt": "2026-08-22T15:39:17.438Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-fce07512-5651-4046-9934-b30e7a2769b4",
+      "at": "2026-08-22T15:39:17.438Z",
+      "url": "https://tor-electric.com/",
+      "score": 67,
+      "performance": 45,
+      "pages": 6,
+      "brokenLinks": 0
+    }
+  ]
+}

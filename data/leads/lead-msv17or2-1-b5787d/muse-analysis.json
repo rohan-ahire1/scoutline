@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Nelson Roofing Salt Lake City has an Advanced digital presence (Digital Maturity 87) with excellent search readiness and reputation (5.0 from 182 reviews), but the site shows enquiry friction and fair mobile quality. Deterministic audit flagged 'The first website form asks for many details at once.' with measured Homepage Form field count 12 and Lighthouse mobile performance 70/100, LCP 7.3s.",
+  "topOpportunities": [
+    {
+      "title": "Reduce initial enquiry friction from 12 fields",
+      "severity": "High",
+      "evidence": "Evidence: Form field count on homepage: 12 | Crawled page / shows forms: 2, inputCount: 12 | Deterministic mainIssue: 'The first website form asks for many details at once.'",
+      "whyItMatters": "A 12-field first form creates perceived effort. Streamlining the first step is a low-code Webflow change that can make starting an estimate feel faster without losing qualification data.",
+      "recommendation": "Test a 2-step enquiry: Step 1 = name/phone/address/service needed (3-4 fields) with CTA 'Get Free Estimate'. Keep full 12-field detail for Step 2 or contact page. GA4 is already present to measure step completion."
+    },
+    {
+      "title": "Improve mobile load: 7.3s LCP and 70/100 performance",
+      "severity": "High",
+      "evidence": "Evidence: Lighthouse mobile performance: 70/100; largest contentful paint: 7.3s | Lighthouse metrics: largestContentfulPaintMs: 7284, firstContentfulPaintMs: 3162, interactiveMs: 7296, Mobile Quality: Fair | Failures: 'Render-blocking requests: Est savings of 1,460 ms' and 'Improve image delivery: Est savings of 305 KiB'",
+      "whyItMatters": "LCP 7.3s and Performance 70/100 with Fair mobile quality suggests slower first paint on mobile. Faster hero load could improve user experience for emergency/commercial roofing visitors arriving via mobile search, while SEO 100/100 and HTTPS true remain intact.",
+      "recommendation": "Prioritize LCP/Performance fixes on Webflow: defer non-critical CSS/JS (address 1,460ms render-blocking), optimize/compress hero images (address 305 KiB savings), add explicit width/height to images (failure: 'Image elements do not have explicit width and height'). Re-test Lighthouse after."
+    },
+    {
+      "title": "Close accessibility gaps: 68% alt coverage and Lighthouse 81/100",
+      "severity": "Medium",
+      "evidence": "Evidence: Image alt-text coverage: 68% | HomepageSignals: images: 47, altCoverage: 68 | Accessibility: 81/100 | Failures: 'Background and foreground colors do not have a sufficient contrast ratio.', 'Links do not have a discernible name', 'Select elements do not have associated label elements.', 'html element does not have a [lang] attribute'",
+      "whyItMatters": "With 47 homepage images and multiple Lighthouse accessibility failures logged, improving alt text and label/contrast issues could help accessibility and keep search readiness strong without design overhaul.",
+      "recommendation": "Complete alt text for remaining ~32% of homepage images (15 of 47), add discernible names to links, associate labels with select elements, fix contrast ratios, and add html lang attribute. Can be batched in Webflow CMS."
+    },
+    {
+      "title": "Standardize CTAs and form consistency across service pages",
+      "severity": "Low",
+      "evidence": "Evidence: Internal links observed on homepage: 16 | Pages crawled: 10 of sitemapPageCount: 16 (crawl truncated) | All 10 crawled service/location pages show forms: 2, inputCount: 12 | Homepage CTA phrases detected: 6 and hasPhone: true",
+      "whyItMatters": "Consistent enquiry path across all service pages would make testing form changes easier to measure via existing GA4 and ensure the 16-site map pages behave uniformly.",
+      "recommendation": "Keep 6 CTAs and phone prominent but standardize CTAs to 2 primary actions ('Get Free Estimate' + 'Call Now') per template, and unify form strategy across the 10+ service pages (roof-replacement, roof-repair etc.) so shorter first-step form propagates site-wide."
+    }
+  ],
+  "strengths": [
+    "Search readiness: Lighthouse SEO 100/100 and Best Practices 100/100",
+    "Trust signals: 5.0 rating with 182 reviews and 99% four- and five-star review share",
+    "Technical hygiene: 0 broken of 17 checked links and HTTPS true with Structured data: found",
+    "Lead infrastructure: Online estimates: offered and GA4 detected with Responsive viewport detected"
+  ],
+  "unknowns": [
+    "Actual form conversion rate and drop-off by field - not measured in packet",
+    "Traffic volume, lead source mix, and call vs form ratio - not measured",
+    "Hosting/CDN costs or Webflow plan constraints - not provided",
+    "Whether 12-field form is required by CRM/qualification process - not observed",
+    "Full accessibility impact with assistive technology - only Lighthouse 81/100 observed"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "OpportunityScore 56 with Confidence 95 indicates moderate addressable website work. Friction is specific (12-field form) but foundation is strong (SEO 100/100, Best Practices 100/100, 0 broken of 17 checked, 99% 4-5 star share, claimed profile), so value is optimization not rebuild.",
+  "outreachAngles": [
+    "Noticed your homepage form has 12 fields - quick idea to test a shorter first step",
+    "Homepage shows 47 images with 68% alt coverage - can help complete alt text for accessibility/SEO",
+    "Lighthouse shows 7.3s LCP with 1,460ms render-blocking savings - quick performance win"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a027ab-52de-7ba0-b380-abc38bde1c3f",
+    "generatedAt": "2026-08-22T04:12:14.563Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

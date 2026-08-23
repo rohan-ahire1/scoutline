@@ -1,0 +1,159 @@
+{
+  "source": "Bright Data Google Maps",
+  "fetchedAt": "2026-08-22T15:32:40.107Z",
+  "placeId": "ChIJ-xUpGkf1UocRS1V-iOF4jOs",
+  "cid": "16973074005705512267",
+  "claimed": true,
+  "businessStatus": "Active",
+  "openHours": {
+    "Sunday": "9 AM–5 PM",
+    "Saturday": "9 AM–5 PM",
+    "Friday": "Open 24 hours",
+    "Thursday": "Open 24 hours",
+    "Wednesday": "Open 24 hours",
+    "Tuesday": "Open 24 hours",
+    "Monday": "Open 24 hours"
+  },
+  "open24Hours": false,
+  "services": [
+    "On-site services",
+    "Repair services",
+    "LGBTQ+ friendly",
+    "Transgender safe space",
+    "Credit cards",
+    "Onsite services"
+  ],
+  "categories": [
+    "Plumber",
+    "Air compressor repair service",
+    "HVAC contractor"
+  ],
+  "onlineBooking": true,
+  "onlineEstimates": false,
+  "reservationLink": "https://clienthub.getjobber.com/hubs/077ba760-7e2e-47c8-8bb9-47b1b6d5be97/public/requests/132571/new?rwg_token=AE37R_insn2IbHAwGZd7PxF9Bgu44GFEaFqwL-w1b54wka7FTbGW1KMqVRmmDP_oO8PSPHZ6-2Tk1YY-GuQhPiKt9_rVTJGY-Q%3D%3D",
+  "photosObserved": null,
+  "distribution": {
+    "1_star_reviews": 9,
+    "2_star_reviews": 2,
+    "3_star_reviews": 6,
+    "4_star_reviews": 13,
+    "5_star_reviews": 654
+  },
+  "positiveReviewShare": 98,
+  "latestObservedReviewAt": "2026-05-28T20:55:31.660Z",
+  "sampledReviewCount": 5,
+  "locations": [
+    {
+      "placeId": "ChIJ-xUpGkf1UocRS1V-iOF4jOs",
+      "cid": "16973074005705512267",
+      "address": "47 S Orange St A8, Salt Lake City, UT 84116, United States",
+      "latitude": 40.7690678,
+      "longitude": -111.9433995,
+      "rating": 4.9,
+      "reviews": 684
+    }
+  ],
+  "companyMetrics": {
+    "employeeCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualRevenue": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "annualProfit": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "foundedYear": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    },
+    "branchCount": {
+      "value": null,
+      "source": null,
+      "confidence": null
+    }
+  },
+  "evidence": [
+    "Google Business Profile: claimed",
+    "Online booking or request link: detected",
+    "Four- and five-star review share: 98%",
+    "Latest sampled Google review: 2026-06-16T21:56:18.713Z",
+    "Latest sampled Google review: 2026-05-28T20:55:31.660Z"
+  ],
+  "locationsObserved": 1,
+  "digitalMaturity": {
+    "score": 72,
+    "band": "Established",
+    "version": 1,
+    "components": [
+      {
+        "label": "Mobile performance",
+        "points": 4,
+        "maximum": 20,
+        "evidence": "Lighthouse 43/100"
+      },
+      {
+        "label": "Accessibility",
+        "points": 6,
+        "maximum": 10,
+        "evidence": "Lighthouse 80/100"
+      },
+      {
+        "label": "Search readiness",
+        "points": 12,
+        "maximum": 12,
+        "evidence": "Lighthouse 100/100"
+      },
+      {
+        "label": "Technical best practices",
+        "points": 5,
+        "maximum": 8,
+        "evidence": "Lighthouse 73/100"
+      },
+      {
+        "label": "Structured data",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "Detected"
+      },
+      {
+        "label": "Measurement stack",
+        "points": 8,
+        "maximum": 8,
+        "evidence": "GA4"
+      },
+      {
+        "label": "Online customer action",
+        "points": 10,
+        "maximum": 10,
+        "evidence": "Booking link detected"
+      },
+      {
+        "label": "Business profile ownership",
+        "points": 4,
+        "maximum": 4,
+        "evidence": "Google profile claimed"
+      },
+      {
+        "label": "Mobile foundation",
+        "points": 6,
+        "maximum": 6,
+        "evidence": "Responsive viewport detected"
+      },
+      {
+        "label": "Site maintenance",
+        "points": 2,
+        "maximum": 4,
+        "evidence": "1 broken of 50 checked"
+      }
+    ],
+    "calculatedAt": "2026-08-22T15:37:09.334Z"
+  }
+}

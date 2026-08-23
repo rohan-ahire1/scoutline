@@ -1,0 +1,162 @@
+{
+  "id": "lead-mt4jkg68-16-cdc80c",
+  "company": "MK Power",
+  "category": "Electrician",
+  "location": "50 S Main St, Salt Lake City, UT 84101, United States",
+  "website": "www.mkpower.com",
+  "address": "50 S Main St, Salt Lake City, UT 84101, United States",
+  "phone": "+1 801-691-7697",
+  "email": "Not collected",
+  "rating": 5,
+  "reviews": 100,
+  "collectedAt": "8/22/2026, 9:07:09 PM",
+  "sourceUrl": "https://www.google.com/maps/place/MK%20Power/data=!4m7!3m6!1s0x8752f5bafe5e251d:0xee762c3a6710a818!8m2!3d40.7683570!4d-111.8917453!16s%2Fg%2F11mvg0m8__!19sChIJHSVe_rr1UocRGKgQZzosdu4?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:32:43.742Z",
+    "placeId": "ChIJHSVe_rr1UocRGKgQZzosdu4",
+    "cid": "17182970057627576344",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "7 AM–7 PM",
+      "Friday": "7 AM–7 PM",
+      "Thursday": "7 AM–7 PM",
+      "Wednesday": "7 AM–7 PM",
+      "Tuesday": "7 AM–7 PM",
+      "Monday": "7 AM–7 PM"
+    },
+    "open24Hours": false,
+    "services": [],
+    "categories": [
+      "Electrician"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": false,
+    "reservationLink": null,
+    "photosObserved": null,
+    "distribution": {
+      "1_star_reviews": 1,
+      "2_star_reviews": 0,
+      "3_star_reviews": 0,
+      "4_star_reviews": 1,
+      "5_star_reviews": 98
+    },
+    "positiveReviewShare": 99,
+    "latestObservedReviewAt": "2026-07-26T12:56:45.965Z",
+    "sampledReviewCount": 5,
+    "locations": [
+      {
+        "placeId": "ChIJHSVe_rr1UocRGKgQZzosdu4",
+        "cid": "17182970057627576344",
+        "address": "50 S Main St, Salt Lake City, UT 84101, United States",
+        "latitude": 40.768357,
+        "longitude": -111.8917453,
+        "rating": 5,
+        "reviews": 100
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Four- and five-star review share: 99%",
+      "Latest sampled Google review: 2026-07-26T12:56:45.965Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 13,
+      "band": "Foundational",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 2,
+          "maximum": 10,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 2,
+          "maximum": 12,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "No analytics signal detected"
+        },
+        {
+          "label": "Online customer action",
+          "points": 0,
+          "maximum": 10,
+          "evidence": "No booking or online-estimate signal"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 0,
+          "maximum": 6,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 0,
+          "maximum": 4,
+          "evidence": "Links not checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.344Z"
+    }
+  }
+}

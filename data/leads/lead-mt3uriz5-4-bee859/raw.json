@@ -1,0 +1,164 @@
+{
+  "id": "lead-mt3uriz5-4-bee859",
+  "company": "Green Salt Lake Landscaping",
+  "category": "Landscaper",
+  "location": "1594 W 400 S, Salt Lake City, UT 84104, United States",
+  "website": "www.gslscape.com",
+  "address": null,
+  "phone": "+1 801-793-3045",
+  "email": "Not collected",
+  "rating": 5,
+  "reviews": 29,
+  "collectedAt": "8/22/2026, 9:32:49 AM",
+  "sourceUrl": "https://www.google.com/maps/place/Green%20Salt%20Lake%20Landscaping/data=!4m7!3m6!1s0x647323272895c8ab:0x509e40f77e1fe03e!8m2!3d40.7610011!4d-111.9351314!16s%2Fg%2F11z1t8nmkb!19sChIJq8iVKCcjc2QRPuAffvdAnlA?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:32:03.858Z",
+    "placeId": "ChIJq8iVKCcjc2QRPuAffvdAnlA",
+    "cid": "5809152001071636542",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "8 am–7 pm",
+      "Saturday": "8 am–7 pm",
+      "Friday": "8 am–7 pm",
+      "Thursday": "8 am–7 pm",
+      "Wednesday": "8 am–7 pm",
+      "Tuesday": "8 am–7 pm",
+      "Monday": "8 am–7 pm"
+    },
+    "open24Hours": false,
+    "services": [
+      "Wheelchair-accessible car park"
+    ],
+    "categories": [
+      "Landscaper"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": false,
+    "reservationLink": null,
+    "photosObserved": 2,
+    "distribution": {
+      "1_star_reviews": 0,
+      "2_star_reviews": 0,
+      "3_star_reviews": 0,
+      "4_star_reviews": 1,
+      "5_star_reviews": 28
+    },
+    "positiveReviewShare": 100,
+    "latestObservedReviewAt": "2026-05-09T19:10:48.664Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJq8iVKCcjc2QRPuAffvdAnlA",
+        "cid": "5809152001071636542",
+        "address": "1594 W 400 S, Salt Lake City, UT 84104, United States",
+        "latitude": 40.7610011,
+        "longitude": -111.9351314,
+        "rating": 5,
+        "reviews": 29
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Four- and five-star review share: 100%",
+      "Latest sampled Google review: 2026-05-09T19:10:48.664Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 89,
+      "band": "Advanced",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 20,
+          "maximum": 20,
+          "evidence": "Lighthouse 89/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Lighthouse 91/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 12,
+          "maximum": 12,
+          "evidence": "Lighthouse 100/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Lighthouse 96/100"
+        },
+        {
+          "label": "Structured data",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 0,
+          "maximum": 10,
+          "evidence": "No booking or online-estimate signal"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "0 broken of 34 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:38:42.566Z"
+    }
+  }
+}

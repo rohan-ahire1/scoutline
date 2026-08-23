@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "TOR Electric shows an Established digital presence (Digital Maturity 62/100) with strong reputation signals (4.9 stars, 122 reviews, 98% 4-5 star) and solid SEO/booking foundations. Audit isolates addressable website issues: mobile performance is Poor at 45/100 with LCP 25.2s, rather than site-wide failure (SEO 92/100, HTTPS true, 0/6 broken links).",
+  "topOpportunities": [
+    {
+      "title": "Fix Poor mobile performance - LCP 25.2s blocking above-fold render",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 45/100; largest contentful paint: 25155ms (25.2s); firstContentfulPaintMs: 10249ms; interactiveMs: 25178ms; totalBlockingTimeMs: 435ms",
+      "whyItMatters": "Mobile visitors currently wait 25.2s for largest content and 10.2s for first paint; faster load may reduce abandonment before seeing CTAs/booking link, though actual visitor drop-off was not measured.",
+      "recommendation": "Prioritize Shopify performance triage: defer unused JavaScript (Est savings of 515 KiB), reduce JavaScript execution time (1.9s), minimize main-thread work (5.0s), and compress/resize homepage images. Re-test Lighthouse on https://tor-electric.com/ to validate LCP <2.5s."
+    },
+    {
+      "title": "Complete image alt text and related accessibility fixes",
+      "severity": "Medium",
+      "evidence": "Image alt-text coverage: 25% on homepage with Images: 8; Lighthouse failure: Image elements do not have [alt] attributes",
+      "whyItMatters": "With only 25% alt coverage and Lighthouse accessibility 84/100, screen-reader users and image search may miss context; improving alt text can broaden accessibility without changing design.",
+      "recommendation": "Add descriptive alt text to all 8 homepage images (especially service/hero images) and fix related accessibility flags: heading-order, aria-hidden focus, and frame/iframe titles. Keep 25% baseline to measure improvement to 100%."
+    },
+    {
+      "title": "Expand brief 58-character meta description to clarify offer",
+      "severity": "Medium",
+      "evidence": "Meta description length: 58 characters; description: Trusted Electricians Bringing Unparalleled Service to Utah; Page title: Tor Electric – TOR-Electric",
+      "whyItMatters": "Current 58-character description is too brief to fully explain the offer in search results; a clearer description may improve click-through from already-strong SEO 92/100 foundation.",
+      "recommendation": "Expand homepage meta description to 140-160 characters that states core services (EV charger, panel/meter upgrades), service area (Wasatch Front/Salt Lake City), and CTA, while keeping existing title. Use GA4 to monitor CTR after change."
+    },
+    {
+      "title": "Add missing structured data for Electrician/LocalBusiness",
+      "severity": "Medium",
+      "evidence": "Structured data: not found; JSON-LD structured data blocks: 0; hasSchema: false",
+      "whyItMatters": "Zero JSON-LD blocks means search engines lack explicit entity data; adding schema could support eligibility for rich results and knowledge panel consistency alongside claimed Google Business Profile.",
+      "recommendation": "Add JSON-LD LocalBusiness/Electrician schema (name, address 1068 E 1300 S Salt Lake City, phone, areaServed, services, AggregateRating 4.9/122) plus FAQ schema for EV/panel pages. Validate with Google Rich Results Test."
+    }
+  ],
+  "strengths": [
+    "Strong reputation foundation: 4.9 stars from 122 reviews with 98% four- and five-star share and latest sampled review 2026-07-27 - indicates active demand and trust to convert site visitors.",
+    "Strong search and technical foundation to build on: Lighthouse SEO 92/100, responsive viewport detected, HTTPS true, 0 broken of 6 checked, sitemapPageCount 5 and crawled 6 pages with GA4 measurement stack.",
+    "Clear conversion path already present: Online booking or request link detected, 8 homepage CTA phrases detected, hasPhone true, and 2 forms on homepage / 3 forms on /pages/contact.",
+    "No major site errors: Homepage returned HTTP 200 at https://tor-electric.com/, canonical true, and internal links observed on homepage: 7 supporting navigation."
+  ],
+  "unknowns": [
+    "Actual mobile vs desktop traffic share and booking conversion rate - GA4 detected but behavior not provided",
+    "Whether 25.2s LCP is consistent across other pages - only https://tor-electric.com/ was Lighthouse-tested",
+    "Current decision-maker for website/Shopify changes and budget/timeline",
+    "Image file sizes, app/script bloat specifics beyond Est savings of 515 KiB unused JavaScript and Est savings of 55 KiB unused CSS",
+    "Competitor positioning for EV charger/panel upgrades in Wasatch Front - not in packet"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Review threshold, 75.00 needed to pursue.",
+  "outreachAngles": [
+    "Mobile site took 25.2s to show largest content on the 2026-08-22 Lighthouse test - quick fix to load speed.",
+    "Homepage has 8 images but only 25% have alt text - accessibility and Google Images visibility.",
+    "No structured data found on homepage - add Electrician/LocalBusiness schema to support rich results."
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02a24-189d-71b2-b3d4-e129d2cbabb9",
+    "generatedAt": "2026-08-22T15:43:23.925Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

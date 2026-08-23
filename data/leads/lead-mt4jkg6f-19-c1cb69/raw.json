@@ -1,0 +1,167 @@
+{
+  "id": "lead-mt4jkg6f-19-c1cb69",
+  "company": "Triple J Landscaping",
+  "category": "Landscaper",
+  "location": "Salt Lake City, Utah",
+  "website": "triplejlandscaping.net",
+  "address": "Salt Lake City, Utah",
+  "phone": "+1 385-227-5475",
+  "email": "Not collected",
+  "rating": 5,
+  "reviews": 240,
+  "collectedAt": "8/22/2026, 9:07:09 PM",
+  "sourceUrl": "https://www.google.com/maps/place/Triple%20J%20Landscaping/data=!4m7!3m6!1s0x8752f58611a39d43:0xb26feca9cbcaf1f0!8m2!3d40.6680085!4d-111.9067020!16s%2Fg%2F11mb0g8m14!19sChIJQ52jEYb1UocR8PHKy6nsb7I?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:33:10.259Z",
+    "placeId": "ChIJQ52jEYb1UocR8PHKy6nsb7I",
+    "cid": "12857755675178758640",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "8 AM–5 PM",
+      "Friday": "7 AM–5 PM",
+      "Thursday": "7 AM–5 PM",
+      "Wednesday": "7 AM–5 PM",
+      "Tuesday": "7 AM–5 PM",
+      "Monday": "7 AM–5 PM"
+    },
+    "open24Hours": false,
+    "services": [
+      "Online estimates",
+      "LGBTQ+ friendly"
+    ],
+    "categories": [
+      "Landscaper",
+      "Service establishment"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": true,
+    "reservationLink": null,
+    "photosObserved": 5,
+    "distribution": {
+      "1_star_reviews": 1,
+      "2_star_reviews": 0,
+      "3_star_reviews": 0,
+      "4_star_reviews": 1,
+      "5_star_reviews": 238
+    },
+    "positiveReviewShare": 100,
+    "latestObservedReviewAt": "2026-07-14T00:52:30.670Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJQ52jEYb1UocR8PHKy6nsb7I",
+        "cid": "12857755675178758640",
+        "address": "Salt Lake City, Utah",
+        "latitude": 40.6680085,
+        "longitude": -111.906702,
+        "rating": 5,
+        "reviews": 240
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Online estimates: offered",
+      "Four- and five-star review share: 100%",
+      "Latest sampled Google review: 2026-07-14T00:52:30.670Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 24,
+      "band": "Foundational",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 2,
+          "maximum": 10,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 2,
+          "maximum": 12,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "No analytics signal detected"
+        },
+        {
+          "label": "Online customer action",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Online estimates offered"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 0,
+          "maximum": 6,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 0,
+          "maximum": 4,
+          "evidence": "Links not checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.351Z"
+    }
+  }
+}

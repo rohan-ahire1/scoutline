@@ -1,6 +1,9 @@
 node_modules/
 dist/
-data/
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
+data/backups/
 .DS_Store
 *.local
 .env

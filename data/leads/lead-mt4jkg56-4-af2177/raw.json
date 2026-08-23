@@ -1,0 +1,163 @@
+{
+  "id": "lead-mt4jkg56-4-af2177",
+  "company": "TOR Electric",
+  "category": "Electrician",
+  "location": "1068 E 1300 S, Salt Lake City, UT 84105, United States",
+  "website": "tor-electric.com",
+  "address": "1068 E 1300 S, Salt Lake City, UT 84105, United States",
+  "phone": "+1 801-656-7451",
+  "email": "Not collected",
+  "rating": 4.9,
+  "reviews": 122,
+  "collectedAt": "8/22/2026, 9:07:09 PM",
+  "sourceUrl": "https://www.google.com/maps/place/TOR%20Electric/data=!4m7!3m6!1s0x87526318ed4080df:0x66dfc301b2bf1244!8m2!3d40.7414750!4d-111.8604120!16s%2Fg%2F11rtyh689y!19sChIJ34BA7RhjUocRRBK_sgHD32Y?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:32:20.678Z",
+    "placeId": "ChIJ34BA7RhjUocRRBK_sgHD32Y",
+    "cid": "7412857923736375876",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "8 am–8 pm",
+      "Saturday": "8 am–8 pm",
+      "Friday": "8 am–8 pm",
+      "Thursday": "8 am–8 pm",
+      "Wednesday": "8 am–8 pm",
+      "Tuesday": "8 am–8 pm",
+      "Monday": "8 am–8 pm"
+    },
+    "open24Hours": false,
+    "services": [],
+    "categories": [
+      "Electrician"
+    ],
+    "onlineBooking": true,
+    "onlineEstimates": false,
+    "reservationLink": "https://book.housecallpro.com/book/TOR-Electric/9b31e55630a549e8a63067b114a0dfb6?v2=true&lead_source=google&merchant_id=b3b82faf-8165-46fa-b135-37f54825364e&rwg_token=AE37R_ggHTYOgZ0Iuz2uIUq655BzF8syspHJBbMK59yAzY_JVBbBow3X0id5_WcB1yboPFiQ0jZSBKQPbfFuA1iSgbAU2ivnYw%3D%3D",
+    "photosObserved": 4,
+    "distribution": {
+      "1_star_reviews": 1,
+      "2_star_reviews": 1,
+      "3_star_reviews": 1,
+      "4_star_reviews": 0,
+      "5_star_reviews": 119
+    },
+    "positiveReviewShare": 98,
+    "latestObservedReviewAt": "2026-07-27T22:53:09.943Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJ34BA7RhjUocRRBK_sgHD32Y",
+        "cid": "7412857923736375876",
+        "address": "1068 E 1300 S, Salt Lake City, UT 84105, United States",
+        "latitude": 40.741475,
+        "longitude": -111.860412,
+        "rating": 4.9,
+        "reviews": 122
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Online booking or request link: detected",
+      "Four- and five-star review share: 98%",
+      "Latest sampled Google review: 2026-07-27T22:53:09.943Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 62,
+      "band": "Established",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 45/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 6,
+          "maximum": 10,
+          "evidence": "Lighthouse 84/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 12,
+          "maximum": 12,
+          "evidence": "Lighthouse 92/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 2,
+          "maximum": 8,
+          "evidence": "Lighthouse 54/100"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Booking link detected"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "0 broken of 6 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:39:17.438Z"
+    }
+  }
+}

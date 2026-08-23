@@ -1,0 +1,65 @@
+{
+  "status": "Completed",
+  "summary": "SameDay Heating & Air, Plumbing, and Electrical (samedayutah.com) is an Established (Digital Maturity 77/100) active business in Salt Lake City with a very strong public profile (4.8 stars, 10157 reviews) and solid SEO/Accessibility foundations (SEO 92, Accessibility 95, structured data found, GA4 detected). Deterministic audit flags Mobile performance as the main issue: Lighthouse mobile performance: 35/100; largest contentful paint: 15.0s (LCP 14984ms, TBT 2911ms, Interactive 15273ms). One broken internal link was found across 50 checked, and the homepage shows 17 CTA phrases and 86 internal links suggesting potential simplification opportunities.",
+  "topOpportunities": [
+    {
+      "title": "Fix mobile performance bottleneck (LCP 15.0s)",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 35/100; largest contentful paint: 15.0s",
+      "whyItMatters": "Measured Lighthouse mobile performance is 35/100 with LCP 14984ms, Speed Index 9333ms, and Interactive 15273ms. On an emergency-services site with Online booking detected, slow mobile load is a direct friction point. Evidence is high-confidence (Confidence 95, audit Completed 2026-08-22).",
+      "recommendation": "Prioritize fixing Largest Contentful Paint and main-thread load. Audit points to 7.7 s main-thread work and 6.9 s JavaScript execution time, 142 KiB unused JavaScript, and render-blocking requests (est savings 220 ms). Implications could include faster mobile first impression if LCP improves, but actual conversion impact not measured in packet."
+    },
+    {
+      "title": "Repair broken scheduling link",
+      "severity": "Medium",
+      "evidence": "Broken internal links: 1 of 50 checked - https://samedayutah.com/schedule status 404",
+      "whyItMatters": "Site maintenance scored 2 of 4 due to 1 broken of 50 checked. /schedule is likely a high-intent conversion path for an HVAC contractor offering Online estimates.",
+      "recommendation": "Fix or redirect /schedule (404) and re-check the remaining links (only 50 of large site checked, crawl truncated at 10 pages). Verify booking/scheduling flow since online booking link is detected separately."
+    },
+    {
+      "title": "Streamline homepage CTAs and navigation density",
+      "severity": "Medium",
+      "evidence": "Homepage CTA phrases detected: 17 and Internal links observed on homepage: 86 with Image alt-text coverage: 93%",
+      "whyItMatters": "17 CTAs and 86 internal links on https://samedayutah.com/ with 0 forms and 0 inputCount on homepage suggests CTAs may be links/buttons to other pages rather than inline conversion. Simplifying could make primary booking/call actions more prominent.",
+      "recommendation": "Audit homepage CTAs and internal link density for clarity and prioritization. Consolidate primary actions (e.g., emergency call vs. booking) and ensure alt-text reaches 100% (currently 93% across 14 images)."
+    },
+    {
+      "title": "Address Best Practices and link accessibility flags",
+      "severity": "Low",
+      "evidence": "Links do not have descriptive text: 1 link found and Uses deprecated APIs: 3 warnings found and Elements with an ARIA [role] that require children are missing required children",
+      "whyItMatters": "Best Practices 81/100 and specific failures (link-text, deprecations, aria-required-children) are quick wins that improve maintainability and screen-reader experience, even though overall accessibility already scores high.",
+      "recommendation": "Fix Lighthouse Best Practices/Accessibility failures: add descriptive text to 1 link, address 3 deprecated API warnings, and fix ARIA required children. These drive Best Practices 81/100 down despite Accessibility 95/100."
+    }
+  ],
+  "strengths": [
+    "Public reputation: 4.8 stars with 10157 reviews and 95% four- and five-star review share",
+    "Search readiness is strong: Lighthouse SEO 92/100, Structured data: found, Page title: Trusted HVAC, Plumbing & Electrical Repair in Salt Lake City",
+    "Accessibility 95/100 and HTTPS true with Responsive viewport detected",
+    "Measurement stack present: GA4 detected and Online booking or request link: detected with Online estimates: offered",
+    "Technical foundation: WordPress + Elementor, 10 same-site pages crawled with generally correct H1s (1 per page)"
+  ],
+  "unknowns": [
+    "Actual mobile conversion rate, call volume, or booking completion rate - not in packet",
+    "Identity and accuracy of the single broken /schedule link destination (whether still linked from navigation/CTAs) - only 50 links checked of 86+ homepage links, crawl truncated",
+    "Cause of high word counts (12k-14k words per page across 10 pages crawled) and whether content is duplicated via templates",
+    "Real-user performance data (CrUX) vs synthetic Lighthouse 35; hosting/CDN costs not provided",
+    "Business metrics: employeeCount, annualRevenue, annualProfit, foundedYear, branchCount all value null"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "OpportunityScore 53 with Confidence 95 indicates moderate, measurable opportunity. MainIssue is Mobile performance with Lighthouse 35/100 and LCP 15.0s on an otherwise Established site (Digital Maturity 77, 4.8 stars / 10157 reviews, SEO 92, Accessibility 95). Issues appear addressable (performance, broken link, CTA density) but not severe enough for automatic Pursue.",
+  "outreachAngles": [
+    "Website performance gap noted in audit (Lighthouse mobile 35/100, LCP 15.0s) - speed optimization for samedayutah.com",
+    "Quick site maintenance fix - 1 broken internal link found in 50 checked (/schedule 404)",
+    "Homepage clarity - 17 CTAs and 86 internal links observed on homepage"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a027ab-1f4b-7823-8ea2-55b46006ee3d",
+    "generatedAt": "2026-08-22T04:12:01.399Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

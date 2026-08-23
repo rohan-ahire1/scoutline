@@ -1,0 +1,65 @@
+{
+  "status": "Completed",
+  "summary": "Black Diamond Experts (HVAC contractor, 2001 Warm Springs Rd Suite B, Salt Lake City, UT - bdexperts.com) shows Established digital maturity (69/Established) with strong trust (4.8/6482, 96% positive) and functional foundations (WordPress/Elementor/GA4, structured data found, HTTPS true). The deterministic audit flags Mobile performance as main issue: Lighthouse mobile performance 46/100 with largest contentful paint 30.6s (5249ms FCP, 30675ms Interactive). The first website form asks for many details at once (34 inputs). Confidence 89, OpportunityScore 61.",
+  "topOpportunities": [
+    {
+      "title": "Mobile performance is Poor - 30.6s LCP blocking first impression",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 46/100; largest contentful paint: 30.6s (30628ms) and Lighthouse mobile performance: 46/100; largest contentful paint: 30.6s + firstContentfulPaintMs 5249, interactiveMs 30675, totalBlockingTimeMs 507",
+      "whyItMatters": "Measured Poor mobileQuality with 46/100 performance; LCP 30.6s and Time to Interactive 30.7s mean mobile visitors wait >30s to see/interact despite responsive viewport detected.",
+      "recommendation": "Prioritize mobile speed diagnostics focused on LCP element, unused JavaScript (Est savings of 250 KiB), and main-thread work (2.8 s) - all failures logged at https://bdexperts.com/. Possibility, not measured outcome, faster load could reduce friction for on-the-go HVAC/plumbing searchers."
+    },
+    {
+      "title": "Heavy homepage form (34 inputs) increases completion friction",
+      "severity": "High",
+      "evidence": "Form field count on homepage: 34 and homepageSignals inputCount 34 with forms 2; crawledPages show inputCount 34 on '/' and 34 on '/contact-us/customer-service/' and 17 on 8 service pages",
+      "whyItMatters": "Deterministic finding: 'The first website form asks for many details at once.' With 34 inputs on homepage, even interested visitors may abandon on mobile.",
+      "recommendation": "Test a shortened primary booking path (e.g., name/phone/zip/issue) while keeping full 34-field form as secondary. Keep Online booking or request link: detected flow intact."
+    },
+    {
+      "title": "Accessibility gaps despite 85/100 score",
+      "severity": "Medium",
+      "evidence": "Lighthouse accessibility 85/100 with failures: 'button, link, and menuitem elements do not have accessible names', 'Buttons do not have an accessible name', 'Background and foreground colors do not have a sufficient contrast ratio', 'Links do not have a discernible name', 'Heading elements are not in a sequentially-descending order'",
+      "whyItMatters": "BestPractices 73/100 and specific failures (contrast, button/link names) suggest some users and assistive tech may struggle, which can also reduce form completions.",
+      "recommendation": "Fix named high-impact accessibility failures first: add accessible names to buttons/links, correct contrast ratios, fix heading order. No new content needed, supports both usability and search readiness."
+    },
+    {
+      "title": "Reduce unused JS/CSS and main-thread work on WordPress/Elementor",
+      "severity": "Medium",
+      "evidence": "Lighthouse failures: 'Reduce JavaScript execution time 1.6 s', 'Reduce unused JavaScript Est savings of 250 KiB', 'Reduce unused CSS Est savings of 32 KiB', 'Minimize main-thread work 2.8 s' and detectedStack WordPress + Elementor",
+      "whyItMatters": "These are the exact Lighthouse remediation signals driving the 46/100 score; addressing them is prerequisite to improving LCP and Interactive without redesign.",
+      "recommendation": "Audit WordPress/Elementor plugin and asset loading on https://bdexperts.com/ to defer/remove unused JS/CSS and reduce JS execution. Track GA4 after changes; no traffic assumptions needed."
+    }
+  ],
+  "strengths": [
+    "Reputation: 4.8 stars across 6482 reviews with 96% four- and five-star share and latest sampled review 2026-08-06T22:18:31.881Z",
+    "Digital foundation: Structured data found, GA4 detected, responsive viewport true, HTTPS true, 100% image alt-text coverage",
+    "Discoverability: Page title 'Black Diamond Experts | Plumbing, HVAC & Electric In SLC' with canonical true and 1 H1Count on homepage",
+    "Actionability: Online booking or request link detected and Online estimates offered with 9 CTA phrases detected and hasPhone true",
+    "Maintenance: 0 broken of 50 links checked across 10 pages crawled (truncated)"
+  ],
+  "unknowns": [
+    "Traffic volume and conversion rate - not in packet",
+    "Actual customer device mix and completion rate for 34-input form - not measured",
+    "Hosting costs, decision-maker names, or business metrics employeeCount/annualRevenue - value null in packet",
+    "SitemapPageCount null and crawl truncated at 10 pages / 50 links - full site breadth unknown",
+    "Impact of performance fixes on bookings - not measured, only possibility"
+  ],
+  "qualificationRecommendation": "Pursue",
+  "qualificationRationale": "Established business with strong demand signals (4.8/6482 reviews, 96% positive share, claimed profile, online booking/estimates detected) but clear addressable friction: Lighthouse mobile performance 46/100 with 30.6s LCP. High confidence audit (89) with solid foundations (100% alt coverage, structured data found, HTTPS true, 0 broken of 50 checked). OpportunityScore 61 suggests Review to Pursue range - meaningful performance and form-simplification work without needing to build core digital成熟度",
+  "outreachAngles": [
+    "Website performance audit measured mobile Lighthouse 46/100 with 30.6s LCP at https://bdexperts.com/",
+    "Homepage form observed with 34 inputs across 2 forms - opportunity to test shorter booking flow",
+    "Noted strong reputation to protect: 6482 reviews at 4.8 and 96% 4-5 star share with online booking already active"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02a27-5b8c-7800-a8e8-3cca1428fe75",
+    "generatedAt": "2026-08-22T15:46:57.680Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

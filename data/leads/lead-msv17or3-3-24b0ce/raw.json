@@ -1,0 +1,169 @@
+{
+  "id": "lead-msv17or3-3-24b0ce",
+  "company": "Shingle Pro Roofing",
+  "category": "Roofing contractor",
+  "location": "323 Gregson Ave S, Salt Lake City, UT 84115, United States",
+  "website": "www.shingleproroofing.com",
+  "address": null,
+  "phone": "+1 801-567-9093",
+  "email": "Not collected",
+  "rating": 5,
+  "reviews": 587,
+  "collectedAt": "8/16/2026, 5:23:25 AM",
+  "sourceUrl": "https://www.google.com/maps/place/Shingle%20Pro%20Roofing/data=!4m7!3m6!1s0x87528aab982b7d71:0x89c27d21a43206c0!8m2!3d40.7036466!4d-111.9005955!16s%2Fg%2F1tngqs66!19sChIJcX0rmKuKUocRwAYypCF9wok?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:33:15.675Z",
+    "placeId": "ChIJcX0rmKuKUocRwAYypCF9wok",
+    "cid": "9926634112120129216",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "6 am–10 pm",
+      "Saturday": "6 am–10 pm",
+      "Friday": "6 am–10 pm",
+      "Thursday": "6 am–10 pm",
+      "Wednesday": "6 am–10 pm",
+      "Tuesday": "6 am–10 pm",
+      "Monday": "6 am–10 pm"
+    },
+    "open24Hours": false,
+    "services": [
+      "Wheelchair-accessible car park",
+      "On-site services",
+      "No online estimates"
+    ],
+    "categories": [
+      "Roofing contractor",
+      "Roofing Service"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": true,
+    "reservationLink": null,
+    "photosObserved": 8,
+    "distribution": {
+      "1_star_reviews": 3,
+      "2_star_reviews": 0,
+      "3_star_reviews": 1,
+      "4_star_reviews": 3,
+      "5_star_reviews": 581
+    },
+    "positiveReviewShare": 99,
+    "latestObservedReviewAt": "2026-07-29T21:49:20.910Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJcX0rmKuKUocRwAYypCF9wok",
+        "cid": "9926634112120129216",
+        "address": "323 Gregson Ave S, Salt Lake City, UT 84115, United States",
+        "latitude": 40.7036466,
+        "longitude": -111.9005955,
+        "rating": 5,
+        "reviews": 588
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Four- and five-star review share: 99%",
+      "Latest sampled Google review: 2026-07-21T18:19:26.791Z",
+      "Online estimates: offered",
+      "Latest sampled Google review: 2026-07-29T21:49:20.910Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 86,
+      "band": "Advanced",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 12,
+          "maximum": 20,
+          "evidence": "Lighthouse 59/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Lighthouse 95/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 12,
+          "maximum": 12,
+          "evidence": "Lighthouse 100/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 5,
+          "maximum": 8,
+          "evidence": "Lighthouse 73/100"
+        },
+        {
+          "label": "Structured data",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Online estimates offered"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 2,
+          "maximum": 4,
+          "evidence": "3 broken of 35 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.355Z"
+    }
+  }
+}

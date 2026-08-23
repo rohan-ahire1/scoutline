@@ -1,0 +1,63 @@
+{
+  "status": "Completed",
+  "summary": "Utah Wildflower Company is an Established (Digital Maturity 72) landscaper with strong demand signals — 4.8 stars from 71 reviews, claimed Google profile, and 10 detailed service pages — but measured site shows a clear performance bottleneck (mobile 56/100, 8.6s largest contentful paint, 16650ms interactive) and no online conversion path (0 forms, Online booking false). Priorities are speeding mobile load, adding a quote/estimate flow, tightening title/search clarity, and fixing accessibility gaps flagged in Lighthouse.",
+  "topOpportunities": [
+    {
+      "title": "Mobile load is bottlenecking otherwise-strong SEO foundation — 56/100 with 8.6s LCP and 16650ms time",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 56/100; largest contentful paint: 8.6s",
+      "whyItMatters": "Homepage has 15 images, firstContentfulPaintMs 3671 and speedIndexMs 3702; even with SEO 92/100 and claimed profile, slow paint can reduce engagement on water-saving design queries.",
+      "recommendation": "Compress hero images, defer unused JavaScript (Lighthouse flags Est savings of 525 KiB), and audit Elementor/Wix script load. Target is stabilizing LCP before adding heavier conversion elements."
+    },
+    {
+      "title": "No measurable online action path despite \"Get your free design quote\" intent",
+      "severity": "High",
+      "evidence": "Homepage forms: 0; inputCount: 0 - crawled 10 same-site pages and checked 26 internal links found 0 forms site-wide",
+      "whyItMatters": "Business profile shows Online booking false and Online estimates false with Online customer action points 0/10; all 10 crawled pages show 0 forms, so quote intent in description cannot be captured on-site.",
+      "recommendation": "Add a single primary quote flow: sticky header \"Get free design quote\" + short form (name/phone/address/service) routed to existing hasPhone true / hasEmail true. Track as GA4 conversion since measurement stack already shows GA4."
+    },
+    {
+      "title": "Search clarity flagged despite strong title — tighten homepage title/H1 alignment",
+      "severity": "Medium",
+      "evidence": "IssueDetail: The homepage title is missing or outside a useful descriptive range. - alternative measured fact Homepage title length: 70 characters with Page title: Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower",
+      "whyItMatters": "SEO score is 92/100 and description already states \"eco-friendly xeriscaping and native landscape design in Salt Lake City and across the Wasatch Front,\" but deterministic finding calls title out of range, risking clarity for core xeriscaping searches.",
+      "recommendation": "Keep title within useful range and front-load primary service + geo in plain language (e.g., Xeriscaping | Salt Lake City) and ensure one H1 per page — audit flagged heading-order and 2 pages with h1Count 2."
+    },
+    {
+      "title": "Accessibility and usability nits — contrast, link names, touch targets",
+      "severity": "Medium",
+      "evidence": "Lighthouse accessibility: 88/100 with failures: Background and foreground colors do not have a sufficient contrast ratio. and Links do not have a discernible name",
+      "whyItMatters": "Image alt-text coverage: 87% is good but not full; with 3 CTA phrases detected and hasPhone true, clearer links and targets help mobile users reach quote action.",
+      "recommendation": "Fix flagged contrast ratios, add discernible names to links (6 links found with non-descriptive text), correct heading-order, and increase touch target spacing — small fixes that lift accessibility without redesign."
+    }
+  ],
+  "strengths": [
+    "Reputation strength: publicRating 4.8 from 71 reviews with 96% four- and five-star share and Latest sampled Google review: 2026-07-25T16:17:22.914Z",
+    "Search foundation: Lighthouse SEO 92/100 with Page title: Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower, Homepage title length: 70 characters, and Structured data: found",
+    "Site health and maintenance: Homepage returned HTTP 200, 0 broken of 26 checked, HTTPS true, viewport true, and canonical true",
+    "Content depth and navigation: 10 same-site pages crawled with wordCount 3182 on homepage and Internal links observed on homepage: 25"
+  ],
+  "unknowns": [
+    "Whether quote requests currently handled by phone/email (hasPhone true, hasEmail true) are tracked in GA4 as conversions",
+    "Actual search rankings/traffic for xeriscaping terms — no traffic data in packet",
+    "Reason for sitemapPageCount 2 vs 10 pages crawled — sitemap completeness unknown",
+    "Capacity/pricing for xeriscaping projects — no employeeCount, revenue, or service pricing data"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Opportunity Score 52/100 with 95% confidence = Review band. Strengths: strong reputation (4.8 stars, 71 reviews, 96% 4-5 star share) and solid technical foundation (SEO 92/100, structured data: found, 0 broken of 26 checked, HTTPS true, responsive viewport). Limiters: measured mobile performance bottleneck (56/100, 8.6s largest contentful paint) and no measurable online customer action (0 forms, 0 inputCount, Online booking false, Online estimates false) despite strong search content. Best fit:裁",
+  "outreachAngles": [
+    "4.8 stars from 71 reviews and 96% 4-5 star share — add that proof near your \"Get your free design quote\" messaging",
+    "Page title \"Salt Lake City Xeriscaping & Sustainable Landscaping | Utah Wildflower\" is 70 characters — opportunity to tighten search clarity for xeriscaping terms",
+    "Website shows 10 pages crawled with detailed service pages — structure is there to add online booking/estimate flow"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02a23-0aa7-78d0-b40c-d3e1715f632e",
+    "generatedAt": "2026-08-22T15:42:14.813Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

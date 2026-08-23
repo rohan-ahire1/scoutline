@@ -1,0 +1,167 @@
+{
+  "id": "lead-msv17or2-1-b5787d",
+  "company": "Nelson Roofing Salt Lake City",
+  "category": "Roofing contractor",
+  "location": "26 S Rio Grande St #2072, Salt Lake City, UT 84101, United States",
+  "website": "nelsonroofingslc.com",
+  "address": null,
+  "phone": "+1 801-845-3363",
+  "email": "Not collected",
+  "rating": 5,
+  "reviews": 182,
+  "collectedAt": "8/16/2026, 5:23:25 AM",
+  "sourceUrl": "https://www.google.com/maps/place/Nelson%20Roofing%20Salt%20Lake%20City/data=!4m7!3m6!1s0x9b2b4c9c473257:0x75279fbcacbe61b1!8m2!3d40.7687836!4d-111.9042868!16s%2Fg%2F11xtl38zdr!19sChIJVzJHnEwrmwARsWG-rLyfJ3U?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:33:17.951Z",
+    "placeId": "ChIJVzJHnEwrmwARsWG-rLyfJ3U",
+    "cid": "8441891659230110129",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "7.00 am–8.00 pm",
+      "Friday": "7.00 am–8.00 pm",
+      "Thursday": "7.00 am–8.00 pm",
+      "Wednesday": "7.00 am–8.00 pm",
+      "Tuesday": "7.00 am–8.00 pm",
+      "Monday": "7.00 am–8.00 pm"
+    },
+    "open24Hours": false,
+    "services": [
+      "Online estimates",
+      "Onsite services",
+      "On-site services"
+    ],
+    "categories": [
+      "Roofing contractor"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": true,
+    "reservationLink": null,
+    "photosObserved": 6,
+    "distribution": {
+      "1_star_reviews": 1,
+      "2_star_reviews": 0,
+      "3_star_reviews": 1,
+      "4_star_reviews": 1,
+      "5_star_reviews": 179
+    },
+    "positiveReviewShare": 99,
+    "latestObservedReviewAt": "2026-04-30T19:37:04.686Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJVzJHnEwrmwARsWG-rLyfJ3U",
+        "cid": "8441891659230110129",
+        "address": "26 S Rio Grande St #2072, Salt Lake City, UT 84101, United States",
+        "latitude": 40.7687836,
+        "longitude": -111.9042868,
+        "rating": 5,
+        "reviews": 182
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Online estimates: offered",
+      "Four- and five-star review share: 99%",
+      "Latest sampled Google review: 2026-04-30T19:37:04.686Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 87,
+      "band": "Advanced",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 12,
+          "maximum": 20,
+          "evidence": "Lighthouse 70/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 6,
+          "maximum": 10,
+          "evidence": "Lighthouse 81/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 12,
+          "maximum": 12,
+          "evidence": "Lighthouse 100/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Lighthouse 100/100"
+        },
+        {
+          "label": "Structured data",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Online estimates offered"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "0 broken of 17 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.359Z"
+    }
+  }
+}

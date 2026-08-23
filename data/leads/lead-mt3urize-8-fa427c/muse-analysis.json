@@ -1,0 +1,65 @@
+{
+  "status": "Completed",
+  "summary": "Mr. Electric of Salt Lake City is an Established digital presence (Digital Maturity 74) with strong SEO basics and reputation. Measured evidence shows 318 reviews at 5 stars and a claimed profile, but homepage gaps limit local search context and mobile performance. The two deterministic findings are No structured data was detected on the homepage and Lighthouse mobile performance 61/100 with 3.7s LCP.",
+  "topOpportunities": [
+    {
+      "title": "Add LocalBusiness structured data for local search context",
+      "severity": "High",
+      "evidence": "Deterministic finding: No structured data was detected on the homepage. | Homepage signals: Structured data: not found and JSON-LD structured data blocks: 0",
+      "whyItMatters": "Without structured data, search engines must infer business type, location, and services from page text alone. Adding Electrician/LocalBusiness schema could help reinforce the already-strong Lighthouse SEO 92/100 for local queries.",
+      "recommendation": "Add LocalBusiness + Electrician JSON-LD to homepage and core service pages using the verified address 925 E 900 S Suite 201, Salt Lake City, UT 84105 and phone already detected (hasPhone: true). Include sameAs links to Google profile."
+    },
+    {
+      "title": "Improve mobile performance - reduce LCP and JS blocking time",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 61/100; largest contentful paint: 3.7s (3727ms) | Lighthouse metrics: totalBlockingTimeMs 1350 and interactiveMs 4351 and largestContentfulPaintMs 3727",
+      "whyItMatters": "Mobile Quality is measured as Fair with LCP well above 2.5s and total blocking time 1350ms, which could make service pages slower to become interactive on phones despite 57 internal links aiding navigation.",
+      "recommendation": "Prioritize mobile speed fixes flagged in Lighthouse: address 1.8s JavaScript execution time and 3.0s main-thread work, reduce unused CSS (Est savings of 44 KiB), improve image delivery (Est savings of 643 KiB) and cache lifetimes (Est savings of 3,610 KiB). Re-test LCP target."
+    },
+    {
+      "title": "Fix accessibility contrast and heading/link issues",
+      "severity": "Medium",
+      "evidence": "Lighthouse accessibility: 88/100 | Lighthouse failures include: Background and foreground colors do not have a sufficient contrast ratio and Heading elements are not in a sequentially-descending order and Links do not have a discernible name and Links do not have descriptive text: 4 links found",
+      "whyItMatters": "Accessibility 88/100 is good but not excellent; contrast and heading/link failures could affect usability for some visitors and are often low-effort fixes that also help SEO clarity.",
+      "recommendation": "Fix accessibility quick wins: correct heading order across templates, improve color contrast ratios, and add discernible/descriptive text to the 4 affected links. Verify with a second Lighthouse run."
+    },
+    {
+      "title": "Align sitemap and verify booking conversion tracking",
+      "severity": "Low",
+      "evidence": "Crawled 10 same-site pages (truncated: true) but sitemapPageCount: 2 | Detected stack: GA4 with no other measurement tools listed",
+      "whyItMatters": "A sitemap covering only 2 pages while 10 same-site pages were crawled could limit discovery efficiency; verifying GA4 tracks the existing booking link ensures the 100% high-rating review traffic can be measured end-to-end.",
+      "recommendation": "Ensure sitemap reflects all indexed service pages (10 pages crawled vs 2 in sitemap) and confirm GA4 booking/estimate conversions are tracked for the detected Online booking or request link and Online estimates offer."
+    }
+  ],
+  "strengths": [
+    "Lighthouse SEO 92/100 with Page title: Trusted Local Electricians | Mr. Electric and Responsive viewport detected",
+    "Trusted reputation signal: publicRating 5 with publicReviewCount 318 and Four- and five-star review share: 100% and Google Business Profile: claimed",
+    "Measurement and action readiness: GA4 in detectedStack and Online booking or request link: detected and Online estimates: offered",
+    "Site health: 0 broken of 50 checked and Image alt-text coverage: 100% and Homepage returned HTTP 200 at https://www.mrelectricutah.com/",
+    "Content depth: 3086 wordCount on homepage and Crawled 10 same-site pages with sitemapPageCount 2"
+  ],
+  "unknowns": [
+    "Actual search rankings, click-through rates, and conversion rate of booking link - not measured in packet",
+    "Owner's CMS access or who manages www.mrelectricutah.com and hosting/budget constraints - no evidence",
+    "Whether structured data existed historically or was removed - only current state Structured data: not found measured",
+    "Full site size and health beyond truncated crawl - Crawled 10 same-site pages and checked 50 internal links truncated: true",
+    "Call volume or lead source attribution beyond GA4 presence - not provided"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Opportunity Score 50/100 with Confidence 95 is mid-range - site has strong foundations (Lighthouse SEO 92/100, 100% alt coverage, 0 broken of 50 checked, GA4, claimed Google profile) but two addressable gaps are measured: Structured data: not found and Lighthouse mobile performance: 61/100; largest contentful paint: 3.7s. Advisory is Review - worth human review to validate if local search context and mobile speed fixes are priorities for the owner.",
+  "outreachAngles": [
+    "Noticed Structured data: not found / JSON-LD structured data blocks: 0 on your homepage",
+    "Saw Lighthouse mobile performance: 61/100; largest contentful paint: 3.7s on the homepage",
+    "You have 318 reviews at 5 stars with Online booking or request link: detected - quick website tune-up could support that demand"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a027ac-4dee-7012-960b-5c88b7217166",
+    "generatedAt": "2026-08-22T04:13:18.901Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

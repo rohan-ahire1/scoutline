@@ -1,0 +1,242 @@
+{
+  "preliminaryScore": 50,
+  "opportunityScore": 50,
+  "confidence": 95,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Local search context",
+  "issueDetail": "No structured data was detected on the homepage.",
+  "pageCount": 10,
+  "sitemapPageCount": 48,
+  "performance": 58,
+  "accessibility": 96,
+  "seo": 100,
+  "mobileQuality": "Fair",
+  "https": true,
+  "checkedLinks": 48,
+  "brokenLinks": 0,
+  "rebuild": "Easy",
+  "stack": [
+    "Webflow",
+    "GA4"
+  ],
+  "problems": [
+    "The measured mobile Lighthouse performance score is 58/100 with a 9.5s largest contentful paint.",
+    "No structured data was detected on the homepage."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://www.living-home.net/",
+    "Page title: Living Home Construction - Home",
+    "Internal links observed on homepage: 11",
+    "Homepage CTA phrases detected: 2",
+    "Image alt-text coverage: 71%",
+    "Structured data: not found",
+    "JSON-LD structured data blocks: 0",
+    "Lighthouse mobile performance: 58/100; largest contentful paint: 9.5s",
+    "Crawled 10 same-site pages and checked 48 internal links"
+  ],
+  "auditSummary": {
+    "title": "Living Home Construction - Home",
+    "description": "Elevate your living experience with Living Home Construction, the trusted luxury builder in Salt Lake City, Park City, and beyond.",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 1,
+    "forms": 0,
+    "inputCount": 0,
+    "images": 21,
+    "altCoverage": 71,
+    "ctaCount": 2,
+    "hasSchema": false,
+    "hasPhone": true,
+    "hasEmail": true,
+    "internalLinks": 11,
+    "sitemapPageCount": 48,
+    "pagesCrawled": 10,
+    "linksChecked": 48,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://www.living-home.net/",
+      "fetchedAt": "2026-08-22T15:40:27.051Z",
+      "scores": {
+        "performance": 58,
+        "accessibility": 96,
+        "bestPractices": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 7425,
+        "largestContentfulPaintMs": 9548,
+        "speedIndexMs": 7425,
+        "totalBlockingTimeMs": 19,
+        "cumulativeLayoutShift": 0,
+        "interactiveMs": 9599
+      }
+    }
+  },
+  "auditStatus": "Completed",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 10,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": true
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 48,
+      "broken": 0,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://www.living-home.net/",
+      "fetchedAt": "2026-08-22T15:40:27.051Z",
+      "scores": {
+        "performance": 58,
+        "accessibility": 96,
+        "bestPractices": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 7425,
+        "largestContentfulPaintMs": 9548,
+        "speedIndexMs": 7425,
+        "totalBlockingTimeMs": 19,
+        "cumulativeLayoutShift": 0,
+        "interactiveMs": 9599
+      }
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://www.living-home.net/",
+      "path": "/",
+      "title": "Living Home Construction - Home",
+      "h1Count": 1,
+      "wordCount": 378,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.living-home.net/about-us",
+      "path": "/about-us",
+      "title": "Living Home Construction - About",
+      "h1Count": 1,
+      "wordCount": 417,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.living-home.net/project-portfolio",
+      "path": "/project-portfolio",
+      "title": "Living Home Construction - Portfolio",
+      "h1Count": 1,
+      "wordCount": 499,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.living-home.net/our-process",
+      "path": "/our-process",
+      "title": "Living Home Construction - Process",
+      "h1Count": 1,
+      "wordCount": 506,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.living-home.net/our-team",
+      "path": "/our-team",
+      "title": "Living Home Construction - Team",
+      "h1Count": 1,
+      "wordCount": 348,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.living-home.net/news",
+      "path": "/news",
+      "title": "Living Home Construction - News",
+      "h1Count": 1,
+      "wordCount": 352,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.living-home.net/client-login",
+      "path": "/client-login",
+      "title": "Living Home Construction - Client Portal",
+      "h1Count": 1,
+      "wordCount": 248,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.living-home.net/contact",
+      "path": "/contact",
+      "title": "Living Home Construction - Contact",
+      "h1Count": 1,
+      "wordCount": 1241,
+      "forms": 1,
+      "inputCount": 11
+    },
+    {
+      "url": "https://www.living-home.net/project-portfolio/tuhaye-new-build",
+      "path": "/project-portfolio/tuhaye-new-build",
+      "title": "Living Home Construction - Tuhaye",
+      "h1Count": 1,
+      "wordCount": 561,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.living-home.net/project-portfolio/salt-lake-city-new-build",
+      "path": "/project-portfolio/salt-lake-city-new-build",
+      "title": "Living Home Construction - Olympus Cove",
+      "h1Count": 1,
+      "wordCount": 564,
+      "forms": 0,
+      "inputCount": 0
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Completed",
+    "version": "13.4.1",
+    "finalUrl": "https://www.living-home.net/",
+    "fetchedAt": "2026-08-22T15:40:27.051Z",
+    "scores": {
+      "performance": 58,
+      "accessibility": 96,
+      "bestPractices": 100,
+      "seo": 100
+    },
+    "metrics": {
+      "firstContentfulPaintMs": 7425,
+      "largestContentfulPaintMs": 9548,
+      "speedIndexMs": 7425,
+      "totalBlockingTimeMs": 19,
+      "cumulativeLayoutShift": 0,
+      "interactiveMs": 9599
+    }
+  },
+  "auditedUrl": "https://www.living-home.net/",
+  "auditedAt": "2026-08-22T15:40:36.213Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-b0614097-aa17-4dfa-a5b9-a16bd1706609",
+      "at": "2026-08-22T15:40:36.213Z",
+      "url": "https://www.living-home.net/",
+      "score": 50,
+      "performance": 58,
+      "pages": 10,
+      "brokenLinks": 0
+    }
+  ]
+}

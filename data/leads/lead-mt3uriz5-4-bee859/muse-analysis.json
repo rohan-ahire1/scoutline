@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Green Salt Lake Landscaping (www.gslscape.com) presents as technically mature - Digital Maturity 89/100 Advanced with Lighthouse SEO 100/100 and Performance 89/100 and 0 broken links of 34 checked. Deterministic assessment Opportunity Score is 38/100 (95% confidence, source Multi-page website audit + Lighthouse) with main issue 'Website clarity' - homepage passed lightweight checks. With 7879 words on homepage, inconsistent H1s, and accessibility flags, the remaining opportunities are refinement rather than rebuild, focused on conversion path, heading structure, and accessibility polish.",
+  "topOpportunities": [
+    {
+      "title": "Homepage lacks inline conversion - quote capture lives only on /quote",
+      "severity": "Medium",
+      "evidence": "Homepage has forms: 0 and inputCount: 0 while /quote has forms: 2 and inputCount: 12 - homepage CTA phrases detected: 21 but no inline capture; Business Intelligence Online customer action points 0/10 with evidence 'No booking or online-estimate signal'",
+      "whyItMatters": "Visitors see 21 CTA phrases but homepage itself has 0 forms. If primary intent is 'Free Estimates' from title 'Landscaping Salt Lake City UT | Free Estimates', requiring a page jump adds friction to an otherwise qualified visitor.",
+      "recommendation": "Make the estimate action capturable from homepage without leaving the page - add a short inline form or sticky CTA that links directly to https://www.gslscape.com/quote which already has 2 forms."
+    },
+    {
+      "title": "Missing H1s and heading order on core pages",
+      "severity": "Medium",
+      "evidence": "Crawled pages show h1Count 0 on /services (4124 words), /gallery (4207 words), /reviews (4550 words), /quote (3897 words), /contact (3805 words) vs h1Count 1 on / and service subpages; Lighthouse failure: 'Heading elements are not in a sequentially-descending order'",
+      "whyItMatters": "Search readiness is Lighthouse 100/100 and Structured data: found, but empty H1s on 5 of 10 crawled pages weakens topical clarity for both SEO and accessibility tools that rely on heading hierarchy.",
+      "recommendation": "Add a single descriptive H1 to each zero-H1 page (/services, /gallery, /reviews, /quote, /contact) and verify H2/H3 sequence matches the Lighthouse heading-order audit."
+    },
+    {
+      "title": "Accessibility polish - contrast and label mismatches",
+      "severity": "Low",
+      "evidence": "Lighthouse failures include: 'Background and foreground colors do not have a sufficient contrast ratio' and 'Elements with visible text labels do not have matching accessible names' and Accessibility score 91/100",
+      "whyItMatters": "Accessibility 91/100 is Good but these two failures can reduce readability and screen-reader accuracy for conversion elements, especially on mobile where Lighthouse was tested.",
+      "recommendation": "Fix the specific color-contrast and label-content-name-mismatch instances flagged in Lighthouse - typically CTA buttons and navigation links given 21 CTA phrases detected."
+    },
+    {
+      "title": "Incremental performance tuning despite Good mobile quality",
+      "severity": "Low",
+      "evidence": "Lighthouse metric Speed Index 4562ms and Total size was 3,370 KiB with flags: 'Est savings of 346 KiB' for image delivery, 'Est savings of 521 KiB' for cache lifetimes, 'Est savings of 51 KiB' for unused JavaScript",
+      "whyItMatters": "Performance 89/100 and MobileQuality 'Good' with LCP 2.9s is solid for a landscaper site; these are incremental gains to keep Speed Index under 4.6s as gallery images (7 images on homepage) grow.",
+      "recommendation": "Prioritize the Lighthouse savings already quantified - compress/deliver responsive images (346 KiB), extend cache lifetimes (521 KiB), and defer unused JavaScript (51 KiB) - retest LCP currently 2900ms."
+    }
+  ],
+  "strengths": [
+    "Strong technical health: Lighthouse SEO 100/100, Best Practices 96/100, Performance 89/100, Accessibility 91/100 with Lighthouse mobile performance: 89/100; largest contentful paint: 2.9s",
+    "Complete crawl hygiene: 0 broken of 34 checked and HTTPS true with Structured data: found and Image alt-text coverage: 100%",
+    "Strong reputation signals: publicRating 5 from publicReviewCount 29 and Four- and five-star review share: 100% with Google Business Profile: claimed",
+    "Measurement and mobile foundation in place: Detected stack GA4 and Responsive viewport detected with Page title: Landscaping Salt Lake City UT | Free Estimates"
+  ],
+  "unknowns": [
+    "No traffic, conversion rate, or lead volume provided - cannot quantify impact of homepage form vs /quote flow",
+    "Crawl was truncated at 10 pages vs sitemapPageCount 30 - 20 pages unobserved for H1/wordCount and broken links",
+    "No CRM or booking system ownership confirmed beyond 'No booking or online-estimate signal' and onlineBooking false",
+    "Visual hierarchy / 'website clarity' detail not measured - deterministic detail says 'deeper visual and performance review is still recommended' but no screenshot audit provided",
+    "EmployeeCount, annualRevenue, foundedYear all null - cannot assess business scale for ROI prioritization"
+  ],
+  "qualificationRecommendation": "Pass",
+  "qualificationRationale": "Opportunity Score 38/100 (95% confidence) indicates low addressable website opportunity. Deterministic source: Multi-page website audit + Lighthouse. Main issue stated as 'Website clarity' with detail 'The homepage passed the lightweight checks; a deeper visual and performance review is still recommended.' Measured audit shows strong technical foundation - Lighthouse SEO 100/100, Best Practices 96/100, Performance 89/100, Accessibility 91/100 - and Digital Maturity 89/100 Advanced band. Limited,",
+  "outreachAngles": [
+    "Noted your site scores well technically - Lighthouse SEO 100/100 and Performance 89/100 with 5 stars from 29 reviews",
+    "Saw your quote page at /quote has 2 forms - quick question about how homepage visitors reach it",
+    "Your site covers 30 pages in sitemap - noticed homepage has 19 internal links and 21 CTA phrases detected"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02a23-b08a-7f70-9f8b-a66c75da9c40",
+    "generatedAt": "2026-08-22T15:42:57.301Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

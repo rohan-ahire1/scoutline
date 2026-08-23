@@ -1,0 +1,248 @@
+{
+  "preliminaryScore": 63,
+  "opportunityScore": 63,
+  "confidence": 95,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Search clarity",
+  "issueDetail": "The homepage title is missing or outside a useful descriptive range.",
+  "pageCount": 10,
+  "sitemapPageCount": 5,
+  "performance": 88,
+  "accessibility": 91,
+  "seo": 92,
+  "mobileQuality": "Good",
+  "https": true,
+  "checkedLinks": 18,
+  "brokenLinks": 0,
+  "rebuild": "Easy",
+  "stack": [
+    "WordPress",
+    "Elementor",
+    "GA4"
+  ],
+  "problems": [
+    "The homepage title is missing or outside a useful descriptive range.",
+    "The homepage does not use one clear primary heading.",
+    "The homepage description is missing or too brief to explain the offer clearly.",
+    "No structured data was detected on the homepage."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://general-contractors-utah.com/",
+    "Page title: General Contractor Salt Lake City Utah – Kitchen Remodeling, Bathroom Remodeling & home remodeling in Salt Lake City",
+    "Internal links observed on homepage: 6",
+    "Homepage CTA phrases detected: 6",
+    "Image alt-text coverage: 89%",
+    "Structured data: not found",
+    "Homepage title length: 116 characters",
+    "Homepage H1 count: 2",
+    "Meta description length: 0 characters",
+    "JSON-LD structured data blocks: 0",
+    "Lighthouse mobile performance: 88/100; largest contentful paint: 3.4s",
+    "Crawled 10 same-site pages and checked 18 internal links"
+  ],
+  "auditSummary": {
+    "title": "General Contractor Salt Lake City Utah – Kitchen Remodeling, Bathroom Remodeling & home remodeling in Salt Lake City",
+    "description": "",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 2,
+    "forms": 0,
+    "inputCount": 0,
+    "images": 9,
+    "altCoverage": 89,
+    "ctaCount": 6,
+    "hasSchema": false,
+    "hasPhone": true,
+    "hasEmail": false,
+    "internalLinks": 6,
+    "sitemapPageCount": 5,
+    "pagesCrawled": 10,
+    "linksChecked": 18,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://general-contractors-utah.com/",
+      "fetchedAt": "2026-08-22T04:10:05.351Z",
+      "scores": {
+        "performance": 88,
+        "accessibility": 91,
+        "bestPractices": 92,
+        "seo": 92
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 2118,
+        "largestContentfulPaintMs": 3443,
+        "speedIndexMs": 3138,
+        "totalBlockingTimeMs": 0,
+        "cumulativeLayoutShift": 0.044,
+        "interactiveMs": 3443
+      }
+    }
+  },
+  "auditStatus": "Completed",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 10,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": true
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 18,
+      "broken": 0,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://general-contractors-utah.com/",
+      "fetchedAt": "2026-08-22T04:10:05.351Z",
+      "scores": {
+        "performance": 88,
+        "accessibility": 91,
+        "bestPractices": 92,
+        "seo": 92
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 2118,
+        "largestContentfulPaintMs": 3443,
+        "speedIndexMs": 3138,
+        "totalBlockingTimeMs": 0,
+        "cumulativeLayoutShift": 0.044,
+        "interactiveMs": 3443
+      }
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://general-contractors-utah.com/",
+      "path": "/",
+      "title": "General Contractor Salt Lake City Utah – Kitchen Remodeling, Bathroom Remodeling & home remodeling in Salt Lake City",
+      "h1Count": 2,
+      "wordCount": 3009,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://general-contractors-utah.com/contact/",
+      "path": "/contact/",
+      "title": "Contact – General Contractor Salt Lake City Utah",
+      "h1Count": 1,
+      "wordCount": 429,
+      "forms": 1,
+      "inputCount": 9
+    },
+    {
+      "url": "https://general-contractors-utah.com/kitchen-remodeling-salt-lake-city/",
+      "path": "/kitchen-remodeling-salt-lake-city/",
+      "title": "Kitchen Remodeling Salt Lake City – General Contractor Salt Lake City Utah",
+      "h1Count": 2,
+      "wordCount": 1012,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://general-contractors-utah.com/home-remodeling-salt-lake-city-utah/",
+      "path": "/home-remodeling-salt-lake-city-utah/",
+      "title": "Home Remodeling Salt Lake City Utah – General Contractor Salt Lake City Utah",
+      "h1Count": 1,
+      "wordCount": 1030,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://general-contractors-utah.com/bathroom-remodeling-salt-lake-city/",
+      "path": "/bathroom-remodeling-salt-lake-city/",
+      "title": "Bathroom Remodeling Salt Lake City – General Contractor Salt Lake City Utah",
+      "h1Count": 1,
+      "wordCount": 1117,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://general-contractors-utah.com/blog/",
+      "path": "/blog/",
+      "title": "Blog – General Contractor Salt Lake City Utah",
+      "h1Count": 0,
+      "wordCount": 823,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://general-contractors-utah.com/cost-saving-tips-for-remodeling/",
+      "path": "/cost-saving-tips-for-remodeling/",
+      "title": "Cost-Saving Tips for Remodeling – General Contractor Salt Lake City Utah",
+      "h1Count": 1,
+      "wordCount": 799,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://general-contractors-utah.com/seasonal-maintenance-tips/",
+      "path": "/seasonal-maintenance-tips/",
+      "title": "Seasonal Maintenance Tips – General Contractor Salt Lake City Utah",
+      "h1Count": 1,
+      "wordCount": 729,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://general-contractors-utah.com/spotlight-on-remodeling-materials/",
+      "path": "/spotlight-on-remodeling-materials/",
+      "title": "Spotlight on Remodeling Materials – General Contractor Salt Lake City Utah",
+      "h1Count": 1,
+      "wordCount": 829,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://general-contractors-utah.com/eligibility-and-benefits-of-the-multigenerational-home-tax-credit/",
+      "path": "/eligibility-and-benefits-of-the-multigenerational-home-tax-credit/",
+      "title": "Eligibility and Benefits of the Multigenerational Home Tax Credit – General Contractor Salt Lake City Utah",
+      "h1Count": 1,
+      "wordCount": 754,
+      "forms": 0,
+      "inputCount": 0
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Completed",
+    "version": "13.4.1",
+    "finalUrl": "https://general-contractors-utah.com/",
+    "fetchedAt": "2026-08-22T04:10:05.351Z",
+    "scores": {
+      "performance": 88,
+      "accessibility": 91,
+      "bestPractices": 92,
+      "seo": 92
+    },
+    "metrics": {
+      "firstContentfulPaintMs": 2118,
+      "largestContentfulPaintMs": 3443,
+      "speedIndexMs": 3138,
+      "totalBlockingTimeMs": 0,
+      "cumulativeLayoutShift": 0.044,
+      "interactiveMs": 3443
+    }
+  },
+  "auditedUrl": "https://general-contractors-utah.com/",
+  "auditedAt": "2026-08-22T04:10:16.719Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-b80147fc-5bea-479a-b718-eb07cbe0c310",
+      "at": "2026-08-22T04:10:16.719Z",
+      "url": "https://general-contractors-utah.com/",
+      "score": 63,
+      "performance": 88,
+      "pages": 10,
+      "brokenLinks": 0
+    }
+  ]
+}

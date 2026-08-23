@@ -1,0 +1,62 @@
+{
+  "status": "Completed",
+  "summary": "Salt Lake City Remodels (slcremodels.com) is an Established contractor site with excellent reputation (4.8/46 reviews) and strong SEO/accessibility foundations, but mobile performance is Poor at 47/100 with 10.4s LCP. Evidence supports prioritized fixes for speed, broken-link maintenance, and homepage clarity before adding conversion features. Score 66 suggests Review — solid opportunity if owner wants faster mobile experience and clearer positioning.",
+  "topOpportunities": [
+    {
+      "title": "Fix poor mobile performance and LCP",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 47/100; largest contentful paint: 10.4s (10356ms) — deterministic mainIssue: Mobile performance",
+      "whyItMatters": "Slow 10.4s LCP and 11.6s Time to Interactive on mobile can make portfolio browsing feel sluggish, even though SEO and best practices are already 100/100.",
+      "recommendation": "Prioritize Squarespace-specific speed improvements: compress/resize hero images, reduce unused JavaScript (Est savings of 376 KiB) and unused CSS (89 KiB), and defer render-blocking requests."
+    },
+    {
+      "title": "Repair 1 broken internal link",
+      "severity": "Medium",
+      "evidence": "Broken internal links: 1 of 5 checked — url: https://www.slcremodels.com/search status: 403",
+      "whyItMatters": "One broken link out of a small 5-link set is proportionally large and creates a dead end during site maintenance checks.",
+      "recommendation": "Fix or remove the broken /search link and re-check all 5 internal links; ensure navigation does not point to the 403 search page."
+    },
+    {
+      "title": "Clarify homepage heading hierarchy",
+      "severity": "Medium",
+      "evidence": "Homepage H1 count: 2 — finding: The homepage does not use one clear primary heading.",
+      "whyItMatters": "Two competing H1s dilutes the primary message for visitors and search clarity, despite existing word count of 1064 on homepage.",
+      "recommendation": "Consolidate to one clear H1 that states service + location (e.g., Kitchen & Bath Remodels in Salt Lake City) and demote secondary heading to H2; fix heading-order issue flagged by Lighthouse."
+    },
+    {
+      "title": "Strengthen homepage title and meta description",
+      "severity": "Low",
+      "evidence": "Meta description length: 67 characters — description: \"At SLC Remodels it is our goals to make your dreams become reality!\"",
+      "whyItMatters": "Current 67-character description is too brief to explain the offer clearly in search results, even though SEO score is 100/100.",
+      "recommendation": "Rewrite title and meta description to be specific, service-led, and ~150 characters with location and offer (e.g., services, specialties). Keep Page title: Salt Lake City Remodels but expand it."
+    }
+  ],
+  "strengths": [
+    "Strong search and technical foundation: Lighthouse SEO 100/100, Best Practices 100/100, Accessibility 94/100",
+    "Business profile claimed with 4.8 rating from 46 reviews and 96% 4-5 star share, latest review 2026-06-16",
+    "Measurement and structure in place: GA4 detected, Structured data: found, canonical and responsive viewport detected"
+  ],
+  "unknowns": [
+    "Whether slow LCP is driven primarily by 120 homepage images or Squarespace template JavaScript — image payload not measured separately",
+    "Owner's capacity and process for handling more inquiries — no booking or online-estimate signal and no phone/email found in homepage signals",
+    "Actual conversion rate or traffic volume — not in packet, cannot assume impact",
+    "Decision-maker name and hosting cost details — not provided"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Opportunity Score 66 with high confidence (89) shows clear addressable web issues without complete failure. Mobile performance is Poor (47/100, 10.4s LCP) on an otherwise Established site (Digital Maturity 69, SEO 100, Accessibility 94) with claimed profile and strong reviews, so impact is tangible. Recommend human review to confirm Squarespace optimization scope and business priorities before pursuing.",
+  "outreachAngles": [
+    "Noted your site runs on Squarespace with GA4 and has a 4.8 rating from 46 reviews — quick idea to improve mobile load that currently shows 47/100 and 10.4s LCP",
+    "Saw homepage has 2 H1s and a 67-character meta description — could sharpen how your remodel offer reads in search",
+    "Found 1 broken internal link out of 5 checked (/search 403) on your 5-page site — easy maintenance win"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02a25-2b25-7672-859f-1a8a9a6eb2db",
+    "generatedAt": "2026-08-22T15:44:34.206Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

@@ -1,0 +1,71 @@
+{
+  "status": "Completed",
+  "summary": "Utah Remodel Works (general-contractors-utah.com) shows a solid, Advanced digital maturity (80/100) with Lighthouse 88/100 performance and 0 broken of 18 links, plus 4.9 rating from 31 reviews. Deterministic audit (63/100, confidence 95) flags Search clarity as main issue: Page title: General Contractor Salt Lake City Utah – Kitchen Remodeling, Bathroom Remodeling & home remodeling in Salt Lake City at 116 characters, meta description length 0 characters, Homepage H1 count: 2, and Structured data: not found with JSON-LD blocks 0. Homepage has 6 CTAs and hasPhone true but forms 0 and inputCount 0 — conversion relies on contact page (forms 1, inputCount 9).",
+  "topOpportunities": [
+    {
+      "title": "Restore homepage search snippet clarity",
+      "severity": "High",
+      "evidence": "Meta description length: 0 characters and Document does not have a meta description — Lighthouse failure meta-description score 0",
+      "whyItMatters": "Without a meta description, search engines generate snippets automatically which may reduce clarity of the offer for Salt Lake City remodeling searches.",
+      "recommendation": "Write a concise 120-155 character meta description for homepage clarifying primary services (kitchen/bathroom/home remodeling) and Salt Lake City location. Keep existing GA4 measurement to observe change."
+    },
+    {
+      "title": "Refine over-long homepage title",
+      "severity": "High",
+      "evidence": "Homepage title length: 116 characters with title 'General Contractor Salt Lake City Utah – Kitchen Remodeling, Bathroom Remodeling & home remodeling in Salt Lake City'",
+      "whyItMatters": "A 116-character title risks truncation in results and dilutes focus from the primary Salt Lake City general contractor intent.",
+      "recommendation": "Tighten title to 50-60 characters focusing on one primary phrase (e.g., General Contractor Salt Lake City | Utah Remodel Works) and move secondary keywords to service pages."
+    },
+    {
+      "title": "Fix primary heading structure",
+      "severity": "High",
+      "evidence": "Homepage H1 count: 2 and Heading elements are not in a sequentially-descending order — Lighthouse failure heading-order score 0",
+      "whyItMatters": "Two H1s and out-of-order headings can confuse both search engines and users about the page's main topic.",
+      "recommendation": "Consolidate to one clear H1 that matches the refined title, then reset H2/H3 hierarchy for services. No new content needed — structure existing 3009 words."
+    },
+    {
+      "title": "Add structured data for contractor eligibility",
+      "severity": "Medium",
+      "evidence": "Structured data: not found and JSON-LD structured data blocks: 0 — businessIntelligence structured data points 0 of 8",
+      "whyItMatters": "With Lighthouse seo 92/100 already, structured data is the missing search-readiness piece that could improve eligibility for rich results.",
+      "recommendation": "Add LocalBusiness + GeneralContractor JSON-LD (name, address 32 W 200 S #348b Salt Lake City, phone, areaServed, services) via WordPress/Elementor. Validate with no broken links approach."
+    },
+    {
+      "title": "Enable homepage lead capture",
+      "severity": "Medium",
+      "evidence": "Homepage forms: 0 and inputCount: 0 vs contact page forms: 1 inputCount: 9; Online customer action points 0/10 with No booking or online-estimate signal and hasPhone true, hasEmail false",
+      "whyItMatters": "High-intent remodeling traffic currently must navigate to /contact/ to convert; a homepage form could capture interest closer to the service content.",
+      "recommendation": "Add a lightweight estimate/consult request form or click-to-call CTA block to homepage (mirroring contact page fields) without replacing phone. Keep 6 existing CTAs but consolidate to 1 primary action."
+    }
+  ],
+  "strengths": [
+    "Strong technical foundation: Lighthouse mobile performance 88/100, accessibility 91/100, bestPractices 92/100, seo 92/100 — measuredAudit completed 2026-08-22",
+    "Site stability: 0 broken of 18 checked, https true, viewport true, canonical true — 10 pages crawled",
+    "Reputation: Public rating 4.9 with 31 reviews and Four- and five-star review share 97% with Google Business Profile: claimed",
+    "Content depth: Homepage wordCount 3009 with dedicated service pages for kitchen (1012 words), bathroom (1117 words), home remodeling (1030 words)"
+  ],
+  "unknowns": [
+    "Conversion rate or lead volume — homepage forms 0 but total site conversions unknown",
+    "Keyword rankings or Search Console data for Salt Lake City terms",
+    "Why meta description is 0 characters — template setting or intentional omission unknown",
+    "Business capacity to handle online booking — onlineBooking false and onlineEstimates false indicate no signal, not lack of demand",
+    "Employee count, revenue, or founded year — all null in companyMetrics"
+  ],
+  "qualificationRecommendation": "Pursue",
+  "qualificationRationale": "Opportunity Score 63 with 95 confidence and main issue Search clarity. Evidence shows strong foundation — Lighthouse 88/100, 91/100, 92/100, 92/100, 0 broken of 18 checked, 4.9 rating — but clear fixable gaps: title 116 characters, H1 count 2, meta description 0 characters, JSON-LD blocks 0. Worth human review.",
+  "outreachAngles": [
+    "Noticed homepage title is 116 characters and meta description is 0 characters — quick search clarity win",
+    "Saw Lighthouse 88/100 but no JSON-LD blocks detected — small structured data gap",
+    "Homepage shows 6 CTAs and phone but 0 forms — contact page has the only form (9 inputs)"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a027ac-2cc6-76a2-9ae9-1a1d8694921c",
+    "generatedAt": "2026-08-22T04:13:10.343Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

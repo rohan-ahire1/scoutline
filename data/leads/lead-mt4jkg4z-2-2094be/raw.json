@@ -1,0 +1,165 @@
+{
+  "id": "lead-mt4jkg4z-2-2094be",
+  "company": "Outdoors Men Landscaping LLC",
+  "category": "Landscaper",
+  "location": "1007 Debonair Dr, Salt Lake City, UT 84116, United States",
+  "website": "www.outdoorsmenllc.com",
+  "address": "1007 Debonair Dr, Salt Lake City, UT 84116, United States",
+  "phone": "+1 385-285-0721",
+  "email": "Not collected",
+  "rating": 4.9,
+  "reviews": 42,
+  "collectedAt": "8/22/2026, 9:07:09 PM",
+  "sourceUrl": "https://www.google.com/maps/place/Outdoors%20Men%20Landscaping%20LLC/data=!4m7!3m6!1s0x8752f5778a4c9c6b:0xd39f8a4fecbbcdf2!8m2!3d40.7886453!4d-111.9201173!16s%2Fg%2F11tjgdvzjm!19sChIJa5xMinf1UocR8s277E-Kn9M?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:32:05.465Z",
+    "placeId": "ChIJa5xMinf1UocR8s277E-Kn9M",
+    "cid": "15249058939178569202",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "7 AM–3 PM",
+      "Friday": "7 AM–7 PM",
+      "Thursday": "7 AM–7 PM",
+      "Wednesday": "7 AM–7 PM",
+      "Tuesday": "7 AM–7 PM",
+      "Monday": "7 AM–7 PM"
+    },
+    "open24Hours": false,
+    "services": [
+      "Online estimates"
+    ],
+    "categories": [
+      "Landscaper"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": true,
+    "reservationLink": null,
+    "photosObserved": 4,
+    "distribution": {
+      "1_star_reviews": 1,
+      "2_star_reviews": 0,
+      "3_star_reviews": 0,
+      "4_star_reviews": 0,
+      "5_star_reviews": 41
+    },
+    "positiveReviewShare": 98,
+    "latestObservedReviewAt": "2026-05-03T04:25:04.094Z",
+    "sampledReviewCount": 8,
+    "locations": [
+      {
+        "placeId": "ChIJa5xMinf1UocR8s277E-Kn9M",
+        "cid": "15249058939178569202",
+        "address": "1007 Debonair Dr, Salt Lake City, UT 84116, United States",
+        "latitude": 40.7886453,
+        "longitude": -111.9201173,
+        "rating": 4.9,
+        "reviews": 42
+      }
+    ],
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Online estimates: offered",
+      "Four- and five-star review share: 98%",
+      "Latest sampled Google review: 2026-05-03T04:25:04.094Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 24,
+      "band": "Foundational",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 2,
+          "maximum": 10,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 2,
+          "maximum": 12,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "No analytics signal detected"
+        },
+        {
+          "label": "Online customer action",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Online estimates offered"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 0,
+          "maximum": 6,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 0,
+          "maximum": 4,
+          "evidence": "Links not checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.300Z"
+    }
+  }
+}

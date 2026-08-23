@@ -1,0 +1,246 @@
+{
+  "preliminaryScore": 38,
+  "opportunityScore": 38,
+  "confidence": 95,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Website clarity",
+  "issueDetail": "The homepage passed the lightweight checks; a deeper visual and performance review is still recommended.",
+  "pageCount": 10,
+  "sitemapPageCount": 30,
+  "performance": 89,
+  "accessibility": 91,
+  "seo": 100,
+  "mobileQuality": "Good",
+  "https": true,
+  "checkedLinks": 34,
+  "brokenLinks": 0,
+  "rebuild": "Moderate",
+  "stack": [
+    "GA4"
+  ],
+  "problems": [],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://www.gslscape.com/",
+    "Page title: Landscaping Salt Lake City UT | Free Estimates",
+    "Internal links observed on homepage: 19",
+    "Homepage CTA phrases detected: 21",
+    "Image alt-text coverage: 100%",
+    "Structured data: found",
+    "Lighthouse mobile performance: 89/100; largest contentful paint: 2.9s",
+    "Crawled 10 same-site pages and checked 34 internal links"
+  ],
+  "auditSummary": {
+    "title": "Landscaping Salt Lake City UT | Free Estimates",
+    "description": "Green Salt Lake Landscaping: lawn mowing, yard cleanup, tree trimming, mulch, sprinkler repair, pavers & fences in Salt Lake City, Murray, Sandy, West Jordan & Utah County. Free estimates.",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 1,
+    "forms": 0,
+    "inputCount": 0,
+    "images": 7,
+    "altCoverage": 100,
+    "ctaCount": 21,
+    "hasSchema": true,
+    "hasPhone": true,
+    "hasEmail": true,
+    "internalLinks": 19,
+    "sitemapPageCount": 30,
+    "pagesCrawled": 10,
+    "linksChecked": 34,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://www.gslscape.com/",
+      "fetchedAt": "2026-08-22T15:38:30.221Z",
+      "scores": {
+        "performance": 89,
+        "accessibility": 91,
+        "bestPractices": 96,
+        "seo": 100
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 2279,
+        "largestContentfulPaintMs": 2900,
+        "speedIndexMs": 4562,
+        "totalBlockingTimeMs": 69,
+        "cumulativeLayoutShift": 0.001,
+        "interactiveMs": 4616
+      }
+    }
+  },
+  "auditStatus": "Completed",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 10,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": true
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 34,
+      "broken": 0,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://www.gslscape.com/",
+      "fetchedAt": "2026-08-22T15:38:30.221Z",
+      "scores": {
+        "performance": 89,
+        "accessibility": 91,
+        "bestPractices": 96,
+        "seo": 100
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 2279,
+        "largestContentfulPaintMs": 2900,
+        "speedIndexMs": 4562,
+        "totalBlockingTimeMs": 69,
+        "cumulativeLayoutShift": 0.001,
+        "interactiveMs": 4616
+      }
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://www.gslscape.com/",
+      "path": "/",
+      "title": "Landscaping Salt Lake City UT | Free Estimates",
+      "h1Count": 1,
+      "wordCount": 7879,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.gslscape.com/services",
+      "path": "/services",
+      "title": "Services | Green Salt Lake Landscaping",
+      "h1Count": 0,
+      "wordCount": 4124,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.gslscape.com/gallery",
+      "path": "/gallery",
+      "title": "Gallery | Green Salt Lake Landscaping",
+      "h1Count": 0,
+      "wordCount": 4207,
+      "forms": 1,
+      "inputCount": 2
+    },
+    {
+      "url": "https://www.gslscape.com/reviews",
+      "path": "/reviews",
+      "title": "Reviews | Green Salt Lake Landscaping",
+      "h1Count": 0,
+      "wordCount": 4550,
+      "forms": 1,
+      "inputCount": 4
+    },
+    {
+      "url": "https://www.gslscape.com/quote",
+      "path": "/quote",
+      "title": "Get a Quote | Green Salt Lake Landscaping",
+      "h1Count": 0,
+      "wordCount": 3897,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.gslscape.com/contact",
+      "path": "/contact",
+      "title": "Contact | Green Salt Lake Landscaping",
+      "h1Count": 0,
+      "wordCount": 3805,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.gslscape.com/services/lawn-garden-care",
+      "path": "/services/lawn-garden-care",
+      "title": "Lawn & Garden Care | Green Salt Lake Landscaping",
+      "h1Count": 1,
+      "wordCount": 3900,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.gslscape.com/services/tree-plant-services",
+      "path": "/services/tree-plant-services",
+      "title": "Tree & Plant Services | Green Salt Lake Landscaping",
+      "h1Count": 1,
+      "wordCount": 3781,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.gslscape.com/services/outdoor-projects",
+      "path": "/services/outdoor-projects",
+      "title": "Outdoor Projects | Green Salt Lake Landscaping",
+      "h1Count": 1,
+      "wordCount": 3781,
+      "forms": 0,
+      "inputCount": 0
+    },
+    {
+      "url": "https://www.gslscape.com/services/maintenance-repairs",
+      "path": "/services/maintenance-repairs",
+      "title": "Maintenance & Repairs | Green Salt Lake Landscaping",
+      "h1Count": 1,
+      "wordCount": 3766,
+      "forms": 0,
+      "inputCount": 0
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Completed",
+    "version": "13.4.1",
+    "finalUrl": "https://www.gslscape.com/",
+    "fetchedAt": "2026-08-22T15:38:30.221Z",
+    "scores": {
+      "performance": 89,
+      "accessibility": 91,
+      "bestPractices": 96,
+      "seo": 100
+    },
+    "metrics": {
+      "firstContentfulPaintMs": 2279,
+      "largestContentfulPaintMs": 2900,
+      "speedIndexMs": 4562,
+      "totalBlockingTimeMs": 69,
+      "cumulativeLayoutShift": 0.001,
+      "interactiveMs": 4616
+    }
+  },
+  "auditedUrl": "https://www.gslscape.com/",
+  "auditedAt": "2026-08-22T15:38:42.565Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-1433e92c-c178-49e5-b12c-4729c573c70d",
+      "at": "2026-08-22T04:08:16.208Z",
+      "url": "https://www.gslscape.com/",
+      "score": 38,
+      "performance": 72,
+      "pages": 10,
+      "brokenLinks": 0
+    },
+    {
+      "jobId": "job-575845cc-cd31-41ea-a8e5-1e77a1a0f468",
+      "at": "2026-08-22T15:38:42.565Z",
+      "url": "https://www.gslscape.com/",
+      "score": 38,
+      "performance": 89,
+      "pages": 10,
+      "brokenLinks": 0
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Salt City Plumbing, Heating & Air (www.saltcityplumbing.com) shows Established digital maturity (score 72) with excellent reputation and SEO fundamentals, but measured mobile experience is Poor. Lighthouse mobile performance: 43/100; largest contentful paint: 10.0s and Time to Interactive displayValue: 28.7 s on WordPress. Homepage has heavy forms and incomplete alt text. Evidence supports prioritized performance, form, accessibility, and maintenance fixes without needing to rebuild search visibility.",
+  "topOpportunities": [
+    {
+      "title": "Fix mobile performance bottleneck (10.0s LCP, 28.7s interactive)",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 43/100; largest contentful paint: 9996.393999999998 ms (10.0 s) ; Time to Interactive displayValue: 28.7 s ; Root document took 2,610 ms",
+      "whyItMatters": "Measured Poor mobile performance increases friction before visitors reach booking CTAs, despite SEO 100/100 and claimed profile driving traffic.",
+      "recommendation": "Prioritize mobile speed triage first: reduce unused JavaScript (Est savings of 735 KiB) and unused CSS (Est savings of 118 KiB), address server response time, and defer non-critical scripts. Re-test mobile Lighthouse on https://www.saltcityplumbing.com/ after."
+    },
+    {
+      "title": "Reduce initial form friction (25 inputs on homepage)",
+      "severity": "Medium",
+      "evidence": "Form field count on homepage: 25 and homepageSignals.forms: 2 and InputCount 25 on https://www.saltcityplumbing.com/",
+      "whyItMatters": "The first website form asks for many details at once — shorter initial capture can be tested to see if more mobile visitors complete the existing booking link.",
+      "recommendation": "Simplify the first form step to 3-5 required fields (name/phone/zip or issue type) and move 25-field detail to step 2 or post-submit. Keep 5 CTA phrases but test a single primary 'Request Service' above the fold."
+    },
+    {
+      "title": "Complete image alt text and core accessibility fixes",
+      "severity": "Medium",
+      "evidence": "Image alt-text coverage: 44% and homepageSignals.images: 27",
+      "whyItMatters": "Many homepage images do not have useful alternative text and Lighthouse accessibility is 80/100 — improving alt coverage helps screen-reader users and supports the existing SEO 100/100.",
+      "recommendation": "Write descriptive alt text for the ~56% of homepage images missing it (27 images total). Fix flagged accessibility items: Elements use prohibited ARIA attributes, Background and foreground colors do not have a sufficient contrast ratio, and Links do not have a discernible name."
+    },
+    {
+      "title": "Fix 1 broken internal link (500 on /site-map)",
+      "severity": "Low",
+      "evidence": "Broken internal links: 1 of 50 checked and brokenLinkDetails url: https://www.saltcityplumbing.com/site-map status: 500",
+      "whyItMatters": "Single broken link among 37 internal links observed on homepage is low severity but easy maintenance win; prevents crawler and user dead-ends.",
+      "recommendation": "Fix or redirect the 500 at https://www.saltcityplumbing.com/site-map and re-check 50 internal links. Verify sitemapPageCount is null is intentional and that internal site-map references point to correct URL."
+    }
+  ],
+  "strengths": [
+    "Strong reputation: 4.9 public rating from 683 reviews with 98% four- and five-star share and latest sampled review 2026-06-16T21:56:18.713Z",
+    "Search readiness is strong: Lighthouse SEO 100/100 and Structured data: found and canonical true and HTTPS true",
+    "Conversion path exists: Online booking or request link: detected and hasPhone true and 5 homepage CTA phrases detected and internal links observed on homepage: 37",
+    "Measurement and foundation in place: GA4 detected and Responsive viewport detected and Google Business Profile: claimed"
+  ],
+  "unknowns": [
+    "Actual traffic, conversion rate, or revenue impact of slow load — not measured in packet",
+    "Which homepage form is primary vs secondary — packet shows forms: 2 and inputCount: 25 but not field labels or completion rates",
+    "Full accessibility impact on users — alt coverage 44% and accessibility 80/100 measured, but user testing not included",
+    "Server/hosting costs or stack limits beyond WordPress and GA4 detected",
+    "Full broken-link coverage — crawl truncated at pagesCrawled: 10 and links checked: 50 of likely more"
+  ],
+  "qualificationRecommendation": "Pursue",
+  "qualificationRationale": "PURSUE - High public trust (4.9 stars, 683 reviews, 98% 4-5 star) and active booking flow present, but measured mobile performance is Poor (43/100, LCP 10.0s) with clear addressable fixes (heavy form, low alt coverage, 1 broken link). OpportunityScore 71/Confidence 89 supports Pursue for website improvements.",
+  "outreachAngles": [
+    "Website loads slowly on phones — measured 10.0s largest contentful paint and 43/100 mobile performance",
+    "Homepage form asks for 25 inputs across 2 forms — chance to simplify first step",
+    "Only 44% of homepage images have useful alt text — accessibility and SEO fix"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a027aa-f992-7a30-90b6-daee698531e4",
+    "generatedAt": "2026-08-22T04:11:51.742Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

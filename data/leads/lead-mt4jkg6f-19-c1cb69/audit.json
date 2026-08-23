@@ -1,0 +1,33 @@
+{
+  "preliminaryScore": 91,
+  "opportunityScore": null,
+  "confidence": null,
+  "status": "Collected",
+  "mainIssue": "Audit pending",
+  "issueDetail": "Business data was saved; website evidence has not been collected yet.",
+  "pageCount": null,
+  "performance": null,
+  "accessibility": null,
+  "seo": null,
+  "mobileQuality": "Unknown",
+  "https": null,
+  "checkedLinks": null,
+  "brokenLinks": null,
+  "rebuild": "Unknown",
+  "stack": [],
+  "problems": [],
+  "evidence": [
+    "Business record saved from Bright Data Google Maps"
+  ],
+  "auditSummary": null,
+  "auditStatus": null,
+  "auditComponents": null,
+  "crawlPages": [],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": null,
+  "auditedUrl": null,
+  "auditedAt": null,
+  "researchFailure": null,
+  "history": []
+}

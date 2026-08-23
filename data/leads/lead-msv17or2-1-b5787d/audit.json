@@ -1,0 +1,266 @@
+{
+  "preliminaryScore": 56,
+  "opportunityScore": 56,
+  "confidence": 95,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Enquiry friction",
+  "issueDetail": "The first website form asks for many details at once.",
+  "pageCount": 10,
+  "sitemapPageCount": 16,
+  "performance": 70,
+  "accessibility": 81,
+  "seo": 100,
+  "mobileQuality": "Fair",
+  "https": true,
+  "checkedLinks": 17,
+  "brokenLinks": 0,
+  "rebuild": "Easy",
+  "stack": [
+    "Webflow",
+    "GA4"
+  ],
+  "problems": [
+    "The first website form asks for many details at once.",
+    "Many homepage images do not have useful alternative text."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://www.nelsonroofingslc.com/",
+    "Page title: Salt Lake City Roofing Contractor | Nelson Roofing Salt Lake City",
+    "Internal links observed on homepage: 16",
+    "Homepage CTA phrases detected: 6",
+    "Image alt-text coverage: 68%",
+    "Structured data: found",
+    "Form field count on homepage: 12",
+    "Lighthouse mobile performance: 70/100; largest contentful paint: 7.3s",
+    "Crawled 10 same-site pages and checked 17 internal links"
+  ],
+  "auditSummary": {
+    "title": "Salt Lake City Roofing Contractor | Nelson Roofing Salt Lake City",
+    "description": "Looking for reliable roofing services in Salt Lake City? Nelson Roofing Salt Lake City offers roof replacement, inspections, emergency repairs, and commercial roofing. Call us today!",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 1,
+    "forms": 2,
+    "inputCount": 12,
+    "images": 47,
+    "altCoverage": 68,
+    "ctaCount": 6,
+    "hasSchema": true,
+    "hasPhone": true,
+    "hasEmail": false,
+    "internalLinks": 16,
+    "sitemapPageCount": 16,
+    "pagesCrawled": 10,
+    "linksChecked": 17,
+    "brokenLinks": 0,
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://www.nelsonroofingslc.com/",
+      "fetchedAt": "2026-08-22T04:06:19.561Z",
+      "scores": {
+        "performance": 70,
+        "accessibility": 81,
+        "bestPractices": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 3162,
+        "largestContentfulPaintMs": 7284,
+        "speedIndexMs": 3198,
+        "totalBlockingTimeMs": 31,
+        "cumulativeLayoutShift": 0.018,
+        "interactiveMs": 7296
+      }
+    }
+  },
+  "auditStatus": "Completed",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 10,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": true
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 17,
+      "broken": 0,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://www.nelsonroofingslc.com/",
+      "fetchedAt": "2026-08-22T04:06:19.561Z",
+      "scores": {
+        "performance": 70,
+        "accessibility": 81,
+        "bestPractices": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 3162,
+        "largestContentfulPaintMs": 7284,
+        "speedIndexMs": 3198,
+        "totalBlockingTimeMs": 31,
+        "cumulativeLayoutShift": 0.018,
+        "interactiveMs": 7296
+      }
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://www.nelsonroofingslc.com/",
+      "path": "/",
+      "title": "Salt Lake City Roofing Contractor | Nelson Roofing Salt Lake City",
+      "h1Count": 1,
+      "wordCount": 1388,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/roof-replacement",
+      "path": "/roof-replacement",
+      "title": "Roof Replacement Salt Lake City | Nelson Roofing Experts",
+      "h1Count": 1,
+      "wordCount": 2600,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/roof-repair",
+      "path": "/roof-repair",
+      "title": "Roof repair Salt Lake City | Nelson Roofing Experts",
+      "h1Count": 1,
+      "wordCount": 1863,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/roof-inspection",
+      "path": "/roof-inspection",
+      "title": "Roof Inspection Salt Lake City | Nelson Roofing Experts",
+      "h1Count": 1,
+      "wordCount": 1862,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/emergency-roof-repair",
+      "path": "/emergency-roof-repair",
+      "title": "Emergency roof repair Salt Lake City | Nelson Roof Experts",
+      "h1Count": 1,
+      "wordCount": 1722,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/metal-roofing",
+      "path": "/metal-roofing",
+      "title": "Metal Roofing Salt Lake City | Nelson Roofing Experts",
+      "h1Count": 1,
+      "wordCount": 1833,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/commercial-roofing",
+      "path": "/commercial-roofing",
+      "title": "Commercial roofing Salt Lake City | Nelson Roofing Experts",
+      "h1Count": 1,
+      "wordCount": 1753,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/about-us",
+      "path": "/about-us",
+      "title": "About",
+      "h1Count": 1,
+      "wordCount": 486,
+      "forms": 1,
+      "inputCount": 6
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/contact",
+      "path": "/contact",
+      "title": "Contact",
+      "h1Count": 1,
+      "wordCount": 176,
+      "forms": 2,
+      "inputCount": 12
+    },
+    {
+      "url": "https://www.nelsonroofingslc.com/south-salt-lake",
+      "path": "/south-salt-lake",
+      "title": "South Salt Lake Roofing Company | Nelson Roofing Salt Lake",
+      "h1Count": 1,
+      "wordCount": 1371,
+      "forms": 2,
+      "inputCount": 12
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [],
+  "lighthouse": {
+    "status": "Completed",
+    "version": "13.4.1",
+    "finalUrl": "https://www.nelsonroofingslc.com/",
+    "fetchedAt": "2026-08-22T04:06:19.561Z",
+    "scores": {
+      "performance": 70,
+      "accessibility": 81,
+      "bestPractices": 100,
+      "seo": 100
+    },
+    "metrics": {
+      "firstContentfulPaintMs": 3162,
+      "largestContentfulPaintMs": 7284,
+      "speedIndexMs": 3198,
+      "totalBlockingTimeMs": 31,
+      "cumulativeLayoutShift": 0.018,
+      "interactiveMs": 7296
+    }
+  },
+  "auditedUrl": "https://www.nelsonroofingslc.com/",
+  "auditedAt": "2026-08-22T04:06:31.961Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-c46440d8-cc59-4e8d-b1cf-6efca33294ef",
+      "at": "2026-08-15T23:53:34.578Z",
+      "url": "https://www.nelsonroofingslc.com/",
+      "score": 56
+    },
+    {
+      "jobId": "job-1d23f6c9-2b11-4c3c-87cd-c137a1f0caa2",
+      "at": "2026-08-16T00:06:40.727Z",
+      "url": "https://www.nelsonroofingslc.com/",
+      "score": 63,
+      "performance": 62,
+      "pages": 10,
+      "brokenLinks": 0
+    },
+    {
+      "jobId": "job-4c3817dc-3f43-4440-8bf3-781fad3b26dc",
+      "at": "2026-08-17T16:32:26.474Z",
+      "url": "https://www.nelsonroofingslc.com/",
+      "score": 63,
+      "performance": 63,
+      "pages": 10,
+      "brokenLinks": 0
+    },
+    {
+      "jobId": "job-f22e91ae-9efe-461b-9630-fad24a260c10",
+      "at": "2026-08-22T04:06:31.961Z",
+      "url": "https://www.nelsonroofingslc.com/",
+      "score": 56,
+      "performance": 70,
+      "pages": 10,
+      "brokenLinks": 0
+    }
+  ]
+}

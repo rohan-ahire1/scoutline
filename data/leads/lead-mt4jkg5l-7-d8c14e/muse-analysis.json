@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Living Home Construction (living-home.net) presents as an Advanced digital maturity (82/100) luxury custom builder in Salt Lake City with strong SEO/best-practices scores (both 100/100) and a claimed 4.7-star profile. The primary addressable issues are deterministic: mobile performance 58/100 with 9.5s largest contentful paint and no structured data detected on homepage. Site is well-maintained (0/48 broken links) but homepage has limited conversion entry points (2 CTA phrases, 0 forms).",
+  "topOpportunities": [
+    {
+      "title": "Improve mobile page speed (LCP 9.5s)",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 58/100; largest contentful paint: 9.5s (9548.01245 ms) and First Contentful Paint 7.4s (7424.537 ms) with Interactive 9.6s (9599.438 ms)",
+      "whyItMatters": "Slow largest contentful paint can make portfolio imagery slower to appear for mobile visitors browsing luxury builds, potentially adding friction before they reach contact.",
+      "recommendation": "Prioritize mobile load optimization - compress/deliver images efficiently (Est savings of 379 KiB), reduce unused JavaScript (Est savings of 71 KiB) and CSS (Est savings of 19 KiB), and address render-blocking requests (Est savings of 3,240 ms) to lower LCP on homepage."
+    },
+    {
+      "title": "Add local business structured data",
+      "severity": "High",
+      "evidence": "Structured data: not found and JSON-LD structured data blocks: 0",
+      "whyItMatters": "Without structured data, search engines must infer business type and location from page text alone, which is a missed opportunity to clarify local context for Salt Lake City / Park City queries.",
+      "recommendation": "Add LocalBusiness / GeneralContractor JSON-LD to homepage with name, address 2019 S Main St, Salt Lake City, UT 84115, phone, and service area to provide explicit local search context. Matches deterministic finding: No structured data was detected on the homepage."
+    },
+    {
+      "title": "Complete image alt text and sizing",
+      "severity": "Medium",
+      "evidence": "Image alt-text coverage: 71% with Images: 21 on homepage, plus Lighthouse failure: Image elements do not have explicit `width` and `height`",
+      "whyItMatters": "For a visual portfolio business, missing alt text and unsized images can reduce accessibility (despite 96/100 score) and contribute to layout shift and slower efficient delivery.",
+      "recommendation": "Complete alt text for the ~29% of homepage images missing it (especially portfolio hero images) and add explicit width/height to improve stability and accessibility."
+    },
+    {
+      "title": "Make estimate / contact path more prominent from homepage",
+      "severity": "Medium",
+      "evidence": "Homepage CTA phrases detected: 2, Homepage forms: 0 and inputCount: 0, while /contact has Forms: 1 with inputCount: 11",
+      "whyItMatters": "Homepage currently relies on phone/email (hasPhone true, hasEmail true) but has no form; visitors viewing projects must navigate to /contact to submit details, adding steps to inquiry.",
+      "recommendation": "Add a secondary contact entry point to homepage and portfolio pages (e.g., linked 'Request Estimate' button to /contact) to make the existing online estimates offer more discoverable without relying solely on header phone/email. Also fix Lighthouse 'Links do not have a discernible name' for accessible navigation."
+    }
+  ],
+  "strengths": [
+    "Strong technical foundation: Lighthouse accessibility 96/100, bestPractices 100/100, seo 100/100 with HTTPS true and viewport true",
+    "Well-maintained structure: 0 broken of 48 links checked, crawl of 10 same-site pages with sitemap indicating 48 pages, canonical true",
+    "Active claimed business presence: Google Business Profile: claimed, 4.7 rating with 36 reviews and 92% four/five-star share, latest sampled Google review: 2026-03-26T04:46:29.082Z",
+    "Measurement in place: GA4 detected and Webflow stack, with responsive viewport detected"
+  ],
+  "unknowns": [
+    "Actual organic search rankings, impressions, or traffic trends - not measured in packet",
+    "Conversion rate from visitors to estimate requests - GA4 is present but no conversion data provided",
+    "Decision-maker name, role, or contact preference - not in evidence",
+    "Hosting costs, CMS budget, or dev resource constraints - not in evidence",
+    "Performance on pages beyond homepage - only homepage Lighthouse measured (58/100); other 9 crawled pages not performance-tested"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "OpportunityScore 50 with Confidence 95 indicates mixed potential. Evidence shows a technically sound but slow site with specific, addressable gaps. Advisory: REVIEW - human reviewer should validate fit before outreach.",
+  "outreachAngles": [
+    "Noted your homepage at living-home.net titles as 'Living Home Construction - Home' with description referencing luxury builder in Salt Lake City / Park City",
+    "Saw you have a claimed Google profile with 4.7 rating and offer online estimates",
+    "Observed your portfolio pages like Tuhaye and Olympus Cove new builds"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02a25-d8f0-74b1-8ce8-8fc2000d0b61",
+    "generatedAt": "2026-08-22T15:45:18.703Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

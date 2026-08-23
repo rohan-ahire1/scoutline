@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "First Choice Home Electrician Salt Lake City has a fast, secure 1-page Wix site (q6lvxf-my-site-pio5gaal-localservicepros.wix-vibe-site.com) with strong Lighthouse scores, but the homepage currently provides no way for a visitor to take action. Audit detected 0 CTA phrases, 0 primary action phrases, 0 direct contact methods (no phone/email/form), 0 H1 headings, and an empty meta description. Title is generic 'Home | ElectroReach' (19 characters). With a claimed Google profile and 5.0 rating (10 reviews), fixing the conversion path and on-page clarity are the highest-leverage, lowest-risk wins.",
+  "topOpportunities": [
+    {
+      "title": "Add a clear next step - call/quote/booking path was not detected",
+      "severity": "High",
+      "evidence": "Homepage CTA phrases detected: 0 and Primary action phrases detected: 0 and Direct contact methods detected: 0 - measuredAudit homepageSignals hasPhone false, hasEmail false, forms 0, inputCount 0",
+      "whyItMatters": "Deterministic assessment identifies 'No clear quote, contact, booking, or call action was detected' as the main issue. Possibility: visitors who arrive via search or the claimed Google profile may not find how to contact, which could limit enquiries - not measured, but the gap is observed.",
+      "recommendation": "Add one clear primary action above the fold on the single crawled page: clickable tel: phone, 'Request Quote' or 'Book Service' button, and a minimal form (name/phone/zip/issue). Keep it persistent on mobile header."
+    },
+    {
+      "title": "Fix generic title tag and add one clear H1",
+      "severity": "High",
+      "evidence": "Page title: Home | ElectroReach and Homepage title length: 19 characters and Business company: First Choice Home Electrician Salt Lake City",
+      "whyItMatters": "Homepage H1 count: 0 and title 'Home | ElectroReach' does not describe the offer or location. Possibility: clearer title/H1 may help users and search quickly confirm relevance without changing performance.",
+      "recommendation": "Rewrite title to include brand + service + location within useful length, e.g., 'First Choice Home Electrician | Licensed Electrician in Salt Lake City, UT'. Keep H1 aligned to one primary heading that matches intent."
+    },
+    {
+      "title": "Add meta description to explain the offer in search results",
+      "severity": "Medium",
+      "evidence": "Meta description length: 0 characters and Lighthouse failure id: meta-description 'Document does not have a meta description' and homepageSignals description: ''",
+      "whyItMatters": "Homepage description is missing or too brief to explain the offer clearly. Observed Lighthouse SEO remains 92/100, so this is a small, safe refinement to search presentation.",
+      "recommendation": "Add a concise meta description (120-155 chars) explaining services + location + next step, e.g., services offered and 'Call or request a quote online'."
+    },
+    {
+      "title": "Create basic navigation/structure so services are discoverable",
+      "severity": "Medium",
+      "evidence": "Internal links observed on homepage: 0 and Crawled 1 same-site page and checked 0 internal links and crawledPages[0] wordCount: 241",
+      "whyItMatters": "Only 1 same-site page was crawled and 0 internal links were observed. Possibility: visitors cannot explore services without scrolling a single page; adding structure may improve usability and internal SEO signals without harming current 94 performance.",
+      "recommendation": "Expand the 1-page site into a simple structure: Services, Service Areas, About/Reviews, Contact - even anchored sections with internal links on homepage counts as navigation. Use the existing 241-word homepage as a base and add service-specific sections."
+    }
+  ],
+  "strengths": [
+    "Strong technical foundation: Lighthouse mobile performance 94/100, best practices 96/100, SEO 92/100, accessibility 87/100",
+    "Secure and modern: HTTPS true, responsive viewport detected, structured data found, GA4 detected",
+    "Business profile claimed with 100% four- and five-star review share across 10 reviews, latest sampled review 2026-05-29",
+    "Fast load: First Contentful Paint 1080ms, Largest Contentful Paint 2955ms (3.0s), Total Blocking Time 0ms, CLS 0"
+  ],
+  "unknowns": [
+    "Actual conversion behavior, traffic volume, and call volume - no analytics data beyond GA4 detected",
+    "Full service list and pricing - businessIntelligence services: [] and no content beyond 241-word homepage crawled",
+    "Decision-maker name, contact preferences, and hosting/maintenance costs - not in packet",
+    "Whether onlineBooking false / onlineEstimates false reflects intentional choice vs. missing feature - observed as false in businessIntelligence",
+    "Sitemap coverage - sitemapPageCount null and only 1 page crawled (limit 10)"
+  ],
+  "qualificationRecommendation": "Pursue",
+  "qualificationRationale": "PURSUE - High advisory opportunity. Evidence shows strong technical foundation (94 performance, 96 best practices, HTTPS, claimed GBP with 5.0/10 reviews) but zero addressable conversion path. Deterministic assessment scores 83/100 opportunity with 85 confidence and identifies 'No clear quote, contact, booking, or call action' as main issue - all core website opportunities are present and fixable without guessing.",
+  "outreachAngles": [
+    "Noticed homepage at q6lvxf-my-site-pio5gaal-localservicepros.wix-vibe-site.com shows title 'Home | ElectroReach' (19 characters) and 0 H1 headings - quick win to clarify you're First Choice Home Electrician Salt Lake City",
+    "Saw Google profile is claimed with 5.0 rating from 10 reviews but site shows 0 CTA phrases and 0 contact methods detected - opportunity to connect the reputation to a clear next step",
+    "Site already performing well (Lighthouse 94/100 performance, 92/100 SEO) with GA4 installed - foundation is strong for adding a quote/contact flow"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a02a24-c44a-74f3-a796-b9a6eb70b4c4",
+    "generatedAt": "2026-08-22T15:44:07.880Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

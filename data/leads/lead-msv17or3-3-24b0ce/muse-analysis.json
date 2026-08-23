@@ -1,0 +1,65 @@
+{
+  "status": "Completed",
+  "summary": "Shingle Pro Roofing is an Active roofing contractor at 323 Gregson Ave S, Salt Lake City with a 5 rating from 587 reviews. Audit is high confidence 95 with opportunityScore 65 driven by 3 broken customer paths, not a fundamental failure. Core foundation is advanced: digital maturity 86/100, SEO 100/100, accessibility 95/100, structured data found, GA4 present. Priority fixes are verifying and fixing blocked links, improving 11.7s mobile LCP, and reducing 26-field form friction to make the Online estimates offered easier to complete.",
+  "topOpportunities": [
+    {
+      "title": "Verify and fix 3 blocked/broken customer paths",
+      "severity": "High",
+      "evidence": "Broken internal links: 3 of 35 checked - 3 broken of 35 checked - URLs: https://www.shingleproroofing.com/blog/ status 429, https://www.shingleproroofing.com/areas-we-serve/holladay-ut-roofing/ status 429, https://www.shingleproroofing.com/areas-we-serve/murray-ut-roofing/ status 429",
+      "whyItMatters": "Broken internal links interrupt visitors navigating from 35 homepage links across 10 pages to key content like blog and area pages (Holladay, Murray), which can prevent a visitor from completing the next step even though overall navigation returned HTTP 200 at https://www.shingleproroofing.com/.",
+      "recommendation": "Re-test the 3 URLs flagged as 429 in a browser and server logs to confirm if they are truly broken, rate-limited, or blocked. If 429 is transient, whitelist the crawler or adjust rate limits; if pages are missing/redirected, restore or 301 redirect and update internal links from the 35 checked. Verify across the 10 crawled pages."
+    },
+    {
+      "title": "Improve 11.7s mobile LCP and 59/100 performance",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 59/100; largest contentful paint: 11.7s - largestContentfulPaintMs: 11652 - Root document took 2,530 ms - Est savings of 1,511 KiB from Improve image delivery - Est savings of 124 KiB from Reduce unused CSS",
+      "whyItMatters": "With viewport true and mobile score Fair, an 11.7s LCP and 10.4s Speed Index can make visitors wait for key content before seeing CTAs, even though SEO and accessibility are strong.",
+      "recommendation": "Prioritize mobile speed: reduce server response time (currently Root document took 2,530 ms), compress/convert and lazy-load images (Image alt-text coverage: 79% with 34 images on homepage) to capture the 1,511 KiB savings, remove unused CSS (124 KiB), and defer render-blocking Elementor/WordPress assets. Re-run Lighthouse mobile after."
+    },
+    {
+      "title": "Reduce 26-field estimate form friction",
+      "severity": "Medium",
+      "evidence": "Form field count on homepage: 26 - InputCount: 26 on homepage and InputCount: 27 on service pages - The first website form asks for many details at once.",
+      "whyItMatters": "Asking for 26-27 fields at once on every crawled page creates friction before a visitor can request the Online estimates offered, despite 5 CTA phrases detected on the homepage.",
+      "recommendation": "Streamline the estimate request: keep the existing Online estimates offered but reduce initial fields to 4-6 essentials (name, phone, address/zip, service type), move detailed fields to step 2 or post-submit. A/B test with GA4 events while keeping hasPhone: true and hasEmail: true as alternate contact."
+    },
+    {
+      "title": "Polish accessibility and code quality signals",
+      "severity": "Low",
+      "evidence": "Lighthouse mobile performance: 59/100 with mobileQuality: Fair - Links do not have a discernible name - Heading elements are not in a sequentially-descending order - Image alt-text coverage: 79% - Lighthouse bestPractices 73/100 with Browser errors were logged to the console",
+      "whyItMatters": "These issues keep bestPractices at 73/100 and limit accessibility from 95/100 to 100, and can affect how well visitors using assistive tech navigate the service and gallery pages.",
+      "recommendation": "Fix quality signals: add discernible names to links flagged, correct heading order, complete alt text for the remaining 21% of images, resolve console errors, and re-test bestPractices. Low-effort polish that complements performance work."
+    }
+  ],
+  "strengths": [
+    "Google Business Profile: claimed with Active business status and 1 locations observed",
+    "Public rating 5 with 587 reviews and Four- and five-star review share: 99%",
+    "Lighthouse mobile performance: 59/100; largest contentful paint: 11.7s but strong foundation: Lighthouse seo 100/100 and accessibility 95/100",
+    "Structured data: found and Responsive viewport detected",
+    "Measurement stack: GA4 detected and Online estimates: offered with Homepage CTA phrases detected: 5 and hasPhone: true and hasEmail: true"
+  ],
+  "unknowns": [
+    "Whether the 3 links returning status 429 are permanent breaks, temporary rate-limiting, or bot protection - all 3 share 429 not 404",
+    "Actual conversion rate, traffic, lead volume, or revenue impact - not measured in packet",
+    "Form completion rate or field abandonment data for the 26-field form",
+    "Hosting/server costs or stack limits causing Root document took 2,530 ms",
+    "Full site coverage beyond the 10 pages crawled with 2 sitemap pages and 35 links checked (crawl truncated: true) - additional broken links may exist"
+  ],
+  "qualificationRecommendation": "Review",
+  "qualificationRationale": "Pursue with caveats - Advisory Review. Strong established business with 5-star rating across 587 reviews and 99% positive share, advanced digital maturity 86/100, but 3 addressable website friction points measured by high-confidence audit. Broken customer paths are validated but status 429 requires verification it is not rate-limiting.",
+  "outreachAngles": [
+    "Noted your CertainTeed certification and 587 reviews - fixing your 3 broken links could help visitors find that proof",
+    "Saw your homepage loads in 11.7s on mobile - potential to improve how quickly estimates are requested",
+    "Noticed your estimate form asks for 26 fields - possible to streamline the first step"
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a027ab-d95c-7a12-836e-cf237485eeef",
+    "generatedAt": "2026-08-22T04:12:49.004Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}

@@ -1,0 +1,217 @@
+{
+  "preliminaryScore": 66,
+  "opportunityScore": 66,
+  "confidence": 89,
+  "source": "Multi-page website audit + Lighthouse",
+  "status": "Analyzed",
+  "mainIssue": "Mobile performance",
+  "issueDetail": "The measured mobile Lighthouse performance score is 47/100 with a 10.4s largest contentful paint.",
+  "pageCount": 5,
+  "sitemapPageCount": null,
+  "performance": 47,
+  "accessibility": 94,
+  "seo": 100,
+  "mobileQuality": "Poor",
+  "https": true,
+  "checkedLinks": 5,
+  "brokenLinks": 1,
+  "rebuild": "Easy",
+  "stack": [
+    "Squarespace",
+    "GA4"
+  ],
+  "problems": [
+    "1 broken internal link was found across the crawled pages.",
+    "The measured mobile Lighthouse performance score is 47/100 with a 10.4s largest contentful paint.",
+    "The homepage does not use one clear primary heading.",
+    "The homepage description is missing or too brief to explain the offer clearly."
+  ],
+  "evidence": [
+    "Homepage returned HTTP 200 at https://www.slcremodels.com/",
+    "Page title: Salt Lake City Remodels",
+    "Internal links observed on homepage: 5",
+    "Homepage CTA phrases detected: 3",
+    "Image alt-text coverage: 90%",
+    "Structured data: found",
+    "Homepage H1 count: 2",
+    "Meta description length: 67 characters",
+    "Lighthouse mobile performance: 47/100; largest contentful paint: 10.4s",
+    "Crawled 5 same-site pages and checked 5 internal links",
+    "Broken internal links: 1 of 5 checked"
+  ],
+  "auditSummary": {
+    "title": "Salt Lake City Remodels",
+    "description": "At SLC Remodels it is our goals to make your dreams become reality!",
+    "viewport": true,
+    "canonical": true,
+    "h1Count": 2,
+    "forms": 1,
+    "inputCount": 1,
+    "images": 120,
+    "altCoverage": 90,
+    "ctaCount": 3,
+    "hasSchema": true,
+    "hasPhone": false,
+    "hasEmail": false,
+    "internalLinks": 5,
+    "sitemapPageCount": null,
+    "pagesCrawled": 5,
+    "linksChecked": 5,
+    "brokenLinks": 1,
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://www.slcremodels.com/",
+      "fetchedAt": "2026-08-22T15:39:48.808Z",
+      "scores": {
+        "performance": 47,
+        "accessibility": 94,
+        "bestPractices": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 3767,
+        "largestContentfulPaintMs": 10356,
+        "speedIndexMs": 8456,
+        "totalBlockingTimeMs": 439,
+        "cumulativeLayoutShift": 0.094,
+        "interactiveMs": 11636
+      }
+    }
+  },
+  "auditStatus": "Completed",
+  "auditComponents": {
+    "crawl": {
+      "status": "Completed",
+      "pagesCrawled": 5,
+      "pageLimit": 10,
+      "errors": 0,
+      "truncated": false
+    },
+    "links": {
+      "status": "Completed",
+      "checked": 5,
+      "broken": 1,
+      "truncated": false
+    },
+    "lighthouse": {
+      "status": "Completed",
+      "version": "13.4.1",
+      "finalUrl": "https://www.slcremodels.com/",
+      "fetchedAt": "2026-08-22T15:39:48.808Z",
+      "scores": {
+        "performance": 47,
+        "accessibility": 94,
+        "bestPractices": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "firstContentfulPaintMs": 3767,
+        "largestContentfulPaintMs": 10356,
+        "speedIndexMs": 8456,
+        "totalBlockingTimeMs": 439,
+        "cumulativeLayoutShift": 0.094,
+        "interactiveMs": 11636
+      }
+    }
+  },
+  "crawlPages": [
+    {
+      "url": "https://www.slcremodels.com/",
+      "path": "/",
+      "title": "Salt Lake City Remodels",
+      "h1Count": 2,
+      "wordCount": 1064,
+      "forms": 1,
+      "inputCount": 1
+    },
+    {
+      "url": "https://www.slcremodels.com/search",
+      "path": "/search",
+      "title": "Salt Lake City Remodels",
+      "h1Count": 0,
+      "wordCount": 198,
+      "forms": 1,
+      "inputCount": 1
+    },
+    {
+      "url": "https://www.slcremodels.com/contact",
+      "path": "/contact",
+      "title": "Contact — Salt Lake City Remodels",
+      "h1Count": 1,
+      "wordCount": 641,
+      "forms": 1,
+      "inputCount": 1
+    },
+    {
+      "url": "https://www.slcremodels.com/gallery",
+      "path": "/gallery",
+      "title": "Before and After — Salt Lake City Remodels",
+      "h1Count": 0,
+      "wordCount": 250,
+      "forms": 1,
+      "inputCount": 1
+    },
+    {
+      "url": "https://www.slcremodels.com/testimonials",
+      "path": "/testimonials",
+      "title": "Testimonials — Salt Lake City Remodels",
+      "h1Count": 1,
+      "wordCount": 301,
+      "forms": 1,
+      "inputCount": 1
+    }
+  ],
+  "crawlErrors": [],
+  "brokenLinkDetails": [
+    {
+      "url": "https://www.slcremodels.com/search",
+      "status": 403,
+      "broken": true,
+      "error": null
+    }
+  ],
+  "lighthouse": {
+    "status": "Completed",
+    "version": "13.4.1",
+    "finalUrl": "https://www.slcremodels.com/",
+    "fetchedAt": "2026-08-22T15:39:48.808Z",
+    "scores": {
+      "performance": 47,
+      "accessibility": 94,
+      "bestPractices": 100,
+      "seo": 100
+    },
+    "metrics": {
+      "firstContentfulPaintMs": 3767,
+      "largestContentfulPaintMs": 10356,
+      "speedIndexMs": 8456,
+      "totalBlockingTimeMs": 439,
+      "cumulativeLayoutShift": 0.094,
+      "interactiveMs": 11636
+    }
+  },
+  "auditedUrl": "https://www.slcremodels.com/",
+  "auditedAt": "2026-08-22T15:40:02.567Z",
+  "researchFailure": null,
+  "history": [
+    {
+      "jobId": "job-e2df63f6-00b1-429a-8f5e-8e8747577a23",
+      "at": "2026-08-22T04:09:32.266Z",
+      "url": "https://www.slcremodels.com/",
+      "score": 61,
+      "performance": 53,
+      "pages": 5,
+      "brokenLinks": 1
+    },
+    {
+      "jobId": "job-bee60533-16ee-4b85-9d99-0788757c1444",
+      "at": "2026-08-22T15:40:02.567Z",
+      "url": "https://www.slcremodels.com/",
+      "score": 66,
+      "performance": 47,
+      "pages": 5,
+      "brokenLinks": 1
+    }
+  ]
+}

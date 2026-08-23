@@ -1,0 +1,64 @@
+{
+  "status": "Completed",
+  "summary": "Roof-It, Inc. (saltlakecityroofs.com) is a West Valley City roofing contractor with strong external signals — 4.9 rating / 244 reviews and claimed profile — but deterministic audit (OpportunityScore 71, Confidence 93) shows the website limits that strength. MainIssue is Mobile performance: Lighthouse mobile performance: 44/100; largest contentful paint: 13.6s. Evidence is specific and fixable: 23% alt coverage, 7 H1s on homepage, JSON-LD blocks 0, canonical not found, and 1 broken internal link of 6 checked. Prioritized fixes focus on speed, structured data, and on-page clarity/accessibility.",
+  "topOpportunities": [
+    {
+      "title": "Fix mobile performance — 44/100 and 13.6s LCP blocking mobile experience",
+      "severity": "High",
+      "evidence": "Lighthouse mobile performance: 44/100; largest contentful paint: 13.6s",
+      "whyItMatters": "With poor mobileQuality and 17415ms interactiveMs and 7436ms firstContentfulPaintMs, visitors on phones may wait longer to see primary content, which can reduce engagement with the 10 detected CTA phrases.",
+      "recommendation": "Compress/resize hero images, defer unused JavaScript (Est savings of 343 KiB noted), and set efficient cache lifetimes (Est savings of 2,711 KiB noted) to reduce LCP from 13.6s. Validate with repeat Lighthouse run on https://saltlakecityroofs.com/."
+    },
+    {
+      "title": "Add structured data — currently none detected",
+      "severity": "Medium",
+      "evidence": "Structured data: not found",
+      "whyItMatters": "Lighthouse SEO is 91/100 but without schema, search engines lack explicit business entity signals that could support rich results for a contractor with high review count.",
+      "recommendation": "Add JSON-LD structured data blocks for LocalBusiness + RoofingContractor on homepage, including name, address 3424 W 2400 S Ste B, and phone. Currently JSON-LD structured data blocks: 0."
+    },
+    {
+      "title": "Fix homepage clarity and accessibility — 7 H1s and 23% alt coverage",
+      "severity": "Medium",
+      "evidence": "Image alt-text coverage: 23%",
+      "whyItMatters": "Accessibility score is 77/100 with failures for image-alt, color-contrast, and heading-order; improving these helps assistive-tech users and clarifies page topic alongside existing title and description.",
+      "recommendation": "Add useful alternative text to homepage images (22 images observed, only 23% covered) and fix heading structure — homepage H1 count: 7 with failure 'Heading elements are not in a sequentially-descending order' — to use one primary H1."
+    },
+    {
+      "title": "Repair 1 broken internal link and add missing canonical",
+      "severity": "Low",
+      "evidence": "Broken internal links: 1 of 6 checked",
+      "whyItMatters": "Only 6 internal links observed; one 404 creates a dead end for crawlers/users and missing canonical leaves duplicate handling undefined for https://saltlakecityroofs.com/.",
+      "recommendation": "Fix or remove the 404 at https://saltlakecityroofs.com/cdn-cgi/l/email-protection and add canonical URL: not found on homepage. Re-crawl 6 links to confirm 0 broken."
+    }
+  ],
+  "strengths": [
+    "Reputation base: publicRating 4.9 with publicReviewCount 244 and positiveReviewShare 99% with Latest sampled Google review: 2026-06-29T20:00:56.798Z",
+    "Search readiness strong: Lighthouse SEO 91/100 with Homepage returned HTTP 200 at https://saltlakecityroofs.com/ and Page title: Roofing Contractors | Roof-It, Inc. | Salt Lake City, Utah",
+    "Measurement and action foundation: detectedStack GA4 and Online estimates: offered with Google Business Profile: claimed and hasPhone true and Homepage CTA phrases detected: 10",
+    "Mobile foundation present: viewport true with Mobile foundation points 6/6 evidence Responsive viewport detected"
+  ],
+  "unknowns": [
+    "Actual conversion rate or traffic volume — not in packet",
+    "Whether slow LCP is hosting, images, or third-party scripts beyond lighthouseFailures Est savings",
+    "Content strategy for services pages — titles empty on 4 crawled pages (about-us, services, etc.)",
+    "Hosting costs or preferred CMS constraints",
+    "Form/lead flow effectiveness — homepage forms 0 and inputCount 0 but onlineEstimates offered"
+  ],
+  "qualificationRecommendation": "Pursue",
+  "qualificationRationale": "OpportunityScore 71 with Confidence 93 indicates clear, measurable website issues. Finding is Mobile performance with detail 'Lighthouse performance score is 44/100 with a 13.6s largest contentful paint' plus 4 additional fixable findings (broken link, 7 H1s, 23% alt coverage, no structured data). Business has strong reputation (4.9 rating, 244 reviews) and claimed profile with online estimates offered, so fixes have a solid base to support. Advisory: PURSUE - multiple addressable technical/SEO/",
+  "outreachAngles": [
+    "Noted your site https://saltlakecityroofs.com/ loads with Lighthouse mobile performance 44/100 and 13.6s largest contentful paint — we can help improve loading speed.",
+    "Noted homepage has 23% image alt-text coverage and 7 H1s — opportunity to tighten heading structure and accessibility.",
+    "Noted no structured data detected on homepage (JSON-LD blocks: 0) — adding LocalBusiness/RoofingContractor schema could help search clarity."
+  ],
+  "generation": {
+    "source": "meta",
+    "provider": "meta",
+    "providerLabel": "Meta Model API",
+    "model": "muse-spark-1.2-contributor",
+    "responseId": "chatcmpl-01a01091-99e7-7b43-9759-fc794303b320",
+    "generatedAt": "2026-08-17T16:32:52.970Z",
+    "evidenceVersion": 1
+  },
+  "error": null
+}
