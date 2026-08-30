@@ -140,6 +140,15 @@ export function validateSettingsDraft(draft) {
     const v = Number(draft.discoveryLongitude)
     if (!Number.isFinite(v) || v < -180 || v > 180) errors.discoveryLongitude = 'Longitude must be -180 to 180'
   }
+  if (draft.contactEnrichmentLimit !== '' && draft.contactEnrichmentLimit != null) {
+    const v = Number(draft.contactEnrichmentLimit)
+    if (!Number.isFinite(v) || !Number.isInteger(v) || v < 1 || v > 100) errors.contactEnrichmentLimit = 'Enter 1-100'
+  }
+  if (draft.contactEnrichmentRecentHours !== '' && draft.contactEnrichmentRecentHours != null) {
+    const v = Number(draft.contactEnrichmentRecentHours)
+    if (!Number.isFinite(v) || !Number.isInteger(v) || v < 1 || v > 720) errors.contactEnrichmentRecentHours = 'Enter 1-720'
+  }
+  if ('contactEnrichmentEnabled' in draft && typeof draft.contactEnrichmentEnabled !== 'boolean') errors.contactEnrichmentEnabled = 'Must be a boolean'
   return { errors, isValid: Object.keys(errors).length === 0 }
 }
 
@@ -209,4 +218,21 @@ export function getFieldErrorsFromApiError(caught) {
   if (/website|domain/i.test(msg)) return { website: msg }
   if (/location/i.test(msg)) return { location: msg }
   return {}
+}
+
+export function validateContactQueueParams(body = {}) {
+  const errors = {}
+  const limit = body.limit
+  const recentHours = body.recentHours
+  const force = body.force
+  if (limit != null) {
+    const n = Number(limit)
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 100) errors.limit = 'Enter 1-100'
+  }
+  if (recentHours != null) {
+    const n = Number(recentHours)
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 720) errors.recentHours = 'Enter 1-720'
+  }
+  if ('force' in body && typeof force !== 'boolean') errors.force = 'Must be a boolean'
+  return { errors, isValid: Object.keys(errors).length === 0 }
 }

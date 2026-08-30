@@ -38,6 +38,8 @@ Bright Data discovery or CSV import
 - Source-required company metrics for employees, revenue, profit, founding year, and total branches; unavailable values remain explicitly unknown
 - Meta Model API and OpenAI Responses API integrations with strict structured output for concise, balanced, and detailed outreach drafts
 - Deterministic outreach fallback when no model API key is configured
+- Tiered contact enrichment (provider-agnostic, first-party public-website provider): bounded homepage + contact/about/team page crawl, explicit mailto/tel/LinkedIn/form + person/role extraction with provenance, deterministic dedupe, preferred-contact hierarchy, reachability scoring, and commercial lead-value ranking (`contacts`, `preferredContact`, `contactEnrichment`, `reachabilityScore`, `commercialScore` under `data/leads/{id}/contacts.json`)
+- Manual and automatic contact-enrichment queues: `POST /api/leads/:id/contact-enrichment`, `POST /api/contact-enrichment/queue` / `POST /api/contact-enrichment/auto-queue` (configurable via `contactEnrichmentEnabled` / `contactEnrichmentLimit` / `contactEnrichmentRecentHours` in Settings, default 30)
 - Manual outreach only; the app does not send email automatically
 
 Deep audits retain a lightweight HTML fallback. If Lighthouse cannot launch or load a page, the client remains analyzed with a visible partial component state rather than fabricated performance data.
