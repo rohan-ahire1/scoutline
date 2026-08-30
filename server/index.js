@@ -5,12 +5,25 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { auditWebsite } from './services/audit.js'
+import { auditWebsite, fetchPublicText as auditFetchPublicText, normalizeWebsite } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
 import { generateOutreach, getOutreachConfig } from './services/outreach.js'
 import { downloadDiscovery, getBrightDataConfig, mapDiscoveryRecord, pollDiscovery, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
+import {
+  applyContactEnrichmentFailure,
+  applyContactEnrichmentToLead,
+  compareLeadsByValue,
+  computeCommercialScore,
+  computeReachabilityScore,
+  createPublicWebsiteProvider,
+  CONTACT_ENRICHMENT_MAX_PAGES,
+  ensureLeadContactFields,
+  runContactEnrichment,
+  selectPreferredContact,
+  selectTopLeadsForContactEnrichment,
+} from './services/contact-enrichment.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
@@ -79,6 +92,9 @@ const defaultSettings = {
   discoveryLatitude: 40.7608,
   discoveryLongitude: -111.891,
   discoveryZoom: 13,
+  contactEnrichmentEnabled: true,
+  contactEnrichmentLimit: 30,
+  contactEnrichmentRecentHours: 24,
 }
 const settingInsert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')
 Object.entries(defaultSettings).forEach(([key, value]) => settingInsert.run(key, JSON.stringify(value)))
@@ -164,10 +180,25 @@ function validateIdParam(id) {
 
 
 const nowIso = () => new Date().toISOString()
-const readRows = (table) => db.prepare(`SELECT payload FROM ${table} ORDER BY rowid ASC`).all().map((row) => JSON.parse(row.payload))
+const readRows = (table) => db.prepare(`SELECT payload FROM ${table} ORDER BY rowid ASC`).all().map((row) => JSON.parse(row.payload)).map((payload) => {
+  if (table === 'leads') {
+    try { return ensureLeadContactFields(payload) } catch { return payload }
+  }
+  return payload
+})
 const readLead = (id) => {
   const row = db.prepare('SELECT payload FROM leads WHERE id = ?').get(id)
-  return row ? JSON.parse(row.payload) : null
+  if (!row) return null
+  const parsed = JSON.parse(row.payload)
+  // Ensure contact fields are at least defaulted for callers that treat missing as empty; do not mutate storage here
+  if (!Array.isArray(parsed.contacts) && !parsed.contactEnrichment) {
+    return ensureLeadContactFields(parsed)
+  }
+  // still ensure derived scores are present for ranking even if contacts exist
+  if (parsed.commercialScore == null || parsed.reachabilityScore == null) {
+    try { return ensureLeadContactFields(parsed) } catch { return parsed }
+  }
+  return parsed
 }
 const readRun = (id) => {
   const row = db.prepare('SELECT payload FROM runs WHERE id = ?').get(id)
@@ -283,6 +314,20 @@ function writeLeadArtifacts(lead, includeProfile = false) {
   writeFileSync(join(folder, 'raw.json'), JSON.stringify(businessData, null, 2), 'utf8')
   if (lead.businessIntelligence) writeFileSync(join(folder, 'business-intelligence.json'), JSON.stringify(lead.businessIntelligence, null, 2), 'utf8')
   writeFileSync(join(folder, 'audit.json'), JSON.stringify(auditData, null, 2), 'utf8')
+  if (lead.contacts || lead.contactEnrichment) {
+    const contactData = {
+      contacts: lead.contacts || [],
+      preferredContactId: lead.preferredContactId || null,
+      preferredContact: lead.preferredContact || null,
+      contactEnrichment: lead.contactEnrichment || null,
+      contactJob: lead.contactJob || null,
+      reachabilityScore: lead.reachabilityScore ?? lead.contactEnrichment?.reachabilityScore ?? null,
+      commercialScore: lead.commercialScore ?? computeCommercialScore(lead),
+      email: lead.email,
+      phone: lead.phone,
+    }
+    writeFileSync(join(folder, 'contacts.json'), JSON.stringify(contactData, null, 2), 'utf8')
+  }
   if (lead.opportunityScore != null) {
     writeFileSync(join(folder, 'analysis-v1.md'), `# Analysis — ${lead.company}\n\n- Opportunity score: ${lead.opportunityScore}/100\n- Confidence: ${lead.confidence}/100\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Status: ${lead.researchStatus}\n\n${lead.notes || lead.issueDetail || 'No manual analysis note recorded.'}\n`, 'utf8')
   }
@@ -304,11 +349,21 @@ function writeLeadArtifacts(lead, includeProfile = false) {
   return folder
 }
 
-readRows('leads').forEach((lead) => {
-  const normalized = normalizeLeadWorkflow(lead)
-  if (JSON.stringify(normalized) !== JSON.stringify(lead)) saveLead(normalized)
-  else writeLeadArtifacts(lead)
-})
+{
+  const rawLeads = db.prepare('SELECT payload FROM leads').all().map((row) => JSON.parse(row.payload))
+  rawLeads.forEach((lead) => {
+    const normalized = normalizeLeadWorkflow(lead)
+    const withContacts = ensureLeadContactFields(normalized)
+    if (JSON.stringify(withContacts) !== JSON.stringify(lead)) {
+      // Persist defaults for leads missing contacts/commercial fields
+      saveLead(withContacts)
+    } else if (JSON.stringify(normalized) !== JSON.stringify(lead)) {
+      saveLead(normalized)
+    } else {
+      writeLeadArtifacts(lead)
+    }
+  })
+}
 
 function readSettings() {
   return Object.fromEntries(db.prepare('SELECT key, value FROM settings').all().map((row) => [row.key, JSON.parse(row.value)]))
@@ -411,7 +466,8 @@ function importedLead(row, index = 0, source = 'CSV import') {
     },
   }
   const hasCsvIntelligence = Object.values(csvIntelligence.companyMetrics).some((item) => item.value != null)
-  return row.businessIntelligence || hasCsvIntelligence ? enrichLead(lead, row.businessIntelligence || csvIntelligence) : lead
+  const base = row.businessIntelligence || hasCsvIntelligence ? enrichLead(lead, row.businessIntelligence || csvIntelligence) : lead
+  return ensureLeadContactFields(base)
 }
 
 function insertUniqueLead(row, index, source, { runId = null, at = nowIso() } = {}) {
@@ -544,6 +600,90 @@ function queueMuseSynthesis(lead, payload = {}) {
   })
   recordEvent('lead', lead.id, 'muse_synthesis_queued', { jobId: job.id, auditJobId: payload.auditJobId || null })
   return { lead: updated, job, alreadyQueued: false }
+}
+
+function queueContactEnrichmentForLead(lead, options = {}) {
+  const active = db.prepare("SELECT * FROM jobs WHERE lead_id = ? AND type = 'contact-enrichment' AND status IN ('Queued', 'Running', 'Waiting') ORDER BY created_at DESC LIMIT 1").get(lead.id)
+  if (active) return { lead, job: parseJob(active), alreadyQueued: true }
+  const job = queueJob({ type: 'contact-enrichment', leadId: lead.id, payload: options.payload || {}, maxAttempts: 2 })
+  const now = nowIso()
+  const updated = saveLead({
+    ...lead,
+    contactEnrichment: {
+      ...(lead.contactEnrichment || {}),
+      status: 'Queued',
+      provider: null,
+      providerSummary: '',
+      contactsCount: Array.isArray(lead.contacts) ? lead.contacts.length : 0,
+      observedAt: lead.contactEnrichment?.observedAt || null,
+      updatedAt: now,
+      error: null,
+      jobId: job.id,
+      reachabilityScore: lead.contactEnrichment?.reachabilityScore ?? lead.reachabilityScore ?? null,
+    },
+    contactJob: { id: job.id, status: 'Queued', progress: 0, phase: 'Waiting for contact enrichment' },
+    updated: 'Contact enrichment queued',
+  })
+  recordEvent('lead', lead.id, 'contact_enrichment_queued', { jobId: job.id })
+  return { lead: updated, job, alreadyQueued: false }
+}
+
+
+function parseContactQueueParams(body = {}) {
+  const errors = []
+  const push = (field, msg) => errors.push({ field, message: msg })
+  let limit, recentHours, force
+  if (body.limit != null) {
+    const n = clampInt(body.limit, 1, 100)
+    if (n == null) push('limit', 'Must be an integer 1-100')
+    else limit = n
+  }
+  if (body.recentHours != null) {
+    const n = clampInt(body.recentHours, 1, 720)
+    if (n == null) push('recentHours', 'Must be an integer 1-720')
+    else recentHours = n
+  }
+  if ('force' in body && typeof body.force !== 'boolean') push('force', 'Must be a boolean')
+  else if ('force' in body) force = Boolean(body.force)
+  return { errors, limit, recentHours, force }
+}
+
+function queueTopContactEnrichments(opts = {}) {
+  const settings = readSettings()
+  if (!settings.contactEnrichmentEnabled && !opts.force) return { queued: [], skipped: 'disabled' }
+  const limit = clampInt(opts.limit ?? settings.contactEnrichmentLimit ?? 30, 1, 100) ?? 30
+  const recentHours = clampInt(opts.recentHours ?? settings.contactEnrichmentRecentHours ?? 24, 1, 720) ?? 24
+  const now = nowIso()
+  const nowMs = new Date(now).getTime()
+  // Build active/recent sets from jobs
+  const activeRows = db.prepare("SELECT lead_id FROM jobs WHERE type = 'contact-enrichment' AND status IN ('Queued','Running','Waiting')").all()
+  const activeIds = new Set(activeRows.map(r => r.lead_id).filter(Boolean))
+  const recentCutoff = new Date(nowMs - recentHours * 3600000).toISOString()
+  let recentlyCompletedIds = new Set()
+  {
+    const recentRows = db.prepare("SELECT lead_id, updated_at FROM jobs WHERE type = 'contact-enrichment' AND status = 'Completed' AND updated_at >= ?").all(recentCutoff)
+    recentlyCompletedIds = new Set(recentRows.map(r => r.lead_id).filter(Boolean))
+    // Also consider lead.contactEnrichment updatedAt
+    readRows('leads').forEach(l => {
+      const updatedAt = l.contactEnrichment?.updatedAt || l.contactEnrichment?.observedAt
+      if (updatedAt && new Date(updatedAt).getTime() >= new Date(recentCutoff).getTime()) recentlyCompletedIds.add(l.id)
+    })
+  }
+  const allLeads = readRows('leads')
+  const eligible = selectTopLeadsForContactEnrichment(allLeads, {
+    limit,
+    recentHours,
+    now,
+    activeLeadIds: activeIds,
+    recentlyCompletedIds,
+  })
+  const queued = []
+  for (const lead of eligible) {
+    const res = queueContactEnrichmentForLead(readLead(lead.id))
+    if (!res.alreadyQueued) queued.push(res.job)
+  }
+  if (queued.length) recordEvent('system', 'contact-enrichment', 'auto_queue', { queued: queued.length, limit, recentHours })
+  return { queued, eligible: eligible.length, limit, recentHours }
 }
 
 async function runAuditJob(job) {
@@ -719,6 +859,48 @@ async function runRefreshJob(job) {
   return updated
 }
 
+async function runContactEnrichmentJob(job) {
+  const lead = readLead(job.leadId)
+  if (!lead) throw new Error('Lead not found')
+  if (!lead.website) throw new Error('Lead has no website for contact enrichment')
+  // Mark running
+  saveLead({
+    ...lead,
+    contactEnrichment: { ...(lead.contactEnrichment || {}), status: 'Running', error: null, jobId: job.id, updatedAt: nowIso() },
+    contactJob: { id: job.id, status: 'Running', progress: 20, phase: 'Fetching public contact pages' },
+    updated: 'Enriching contacts',
+  })
+  updateJob(job.id, { progress: 20 })
+  const settings = readSettings()
+  try {
+    const provider = createPublicWebsiteProvider({ fetchPublicText: auditFetchPublicText, normalizeWebsite })
+    const result = await runContactEnrichment(lead, {
+      providers: [provider],
+      fetchPublicText: auditFetchPublicText,
+      normalizeWebsite,
+      maxPages: CONTACT_ENRICHMENT_MAX_PAGES,
+      requestDelay: settings.requestDelay ?? 0,
+    })
+    const current = readLead(job.leadId)
+    const enriched = applyContactEnrichmentToLead(current, result, { now: nowIso() })
+    const saved = saveLead({
+      ...enriched,
+      contactEnrichment: { ...enriched.contactEnrichment, status: 'Completed', jobId: job.id },
+      contactJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Contact enrichment complete' },
+    })
+    updateJob(job.id, { status: 'Completed', progress: 100, result: { contacts: saved.contacts.length, reachabilityScore: saved.reachabilityScore, preferredContactId: saved.preferredContactId }, error: null })
+    recordEvent('lead', lead.id, 'contact_enrichment_completed', { jobId: job.id, contacts: saved.contacts.length, reachabilityScore: saved.reachabilityScore })
+    return saved
+  } catch (error) {
+    const current = readLead(job.leadId)
+    if (current) {
+      const failed = applyContactEnrichmentFailure(current, error, { jobId: job.id, now: nowIso() })
+      saveLead(failed)
+    }
+    throw error
+  }
+}
+
 async function runDiscoveryJob(job) {
   const run = readRun(job.runId)
   if (!run) throw new Error('Run not found')
@@ -764,10 +946,29 @@ async function processNextJob() {
   const attempt = job.attempts + (job.status === 'Queued' ? 1 : 0)
   updateJob(job.id, { status: 'Running', attempts: attempt, error: null, nextAttemptAt: null })
   try {
-    if (job.type === 'audit') await runAuditJob({ ...job, attempts: attempt })
-    else if (job.type === 'synthesize') await runSynthesisJob({ ...job, attempts: attempt })
-    else if (job.type === 'discover') await runDiscoveryJob({ ...job, attempts: attempt })
-    else if (job.type === 'refresh') await runRefreshJob({ ...job, attempts: attempt })
+    if (job.type === 'audit') {
+      const res = await runAuditJob({ ...job, attempts: attempt })
+      // Automatic top-lead contact enrichment after audit completion (bounded, idempotent)
+      try {
+        const s = readSettings()
+        if (s.contactEnrichmentEnabled) {
+          const q = queueTopContactEnrichments()
+          if (q.queued.length) console.log(`Auto-queued ${q.queued.length} contact enrichments after audit`)
+        }
+      } catch (e) { console.warn('auto contact queue after audit failed', e.message) }
+      // keep res for possible workflow continuation
+    } else if (job.type === 'synthesize') await runSynthesisJob({ ...job, attempts: attempt })
+    else if (job.type === 'discover') {
+      await runDiscoveryJob({ ...job, attempts: attempt })
+      try {
+        const s = readSettings()
+        if (s.contactEnrichmentEnabled) {
+          const q = queueTopContactEnrichments()
+          if (q.queued.length) console.log(`Auto-queued ${q.queued.length} contact enrichments after discovery`)
+        }
+      } catch (e) { console.warn('auto contact queue after discovery failed', e.message) }
+    } else if (job.type === 'refresh') await runRefreshJob({ ...job, attempts: attempt })
+    else if (job.type === 'contact-enrichment') await runContactEnrichmentJob({ ...job, attempts: attempt })
     else throw new Error(`Unsupported job type: ${job.type}`)
   } catch (error) {
     const current = readJob(job.id)
@@ -804,6 +1005,23 @@ async function processNextJob() {
         refreshJob: { id: job.id, status: retry ? 'Queued' : 'Failed', progress: retry ? Math.max(5, current.progress) : 100, phase: retry ? 'Retrying soon' : 'Business refresh failed' },
         updated: retry ? 'Business refresh retrying soon' : 'Business refresh failed',
       })
+    }
+    if (job.type === 'contact-enrichment') {
+      const lead = readLead(job.leadId)
+      if (lead) {
+        const failed = applyContactEnrichmentFailure(lead, error, { jobId: job.id, now: nowIso() })
+        // Only mark failed if not retrying; if retry, revert to queued
+        if (retry) {
+          saveLead({
+            ...lead,
+            contactEnrichment: { ...(lead.contactEnrichment||{}), status: 'Queued', error: null, jobId: job.id, updatedAt: nowIso() },
+            contactJob: { id: job.id, status: 'Queued', progress: 5, phase: 'Retrying soon' },
+            updated: 'Contact enrichment retrying soon',
+          })
+        } else {
+          saveLead({ ...failed, contactJob: { id: job.id, status: 'Failed', progress: 100, phase: error.message.slice(0,120) } })
+        }
+      }
     }
     if (job.payload.manualAction) {
       const lead = readLead(job.leadId)
@@ -906,6 +1124,9 @@ app.patch('/api/settings', (req, res) => {
   if ('discoveryLatitude' in body) { const n = Number(body.discoveryLatitude); if (!Number.isFinite(n) || n < -90 || n > 90) push('discoveryLatitude', 'Must be a number -90 to 90') }
   if ('discoveryLongitude' in body) { const n = Number(body.discoveryLongitude); if (!Number.isFinite(n) || n < -180 || n > 180) push('discoveryLongitude', 'Must be a number -180 to 180') }
   if ('discoveryZoom' in body) { const n = clampInt(body.discoveryZoom, 12, 16); if (n == null) push('discoveryZoom', 'Must be an integer 12-16') }
+  if ('contactEnrichmentEnabled' in body && typeof body.contactEnrichmentEnabled !== 'boolean') push('contactEnrichmentEnabled', 'Must be a boolean')
+  if ('contactEnrichmentLimit' in body) { const n = clampInt(body.contactEnrichmentLimit, 1, 100); if (n == null) push('contactEnrichmentLimit', 'Must be an integer 1-100') }
+  if ('contactEnrichmentRecentHours' in body) { const n = clampInt(body.contactEnrichmentRecentHours, 1, 720); if (n == null) push('contactEnrichmentRecentHours', 'Must be an integer 1-720') }
   if (vdetails.length) return badRequest(res, null, 'Invalid settings values', vdetails)
 
   // cross-field: deepAuditLimit should not exceed resultLimit if both present
@@ -1261,6 +1482,79 @@ app.patch('/api/runs/:id', (req, res) => {
   }
   recordEvent('run', run.id, requested.toLowerCase(), {})
   res.json(syncRun(run.id) || updated)
+})
+
+app.post('/api/leads/:id/contact-enrichment', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (!lead.website || !isValidDomain(normalizeDomainInput(lead.website))) return unprocessable(res, 'Lead has no valid website to enrich', 'website')
+  const result = queueContactEnrichmentForLead(lead)
+  if (result.alreadyQueued) return conflict(res, 'Contact enrichment is already queued or running for this client', 'contactEnrichment', 'ALREADY_QUEUED')
+  res.status(202).json({ lead: result.lead, job: result.job, message: 'Contact enrichment queued' })
+})
+
+app.get('/api/contact-enrichment/queue', (_req, res) => {
+  // Introspect eligible leads without queuing (GET)
+  const settings = readSettings()
+  const activeRows = db.prepare("SELECT lead_id FROM jobs WHERE type = 'contact-enrichment' AND status IN ('Queued','Running','Waiting')").all()
+  const activeIds = new Set(activeRows.map(r => r.lead_id).filter(Boolean))
+  const now = nowIso()
+  const recentHours = clampInt(settings.contactEnrichmentRecentHours ?? 24, 1, 720) ?? 24
+  const recentCutoff = new Date(new Date(now).getTime() - recentHours * 3600000).toISOString()
+  let recentlyCompletedIds = new Set()
+  {
+    const recentRows = db.prepare("SELECT lead_id FROM jobs WHERE type = 'contact-enrichment' AND status = 'Completed' AND updated_at >= ?").all(recentCutoff)
+    recentlyCompletedIds = new Set(recentRows.map(r => r.lead_id).filter(Boolean))
+    readRows('leads').forEach(l => {
+      const updatedAt = l.contactEnrichment?.updatedAt || l.contactEnrichment?.observedAt
+      if (updatedAt && new Date(updatedAt).getTime() >= new Date(recentCutoff).getTime()) recentlyCompletedIds.add(l.id)
+    })
+  }
+  const eligible = selectTopLeadsForContactEnrichment(readRows('leads'), { limit: Number(settings.contactEnrichmentLimit ?? 30), recentHours, now, activeLeadIds: activeIds, recentlyCompletedIds })
+  res.json({ enabled: Boolean(settings.contactEnrichmentEnabled), limit: Number(settings.contactEnrichmentLimit ?? 30), recentHours, eligible: eligible.map(l => ({ id: l.id, company: l.company, website: l.website, commercialScore: computeCommercialScore(l), opportunityScore: l.opportunityScore, prelimScore: l.prelimScore })), count: eligible.length })
+})
+
+app.post('/api/contact-enrichment/queue', (req, res) => {
+  const body = req.body || {}
+  const { errors, limit, recentHours, force } = parseContactQueueParams(body)
+  if (errors.length) return badRequest(res, errors[0].field, errors[0].message, errors)
+  const settings = readSettings()
+  const effectiveForce = force ?? false
+  if (!settings.contactEnrichmentEnabled && !effectiveForce) return serviceUnavailable(res, 'Automatic contact enrichment is disabled', 'AUTO_DISABLED')
+  const result = queueTopContactEnrichments({ limit, recentHours, force: effectiveForce })
+  if (result.skipped === 'disabled') return serviceUnavailable(res, 'Automatic contact enrichment is disabled', 'AUTO_DISABLED')
+  res.status(202).json({ ...result, message: result.queued.length ? `Queued ${result.queued.length} contact enrichments` : 'No eligible leads to queue' })
+})
+
+// legacy alias for spec wording: queue-top
+app.post('/api/contact-enrichment/auto-queue', (req, res) => {
+  const body = req.body || {}
+  const { errors, limit, recentHours, force } = parseContactQueueParams(body)
+  if (errors.length) return badRequest(res, errors[0].field, errors[0].message, errors)
+  const result = queueTopContactEnrichments({ limit, recentHours, force })
+  if (result.skipped === 'disabled' && !body.force) return serviceUnavailable(res, 'Automatic contact enrichment is disabled', 'AUTO_DISABLED')
+  res.status(202).json({ ...result, message: result.queued.length ? `Queued ${result.queued.length} contact enrichments` : 'No eligible leads to queue' })
+})
+
+app.get('/api/leads/:id/contact-enrichment', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const job = lead.contactJob ? readJob(lead.contactJob.id) : null
+  const enrichment = lead.contactEnrichment || null
+  const contacts = Array.isArray(lead.contacts) ? lead.contacts : []
+  const preferred = lead.preferredContact || selectPreferredContact(contacts) || null
+  res.json({
+    leadId: lead.id,
+    contacts,
+    preferredContactId: lead.preferredContactId || (preferred ? preferred.id : null),
+    preferredContact: preferred,
+    contactEnrichment: enrichment,
+    contactJob: job || lead.contactJob || null,
+    reachabilityScore: lead.reachabilityScore ?? enrichment?.reachabilityScore ?? (contacts.length ? computeReachabilityScore(contacts).score : null),
+    commercialScore: lead.commercialScore ?? computeCommercialScore(lead),
+  })
 })
 
 app.post('/api/leads/:id/export', (req, res) => {

@@ -852,3 +852,25 @@ kbd { min-width: 21px; padding: 2px 4px; border: 1px solid var(--border); border
 .field-error { color: #c00; font-size: 12px; line-height: 1.4; margin-top: 4px; display: block; }
 .input-error { border-color: #c00 !important; box-shadow: 0 0 0 3px rgba(204,0,0,0.08) !important; }
 
+/* Contact enrichment */
+.contact-enrichment-section { border: 1px solid var(--border-soft); border-radius: 8px; padding: 12px; background: var(--surface-raised); }
+.contact-preferred-card { margin-top: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.contact-preferred-head { display: flex; align-items: center; gap: 10px; }
+.contact-avatar { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-muted); color: var(--muted); }
+.contact-identity { flex: 1; display: grid; gap: 2px; }
+.contact-identity strong { font-size: 12px; }
+.contact-identity small { color: var(--subtle); font-size: 8px; }
+.contact-channels { margin-top: 10px; display: grid; gap: 6px; }
+.contact-channel { display: flex; align-items: center; gap: 6px; font-size: 9px; }
+.contact-channel strong { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact-channel em { padding: 2px 5px; border-radius: 4px; background: var(--surface-muted); color: var(--subtle); font-style: normal; font-size: 7px; }
+.contact-channel small { color: var(--subtle); font-size: 7px; }
+.contact-empty { margin: 8px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.contact-source, .contact-provenance { display: block; margin-top: 6px; color: var(--subtle); font-size: 7px; }
+.contact-source a { color: var(--blue); text-decoration: none; }
+.contact-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-soft); }
+.contact-more-list { margin-top: 4px; display: grid; gap: 3px; font-size: 8px; color: var(--muted); }
+.contact-all-list { margin-top: 12px; display: grid; gap: 6px; }
+.contact-row { padding: 8px; border: 1px solid var(--border-soft); border-radius: 6px; background: var(--surface); display: grid; gap: 4px; }
+.reachability-detail { margin-top: 8px; color: var(--subtle); font-size: 7px; }
+
