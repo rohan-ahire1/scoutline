@@ -29,6 +29,7 @@ import {
   Moon,
   PanelLeftClose,
   Pause,
+  Phone,
   Play,
   Plus,
   RefreshCcw,
@@ -40,6 +41,7 @@ import {
   Sun,
   Trophy,
   Upload,
+  User,
   WandSparkles,
   WifiOff,
   X,
@@ -119,6 +121,12 @@ async function apiRequest(path, options = {}) {
   } finally {
     window.clearTimeout(timeout)
   }
+}
+
+function safeSourceDisplay(value) {
+  const v = String(value || '').trim()
+  if (!v) return null
+  try { const u = new URL(v); if (!['http:','https:'].includes(u.protocol)) return null; return { href: u.href, hostname: u.hostname, pathname: u.pathname } } catch { return null }
 }
 
 function isValidHttpUrl(value) {
@@ -307,6 +315,74 @@ function outreachBody(lead, version = 'Concise') {
     return `Hi —\n\nI reviewed ${lead.company}'s website and ${observations.length > 1 ? 'two things' : 'one thing'} stood out:\n${list}\n\nThese issues can make it harder for visitors to understand the offer and take the next step, especially on mobile. I’d focus the redesign on ${String(lead.mainIssue || 'a clearer customer journey').toLowerCase()}, a clearer primary action, stronger proof near the enquiry point, and a simpler mobile path.\n\nIf useful, I can create a free homepage concept showing how those changes could work together. You can review the direction first and decide whether it feels right—would you like me to send it?`
   }
   return `Hi — I reviewed ${lead.company}'s website and noticed one clear opportunity: ${first}. I have a straightforward idea to improve it and make the next step easier for visitors. If useful, I can send a free homepage redesign so you can see the direction before deciding anything—interested?`
+}
+
+function getPreferredContact(lead) {
+  if (lead?.preferredContact) return lead.preferredContact
+  const contacts = Array.isArray(lead?.contacts) ? lead.contacts : []
+  if (!contacts.length) return null
+  // deterministic selection mirroring backend: sort by tier then verified/confidence/completeness/name/id
+  const tier = (contact) => {
+    const role = String(contact.role || '').toLowerCase()
+    if (/owner|founder|co-?founder|principal|president|ceo|chief executive/i.test(role)) return 0
+    if (/general manager|\bgm\b|location manager|branch manager|store manager|operations manager|managing director/i.test(role)) return 1
+    if (/marketing|growth|business development|sales manager|outreach|communications/i.test(role)) return 2
+    const channels = contact.channels || []
+    const verifiedRole = channels.some(ch => ch.type === 'email' && ch.verified && /^(owner|founder|manager|gm|general|marketing|sales|info|contact|hello|admin|support|office|team)@/i.test(String(ch.value||'')))
+    if (verifiedRole) return 3
+    if (channels.some(ch => ch.type === 'email')) return 4
+    if (channels.some(ch => ch.type === 'phone')) return 5
+    if (channels.some(ch => ch.type === 'linkedin')) return 6
+    if (channels.some(ch => ch.type === 'form')) return 7
+    return 8
+  }
+  const sorted = [...contacts].sort((a,b)=>{
+    const ta=tier(a), tb=tier(b)
+    if (ta!==tb) return ta-tb
+    const va=(a.channels||[]).some(c=>c.verified)?1:0, vb=(b.channels||[]).some(c=>c.verified)?1:0
+    if (va!==vb) return vb-va
+    const ca=(a.channels||[]).length, cb=(b.channels||[]).length
+    if (ca!==cb) return cb-ca
+    const na=String(a.name||'').toLowerCase(), nb=String(b.name||'').toLowerCase()
+    if (na!==nb){ if(!na) return 1; if(!nb) return -1; return na.localeCompare(nb) }
+    return String(a.id||'').localeCompare(String(b.id||''))
+  })
+  return sorted[0]
+}
+
+function getPreferredChannel(lead, type) {
+  const pref = getPreferredContact(lead)
+  const ch = pref ? (pref.channels||[]).find(c=>c.type===type) : null
+  if (ch) return ch
+  const all = (lead.contacts||[]).flatMap(c=>c.channels||[]).filter(c=>c.type===type)
+  return all[0] || null
+}
+
+function getLeadEmail(lead) {
+  const ch = getPreferredChannel(lead, 'email')
+  if (ch) return ch.value
+  const v = String(lead.email||'').trim()
+  if (v && v.toLowerCase() !== 'not collected') return v
+  return null
+}
+
+function getLeadPhone(lead) {
+  const ch = getPreferredChannel(lead, 'phone')
+  if (ch) return ch.value
+  const v = String(lead.phone||'').trim()
+  if (v && v.toLowerCase() !== 'not collected') return v
+  return null
+}
+
+function formatReachability(lead) {
+  const score = lead.reachabilityScore ?? lead.contactEnrichment?.reachabilityScore
+  if (score == null) return null
+  return score
+}
+
+function contactChannelLabel(ch) {
+  const map = { email: 'Email', phone: 'Phone', linkedin: 'LinkedIn', form: 'Form' }
+  return map[ch.type] || ch.type
 }
 
 function Logo() {
@@ -575,8 +651,9 @@ function OutreachCard({ lead, onOpen, onUpdate, onGenerate, onToast }) {
   const [body, setBody] = useState(() => outreachBody(lead, outreachVersion(lead)))
   useEffect(() => { const nextVersion = outreachVersion(lead); setVersion(nextVersion); setSubject(outreachSubject(lead)); setBody(outreachBody(lead, nextVersion)) }, [lead.id, lead.outreachSubject, lead.outreachDraft, lead.outreachVersion, lead.outreachDrafts])
   const contacted = isContacted(lead)
-  const hasEmail = true
-  const displayEmail = Boolean(lead.email && !String(lead.email).toLowerCase().startsWith('not collected'))
+  const preferredEmail = getLeadEmail(lead)
+  const hasEmail = Boolean(preferredEmail)
+  const displayEmail = hasEmail
   const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0
   const findings = (lead.problems?.length ? lead.problems : [lead.issueDetail]).filter(Boolean).slice(0, 3)
   const copy = async () => {
@@ -598,7 +675,7 @@ function OutreachCard({ lead, onOpen, onUpdate, onGenerate, onToast }) {
   }
   return (
     <article className={cn('outreach-card', contacted && 'is-contacted')}>
-      <header className="outreach-client-head"><button onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{displayEmail ? lead.email : 'No email found · website form is still available'}</small></span></button><Badge tone={contacted ? statusTone[lead.salesStage] || 'blue' : getOutreachState(lead) === 'Needs draft' ? 'gray' : 'orange'} dot>{contacted ? lead.salesStage : getOutreachState(lead)}</Badge></header>
+      <header className="outreach-client-head"><button onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{displayEmail ? preferredEmail : 'No email found · website form is still available'}</small></span></button><Badge tone={contacted ? statusTone[lead.salesStage] || 'blue' : getOutreachState(lead) === 'Needs draft' ? 'gray' : 'orange'} dot>{contacted ? lead.salesStage : getOutreachState(lead)}</Badge></header>
       <div className="outreach-card-grid">
         <section className="outreach-evidence"><span className="detail-label">Why this is relevant</span><ol>{findings.map((problem) => <li key={problem}>{problem}</li>)}</ol><button onClick={() => onOpen(lead)}>View full research <ArrowRight size={10} /></button></section>
         <section className="email-draft"><div className="email-draft-meta"><span className="detail-label">Email draft</span><div className="email-version-tabs" role="tablist" aria-label={`Email length for ${lead.company}`}>{outreachVersions.map((item) => <button key={item} role="tab" aria-selected={version === item} className={version === item ? 'active' : ''} onClick={() => selectVersion(item)} disabled={editing || generating}>{item}</button>)}</div><small>{wordCount} words · {lead.outreachGeneration?.model || 'evidence template'}</small></div>{editing ? <><label><span>Subject</span><input value={subject} onChange={(event) => setSubject(event.target.value)} /></label><label><span>Message</span><textarea value={body} onChange={(event) => setBody(event.target.value)} /></label></> : <div className="email-preview"><small>Subject · {subject}</small><p>{body}</p></div>}<div className="outreach-actions">{editing ? <><button className="button button-quiet button-small" onClick={() => { setSubject(outreachSubject(lead)); setBody(outreachBody(lead, version)); setEditing(false) }}>Cancel</button><button className="button button-secondary button-small" onClick={save}><Check size={12} />Save {version.toLowerCase()}</button></> : <><button className="button button-quiet button-small" onClick={generate} disabled={generating}>{generating ? <LoaderCircle size={12} className="spin" /> : <WandSparkles size={12} />}{generating ? 'Generating…' : 'Generate 3 versions'}</button><button className="button button-secondary button-small" onClick={() => setEditing(true)}><FileText size={12} />Edit</button></>}<button className="button button-secondary button-small" onClick={copy} disabled={!hasEmail || generating}><Copy size={12} />Copy {version.toLowerCase()}</button>{!contacted && <button className="button button-primary button-small" onClick={markContacted} disabled={!hasEmail || generating}><CheckCircle2 size={12} />Mark contacted</button>}</div></section>
@@ -697,7 +774,7 @@ function SettingsPage({ apiStatus, settings, onSave }) {
   const handleBlur = (key) => () => setTouched((p) => ({ ...p, [key]: true }))
   const save = async () => {
     setSubmitted(true)
-    setTouched({ defaultLocation: true, resultLimit: true, deepAuditLimit: true, discoveryLatitude: true, discoveryLongitude: true })
+    setTouched({ defaultLocation: true, resultLimit: true, deepAuditLimit: true, discoveryLatitude: true, discoveryLongitude: true, contactEnrichmentLimit: true, contactEnrichmentRecentHours: true })
     const v = validateSettingsDraft(draft)
     if (!v.isValid) { setFieldErrors(v.errors); return }
     setSaving(true)
@@ -717,7 +794,7 @@ function SettingsPage({ apiStatus, settings, onSave }) {
       <PageHeader eyebrow="Workspace" title="Simple defaults." description="Only the settings needed for day-to-day research are shown here." />
       <section className="panel minimal-settings">
         <div><h2>Research defaults</h2><p>Used when a new collection run starts.</p></div>
-        <div className="minimal-form"><label><span>Default location *</span><input value={draft.defaultLocation || ''} onChange={handleField('defaultLocation')} onBlur={handleBlur('defaultLocation')} style={show('defaultLocation') ? errStyle : undefined} className={show('defaultLocation') ? 'input-error' : undefined} aria-invalid={Boolean(show('defaultLocation'))} />{show('defaultLocation') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.defaultLocation}</span>}</label><div><label><span>Clients per run (1-50)</span><input type="number" min="1" max="50" value={draft.resultLimit || 25} onChange={handleField('resultLimit', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('resultLimit')} style={show('resultLimit') ? errStyle : undefined} className={show('resultLimit') ? 'input-error' : undefined} aria-invalid={Boolean(show('resultLimit'))} />{show('resultLimit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.resultLimit}</span>}</label><label><span>Website audits (1-25)</span><input type="number" min="1" max="25" value={draft.deepAuditLimit || 10} onChange={handleField('deepAuditLimit', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('deepAuditLimit')} style={show('deepAuditLimit') ? errStyle : undefined} className={show('deepAuditLimit') ? 'input-error' : undefined} aria-invalid={Boolean(show('deepAuditLimit'))} />{show('deepAuditLimit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.deepAuditLimit}</span>}</label></div><div><label><span>Discovery latitude (-90 to 90)</span><input type="number" step="any" value={draft.discoveryLatitude ?? ''} onChange={handleField('discoveryLatitude', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('discoveryLatitude')} style={show('discoveryLatitude') ? errStyle : undefined} className={show('discoveryLatitude') ? 'input-error' : undefined} aria-invalid={Boolean(show('discoveryLatitude'))} />{show('discoveryLatitude') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.discoveryLatitude}</span>}</label><label><span>Discovery longitude (-180 to 180)</span><input type="number" step="any" value={draft.discoveryLongitude ?? ''} onChange={handleField('discoveryLongitude', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('discoveryLongitude')} style={show('discoveryLongitude') ? errStyle : undefined} className={show('discoveryLongitude') ? 'input-error' : undefined} aria-invalid={Boolean(show('discoveryLongitude'))} />{show('discoveryLongitude') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.discoveryLongitude}</span>}</label></div>{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{fieldErrors._general}</div>}<button className="button button-primary" onClick={save} disabled={saving}>{saving ? <LoaderCircle size={12} className="spin" /> : <Check size={12} />}{saving ? 'Saving…' : 'Save settings'}</button></div>
+        <div className="minimal-form"><label><span>Default location *</span><input value={draft.defaultLocation || ''} onChange={handleField('defaultLocation')} onBlur={handleBlur('defaultLocation')} style={show('defaultLocation') ? errStyle : undefined} className={show('defaultLocation') ? 'input-error' : undefined} aria-invalid={Boolean(show('defaultLocation'))} />{show('defaultLocation') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.defaultLocation}</span>}</label><div><label><span>Clients per run (1-50)</span><input type="number" min="1" max="50" value={draft.resultLimit || 25} onChange={handleField('resultLimit', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('resultLimit')} style={show('resultLimit') ? errStyle : undefined} className={show('resultLimit') ? 'input-error' : undefined} aria-invalid={Boolean(show('resultLimit'))} />{show('resultLimit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.resultLimit}</span>}</label><label><span>Website audits (1-25)</span><input type="number" min="1" max="25" value={draft.deepAuditLimit || 10} onChange={handleField('deepAuditLimit', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('deepAuditLimit')} style={show('deepAuditLimit') ? errStyle : undefined} className={show('deepAuditLimit') ? 'input-error' : undefined} aria-invalid={Boolean(show('deepAuditLimit'))} />{show('deepAuditLimit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.deepAuditLimit}</span>}</label></div><div><label><span>Discovery latitude (-90 to 90)</span><input type="number" step="any" value={draft.discoveryLatitude ?? ''} onChange={handleField('discoveryLatitude', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('discoveryLatitude')} style={show('discoveryLatitude') ? errStyle : undefined} className={show('discoveryLatitude') ? 'input-error' : undefined} aria-invalid={Boolean(show('discoveryLatitude'))} />{show('discoveryLatitude') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.discoveryLatitude}</span>}</label><label><span>Discovery longitude (-180 to 180)</span><input type="number" step="any" value={draft.discoveryLongitude ?? ''} onChange={handleField('discoveryLongitude', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('discoveryLongitude')} style={show('discoveryLongitude') ? errStyle : undefined} className={show('discoveryLongitude') ? 'input-error' : undefined} aria-invalid={Boolean(show('discoveryLongitude'))} />{show('discoveryLongitude') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.discoveryLongitude}</span>}</label></div><div style={{display:'grid', gridTemplateColumns:'1fr auto', gap:12, alignItems:'center', padding:'10px', border:'1px solid var(--border-soft)', borderRadius:6, background:'var(--surface-muted)'}}><label style={{display:'flex', gap:8, alignItems:'center'}}><input type="checkbox" checked={Boolean(draft.contactEnrichmentEnabled)} onChange={(e)=>{ setDraft(c=>({...c, contactEnrichmentEnabled: e.target.checked})); if(fieldErrors.contactEnrichmentEnabled) setFieldErrors(p=>{const n={...p}; delete n.contactEnrichmentEnabled; return n})}} /> <span style={{fontSize:'9px', fontWeight:600}}>Automatic contact enrichment</span></label><small style={{color:'var(--subtle)', fontSize:'7px'}}>Enabled by default · queues top leads after audit/run</small></div><div><label><span>Contact queue limit (1-100)</span><input type="number" min="1" max="100" value={draft.contactEnrichmentLimit ?? 30} onChange={handleField('contactEnrichmentLimit', (v)=> v===''?'':Number(v))} onBlur={handleBlur('contactEnrichmentLimit')} style={show('contactEnrichmentLimit')?errStyle:undefined} className={show('contactEnrichmentLimit')?'input-error':undefined} aria-invalid={Boolean(show('contactEnrichmentLimit'))} />{show('contactEnrichmentLimit') && <span className="field-error" style={{color:'#c00', fontSize:'12px'}}>{merged.contactEnrichmentLimit}</span>}</label><label><span>Re-enrich after (hours, 1-720)</span><input type="number" min="1" max="720" value={draft.contactEnrichmentRecentHours ?? 24} onChange={handleField('contactEnrichmentRecentHours', (v)=> v===''?'':Number(v))} onBlur={handleBlur('contactEnrichmentRecentHours')} style={show('contactEnrichmentRecentHours')?errStyle:undefined} className={show('contactEnrichmentRecentHours')?'input-error':undefined} aria-invalid={Boolean(show('contactEnrichmentRecentHours'))} />{show('contactEnrichmentRecentHours') && <span className="field-error" style={{color:'#c00', fontSize:'12px'}}>{merged.contactEnrichmentRecentHours}</span>}</label></div>{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{fieldErrors._general}</div>}<button className="button button-primary" onClick={save} disabled={saving}>{saving ? <LoaderCircle size={12} className="spin" /> : <Check size={12} />}{saving ? 'Saving…' : 'Save settings'}</button></div>
       </section>
       <section className="panel connection-status"><Database size={18} /><div><strong>Local SQLite storage</strong><span>{apiStatus?.databasePath || 'data/scoutline.db'}</span></div><Badge tone="green">Healthy</Badge></section>
       <section className="panel connection-status"><WandSparkles size={18} /><div><strong>Live discovery</strong><span>{apiStatus?.brightDataAdapterReady ? `Bright Data Google Maps is ready · provider requests capped at ${apiStatus.brightDataMaxRecords || 25} records.` : 'Add BRIGHT_DATA_API_KEY to use live discovery; runs currently audit saved clients.'}</span></div><Badge tone={apiStatus?.brightDataAdapterReady ? 'green' : 'amber'}>{apiStatus?.brightDataAdapterReady ? 'Ready' : 'Local'}</Badge></section>
@@ -757,6 +834,66 @@ function BusinessIntelligence({ lead }) {
     <div className="intelligence-metrics">{metrics.map(([label, value, note]) => <article key={label} className={value === 'Unknown' ? 'is-unknown' : ''}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</div>
     <div className="intelligence-signals"><span><CheckCircle2 size={11} />{intelligence.claimed ? 'Google profile claimed' : 'Claim status unknown'}</span><span><CalendarDays size={11} />{intelligence.onlineBooking ? 'Online booking detected' : intelligence.onlineEstimates ? 'Online estimates offered' : 'No online booking detected'}</span><span><Star size={11} />{intelligence.positiveReviewShare != null ? `${intelligence.positiveReviewShare}% positive reviews` : 'Review mix unknown'}</span><span><Clock3 size={11} />Latest sampled review {latestReview}</span></div>
     <p className="intelligence-note"><ShieldCheck size={11} />Unknown fields stay unknown until a named source supplies them. Muse cannot estimate them.</p>
+  </section>
+}
+
+function ContactEnrichment({ lead, onEnrich }) {
+  const contacts = Array.isArray(lead.contacts) ? lead.contacts : []
+  const preferred = getPreferredContact(lead)
+  const enrichment = lead.contactEnrichment
+  const job = lead.contactJob
+  const status = enrichment?.status || (contacts.length ? 'Completed' : 'Not enriched')
+  const isActive = ['Queued','Running','Waiting'].includes(status) || ['Queued','Running','Waiting'].includes(job?.status)
+  const hasError = status === 'Failed' || enrichment?.error
+  const reachability = lead.reachabilityScore ?? enrichment?.reachabilityScore
+  const commercial = lead.commercialScore
+  const sourceUrl = preferred ? (preferred.channels||[])[0]?.sourceUrl || enrichment?.sourceUrls?.[0] : enrichment?.sourceUrls?.[0]
+  const handleEnrich = async () => {
+    try { await onEnrich(lead) } catch {}
+  }
+  return <section className="detail-section contact-enrichment-section">
+    <div className="detail-heading"><span className="detail-label">Contact enrichment</span><div style={{display:'flex', gap:6, alignItems:'center'}}>{reachability != null && <Badge tone={reachability>=50?'green':reachability>=20?'amber':'gray'}>Reachability {reachability}/100</Badge>}{isActive ? <Badge tone="orange" dot>{job?.phase || status}</Badge> : status==='Completed' ? <Badge tone="green" dot>Completed</Badge> : hasError ? <Badge tone="red" dot>Failed</Badge> : <Badge tone="gray">Not enriched</Badge>}</div></div>
+    {commercial != null && <small style={{color:'var(--subtle)', fontSize:'7px'}}>Commercial value {commercial}/100 · Opportunity {lead.opportunityScore ?? lead.prelimScore ?? '—'}/100</small>}
+    <div className="contact-preferred-card">
+      <div className="contact-preferred-head">
+        <span className="contact-avatar"><User size={14} /></span>
+        <span className="contact-identity">
+          <strong>{preferred?.name || 'Unknown person'}</strong>
+          <small>{preferred?.role || 'Role unknown — not invented'}</small>
+        </span>
+        {preferred ? <Badge tone="blue">{preferred.channels?.length || 0} channel{(preferred.channels?.length||0)!==1?'s':''}</Badge> : <Badge tone="gray">No contact</Badge>}
+      </div>
+      {preferred ? <div className="contact-channels">
+        {(preferred.channels||[]).map((ch, idx) => (
+          <span key={`${ch.type}-${idx}`} className="contact-channel">
+            {ch.type==='email' && <Mail size={11} />}{ch.type==='phone' && <Phone size={11} />}{ch.type==='linkedin' && <ExternalLink size={11} />}{ch.type==='form' && <FileText size={11} />}
+            <strong>{ch.value}</strong>
+            <em title={ch.sourceUrl || undefined}>{ch.verificationStatus || (ch.verified ? 'verified' : 'unverified')}</em>
+            <small>{ch.confidence}</small>
+          </span>
+        ))}
+      </div> : <p className="contact-empty">No explicit contact data found on public website. The person remains unknown — nothing is invented.</p>}
+      {preferred && sourceUrl && (()=>{ const safe=safeSourceDisplay(sourceUrl); return safe ? <small className="contact-source">Source: <a href={safe.href} target="_blank" rel="noreferrer">{safe.hostname}{safe.pathname}</a> · Provider: {enrichment?.provider || 'public-website'}</small> : null })()}
+      {preferred && (preferred.channels||[]).some(c=>c.sourceUrl) && <small className="contact-provenance">Each channel retains source and confidence.</small>}
+      {contacts.length > 1 && <div className="contact-more"><small>{contacts.length - 1} additional contact{contacts.length-1!==1?'s':''} stored</small><div className="contact-more-list">{contacts.filter(c=>c.id!==preferred?.id).slice(0,3).map(c=>(
+        <span key={c.id}><strong>{c.name || 'Unknown'}</strong> <em>{c.role || 'unknown role'}</em> — {(c.channels||[]).map(ch=>ch.value).join(', ')}</span>
+      ))}</div></div>}
+      {enrichment?.reachability && <div className="reachability-detail"><small>Reachability components: {enrichment.reachability.components?.map(c=>`${c.label} ${c.points}/${c.maximum}`).join(' · ')}</small></div>}
+      {hasError && <div className="field-error" style={{marginTop:6}}>{enrichment?.error}</div>}
+      <div style={{marginTop:10, display:'flex', gap:6}}>
+        <button className="button button-secondary button-small" onClick={handleEnrich} disabled={isActive} aria-label={isActive ? 'Contact enrichment in progress' : contacts.length ? 'Retry contact enrichment' : 'Enrich contact'}>{isActive ? <LoaderCircle size={12} className="spin" /> : <RefreshCcw size={12} />}{isActive ? 'Enriching…' : contacts.length ? 'Retry enrichment' : 'Enrich contact'}</button>
+        {!contacts.length && !isActive && <small style={{color:'var(--subtle)', alignSelf:'center'}}>Will fetch homepage and a bounded set of contact pages only.</small>}
+      </div>
+    </div>
+    {contacts.length > 0 && <div className="contact-all-list"><span className="detail-label">All structured contacts ({contacts.length})</span>{contacts.map(c=>(
+      <div key={c.id} className="contact-row">
+        <span><strong>{c.name || 'Unknown'}</strong> {c.role && <em>· {c.role}</em>}</span>
+        <span>{(c.channels||[]).map(ch=>(
+          <small key={`${ch.type}-${ch.value}`} style={{display:'inline-flex', gap:4, alignItems:'center', marginRight:8}}>{ch.type}: {ch.value} <i style={{color: ch.verified?'var(--green)':'var(--subtle)'}}>{ch.verified?'✓':'○'}</i> {ch.verificationStatus || (ch.verified ? 'verified' : 'unverified')} · {ch.confidence}</small>
+        ))}</span>
+        <small style={{color:'var(--subtle)'}}>Source: {(c.sources||[c.sourceUrl]).filter(Boolean).slice(0,2).join(', ')}</small>
+      </div>
+    ))}</div>}
   </section>
 }
 
@@ -827,7 +964,7 @@ function ManualRunStatus({ lead, onRun }) {
   </section>
 }
 
-function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAnalyze, onRunAction, brightDataReady, onToast, onContract, onInsight, onFailure, onOutreach }) {
+function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAnalyze, onRunAction, brightDataReady, onToast, onContract, onInsight, onFailure, onOutreach, onEnrichContact }) {
   const [tab, setTab] = useState('Summary')
   const [noteDraft, setNoteDraft] = useState('')
   const [editing, setEditing] = useState(false)
@@ -846,7 +983,7 @@ function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAn
         <div className="drawer-status-strip"><span><small>Research</small><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : 'blue'} dot>{getResearchLabel(lead)}</Badge></span><span><small>Muse</small><Badge tone={getMuseGuidance(lead) === 'Pursue' ? 'green' : getMuseGuidance(lead) === 'Deprioritize' ? 'gray' : 'amber'} dot>{getMuseGuidance(lead) || 'Not run'}</Badge></span><span><small>Sales</small><Badge tone={lead.salesStage ? statusTone[lead.salesStage] : 'gray'} dot>{lead.salesStage || 'Not in sales'}</Badge></span></div>
         <div className="drawer-tabs">{['Summary', 'Research', 'Sales'].map((item) => <button key={item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item}</button>)}</div>
         <div className="drawer-body">
-          {tab === 'Summary' && <div className="drawer-two-col"><main><section className="detail-section"><span className="detail-label">Main opportunity</span><h2>{lead.mainIssue}</h2><p className="lead-summary">{lead.issueDetail}</p></section><section className="detail-section"><div className="detail-heading"><span className="detail-label">Findings</span><Badge tone="gray">{lead.problems?.length || 0}</Badge></div><div className="problem-list">{lead.problems?.length ? lead.problems.map((problem, index) => <div key={problem}><span>{index + 1}</span><p>{problem}</p></div>) : <p className="lead-summary">Website analysis has not been completed yet.</p>}</div></section><BusinessIntelligence lead={lead} /></main><aside><div className="business-card"><span className="detail-label">Client profile</span><div><span>Rating</span><strong>{lead.rating} ★ · {lead.reviews} reviews</strong></div><div><span>Phone</span><strong>{lead.phone}</strong></div><div><span>Email</span><strong>{lead.email}</strong></div><div><span>Sales phase</span><strong>{lead.salesStage || 'Not in pipeline'}</strong></div></div><div className="notes-card"><span className="detail-label">Notes</span>{editing ? <><textarea value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} /><div className="note-actions"><button onClick={() => setEditing(false)}>Cancel</button><button onClick={async () => { const saved = await onUpdate(lead.id, { notes: noteDraft.trim() }); if (saved) setEditing(false) }}><Check size={11} />Save</button></div></> : <><p>{lead.notes || 'No notes yet.'}</p><button onClick={() => setEditing(true)}><Plus size={12} />{lead.notes ? 'Edit note' : 'Add note'}</button></>}</div></aside></div>}
+          {tab === 'Summary' && <div className="drawer-two-col"><main><section className="detail-section"><span className="detail-label">Main opportunity</span><h2>{lead.mainIssue}</h2><p className="lead-summary">{lead.issueDetail}</p></section><section className="detail-section"><div className="detail-heading"><span className="detail-label">Findings</span><Badge tone="gray">{lead.problems?.length || 0}</Badge></div><div className="problem-list">{lead.problems?.length ? lead.problems.map((problem, index) => <div key={problem}><span>{index + 1}</span><p>{problem}</p></div>) : <p className="lead-summary">Website analysis has not been completed yet.</p>}</div></section><BusinessIntelligence lead={lead} /><ContactEnrichment lead={lead} onEnrich={onEnrichContact} /></main><aside><div className="business-card"><span className="detail-label">Client profile</span><div><span>Rating</span><strong>{lead.rating} ★ · {lead.reviews} reviews</strong></div><div><span>Phone</span><strong>{getLeadPhone(lead) || lead.phone}</strong></div><div><span>Email</span><strong>{getLeadEmail(lead) || lead.email}</strong></div><div><span>Reachability</span><strong>{formatReachability(lead) != null ? `${formatReachability(lead)}/100` : 'Unknown'}</strong></div><div><span>Commercial</span><strong>{lead.commercialScore ?? '—'}</strong></div><div><span>Sales phase</span><strong>{lead.salesStage || 'Not in pipeline'}</strong></div></div><div className="notes-card"><span className="detail-label">Notes</span>{editing ? <><textarea value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} /><div className="note-actions"><button onClick={() => setEditing(false)}>Cancel</button><button onClick={async () => { const saved = await onUpdate(lead.id, { notes: noteDraft.trim() }); if (saved) setEditing(false) }}><Check size={11} />Save</button></div></> : <><p>{lead.notes || 'No notes yet.'}</p><button onClick={() => setEditing(true)}><Plus size={12} />{lead.notes ? 'Edit note' : 'Add note'}</button></>}</div></aside></div>}
           {tab === 'Research' && <div className="research-detail">
             <div className="research-detail-head">
               <div><span className="detail-label">{failure ? 'Failed stage' : 'Research state'}</span><h2 className={failure ? 'failure-title' : ''}>{getResearchLabel(lead)}</h2><p>{failure?.reason || (isQualifiedLead(lead) ? 'Research is complete. Sales progress is tracked separately.' : 'Review the evidence and Muse guidance before deciding whether to qualify this client.')}</p></div>
@@ -865,6 +1002,7 @@ function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAn
               return <article key={label} className={cn(done[index] && 'complete', failed && 'failed')}><span>{failed ? <X size={13} /> : done[index] ? <Check size={13} /> : index + 1}</span><div><strong>{label}</strong><small>{detail}</small></div></article>
             })}</div>
             {done[1] && <div className="audit-metrics deep-audit-metrics"><article><Activity size={15} /><span>Lighthouse performance</span><strong>{lead.performance ?? '—'}{lead.performance != null && <small>/100</small>}</strong><small>{lead.lighthouse?.status === 'Completed' ? 'Measured on mobile' : lead.lighthouse?.status || 'Not measured'}</small><i className={lead.performance == null ? '' : lead.performance >= 75 ? 'good' : lead.performance >= 50 ? 'fair' : 'bad'} /></article><article><Globe2 size={15} /><span>Pages crawled</span><strong>{lead.pageCount ?? '—'}</strong><small>of {lead.auditComponents?.crawl?.pageLimit || 10} maximum</small><i className={lead.pageCount > 1 ? 'good' : 'fair'} /></article><article><ExternalLink size={15} /><span>Links checked</span><strong>{lead.checkedLinks ?? '—'}</strong><small>Same-site destinations</small><i className={lead.checkedLinks > 0 ? 'good' : 'fair'} /></article><article><CircleAlert size={15} /><span>Broken links</span><strong>{lead.brokenLinks ?? '—'}</strong><small>{lead.auditStatus || 'Not measured'}</small><i className={lead.brokenLinks == null ? '' : lead.brokenLinks === 0 ? 'good' : lead.brokenLinks <= 2 ? 'fair' : 'bad'} /></article></div>}
+            <ContactEnrichment lead={lead} onEnrich={onEnrichContact} />
             {done[1] && <MuseSynthesis lead={lead} onAnalyze={onMuseAnalyze} />}
             <div className="research-detail-actions"><button className="button button-secondary" onClick={() => onExport(lead)}><Download size={13} />Export research packet</button>{done[1] && <button className="button button-secondary" onClick={() => onInsight(lead)}><FileText size={13} />Adjust score</button>}{!failure && <button className="button button-quiet" onClick={() => onFailure(lead)}><CircleAlert size={13} />Mark stage failed</button>}</div>
           </div>}
@@ -1092,7 +1230,7 @@ export default function App() {
   const [activeRunId, setActiveRunId] = useState(null)
   const [toast, setToast] = useState('')
   const csvInput = useRef(null)
-  const hasActiveLeadJobs = leads.some((lead) => ['Queued', 'Running', 'Waiting'].includes(lead.researchJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.museJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.refreshJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.manualRun?.status) || ['Queued', 'Analyzing'].includes(lead.researchStatus))
+  const hasActiveLeadJobs = leads.some((lead) => ['Queued', 'Running', 'Waiting'].includes(lead.researchJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.museJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.refreshJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.contactJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.contactEnrichment?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.manualRun?.status) || ['Queued', 'Analyzing'].includes(lead.researchStatus))
 
   const navigate = (nextPage, { clientId = null, replace = false } = {}) => {
     const nextRoute = { page: pagePaths[nextPage] ? nextPage : 'Clients', clientId, requestedPath: null, canonical: true }
@@ -1282,6 +1420,15 @@ export default function App() {
       return result.lead
     } catch (caught) { return showActionError(caught, 'Could not queue Muse') }
   }
+  const enrichContact = async (lead) => {
+    try {
+      const result = await apiRequest(`/api/leads/${lead.id}/contact-enrichment`, { method: 'POST' })
+      setLeads((current) => current.map((item) => item.id === lead.id ? result.lead : item))
+      setSelectedLead((current) => current?.id === lead.id ? result.lead : current)
+      setToast(result.message || `${lead.company} contact enrichment queued`)
+      return result.lead
+    } catch (caught) { return showActionError(caught, 'Could not queue contact enrichment') }
+  }
   const runClientAction = async (lead, action) => {
     try {
       const result = await apiRequest(`/api/leads/${lead.id}/actions/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
@@ -1393,5 +1540,5 @@ export default function App() {
   else if (page === 'Contracts') content = <ContractsPage leads={leads} onOpen={openLead} onContract={setContractLead} goTo={navigate} />
   else content = <SettingsPage apiStatus={apiStatus} settings={settingsData} onSave={saveSettings} />
 
-  return <div className="app-shell"><Sidebar page={page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} /><main className="main-shell"><Topbar page={page === 'NotFound' ? 'Not found' : page} onNavigate={navigate} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} onAdd={() => setCreateMenuOpen(true)} /><SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className="page-content">{content}</div></main><LeadDrawer lead={selectedLead} runs={runs} close={closeLead} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} />{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
+  return <div className="app-shell"><Sidebar page={page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} /><main className="main-shell"><Topbar page={page === 'NotFound' ? 'Not found' : page} onNavigate={navigate} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} onAdd={() => setCreateMenuOpen(true)} /><SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className="page-content">{content}</div></main><LeadDrawer lead={selectedLead} runs={runs} close={closeLead} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} onEnrichContact={enrichContact} />{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
 }
