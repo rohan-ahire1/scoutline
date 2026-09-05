@@ -85,9 +85,15 @@ export function calculateDigitalMaturity(lead) {
   observed('Online customer action', onlineAction ? 10 : 0, 10, intelligence.onlineBooking ? 'Booking link detected' : intelligence.onlineEstimates ? 'Online estimates offered' : 'No booking or online-estimate signal')
   observed('Business profile ownership', intelligence.claimed === true ? 4 : 0, 4, intelligence.claimed === true ? 'Google profile claimed' : 'Not confirmed')
   observed('Mobile foundation', lead.auditSummary?.viewport ? 6 : 0, 6, lead.auditSummary?.viewport ? 'Responsive viewport detected' : 'Not detected')
-  const brokenLinks = parseFiniteNumber(lead.brokenLinks)
-  const checkedLinks = parseFiniteNumber(lead.checkedLinks)
-  observed('Site maintenance', brokenLinks === 0 ? 4 : brokenLinks == null ? 0 : 2, 4, brokenLinks == null ? 'Links not checked' : `${brokenLinks} broken of ${checkedLinks || 0} checked`)
+  const linkSummary = lead.linkSummary && typeof lead.linkSummary === 'object' ? lead.linkSummary : null
+  const maintenanceEvidence = lead.brokenLinks == null
+    ? 'Links not checked'
+    : linkSummary
+      ? `${linkSummary.confirmedBroken ?? lead.brokenLinks} confirmed broken of ${linkSummary.attempted ?? lead.checkedLinks ?? 0} attempted (${linkSummary.reachable ?? 0} reachable, ${linkSummary.unverified ?? 0} unverified — unverified links are not scored as broken)`
+      : `${lead.brokenLinks} broken of ${lead.checkedLinks || 0} checked`
+  const brokenLinks = parseFiniteNumber(linkSummary?.confirmedBroken ?? lead.brokenLinks)
+  const checkedLinks = parseFiniteNumber(linkSummary?.attempted ?? lead.checkedLinks)
+  observed('Site maintenance', brokenLinks === 0 ? 4 : brokenLinks == null ? 0 : 2, 4, maintenanceEvidence)
   // Unmeasured score components are excluded from the normalization maximum so
   // missing evidence is reported as unavailable instead of proven poor.
   const measured = components.filter((item) => item.status !== 'unmeasured')
