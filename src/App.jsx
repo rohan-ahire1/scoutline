@@ -1241,14 +1241,39 @@ export default function App() {
 
   const counts = useMemo(() => getSidebarCounts(leads), [leads])
 
-  const updateLead = async (id, changes) => {
+  const refreshLead = async (id) => {
+    const fresh = await apiRequest(`/api/leads/${id}`)
+    setLeads((current) => current.map((lead) => lead.id === id ? fresh : lead))
+    setSelectedLead((current) => current?.id === id ? fresh : current)
+    return fresh
+  }
+  const updateLead = async (id, changes, { retryOnConflict = true } = {}) => {
+    const local = leads.find((lead) => lead.id === id)
+    const body = local && Number.isInteger(local.rev) && local.rev >= 0 ? { ...changes, rev: local.rev } : changes
+    const applyUpdated = (updated) => {
+      setLeads((current) => current.map((lead) => lead.id === id ? updated : lead))
+      setSelectedLead((current) => current?.id === id ? updated : current)
+      return updated
+    }
     try {
-      const updated = await apiRequest(`/api/leads/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) })
+      const updated = await apiRequest(`/api/leads/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       setLeads((current) => current.map((lead) => lead.id === id ? updated : lead))
       setSelectedLead((current) => current?.id === id ? updated : current)
       setToast(changes.contract ? `${updated.company} contract saved` : changes.opportunityScore != null ? `${updated.company} insight saved` : changes.salesStage ? `${updated.company} moved to ${changes.salesStage}` : `${updated.company} updated`)
       return updated
     } catch (caught) {
+      if (caught?.details?.code === 'REVISION_CONFLICT' && retryOnConflict) {
+        try {
+          const fresh = await refreshLead(id)
+          const retried = await apiRequest(`/api/leads/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...changes, rev: fresh.rev }) })
+          applyUpdated(retried)
+          setToast(`${retried.company} updated — reapplied after a concurrent change`)
+          return retried
+        } catch (retryCaught) {
+          showActionError(retryCaught, 'Still conflicting — please retry your edit')
+          return null
+        }
+      }
       const fieldErrors = getFieldErrorsFromApiError(caught)
       if (Object.keys(fieldErrors).length) setToast({ message: Object.values(fieldErrors).join(' \u00b7 ') || caught.message, tone: 'error' })
       else showActionError(caught, 'Could not update the client')
