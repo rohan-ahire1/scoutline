@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { analyzeHtml, assertPublicUrl, checkInternalLinks, classifyCapture, classifyLinkOutcome, composeScoreProvenance, extractInternalLinks, fetchPublicStatus, isPrivateAddress, LINK_OUTCOMES, normalizeWebsite } from './audit.js'
+import { analyzeHtml, assertPublicUrl, AuditError, checkInternalLinks, classifyCapture, classifyLinkOutcome, composeScoreProvenance, crawlWebsite, extractInternalLinks, fetchPublicStatus, fetchPublicText, isPrivateAddress, LINK_OUTCOMES, normalizeWebsite } from './audit.js'
 
 test('normalizes public website inputs', () => {
   assert.equal(normalizeWebsite('example.com').href, 'https://example.com/')
@@ -202,5 +202,259 @@ test('HEAD 405 falls back to a bounded ranged GET', async () => {
     assert.ok(calls.some((call) => call.range === 'bytes=0-1023'), 'GET fallback must be range-limited')
   } finally {
     globalThis.fetch = realFetch
+  }
+})
+
+const ROH22_HOME = 'http://93.184.216.34'
+const ROH22_OFFSITE = 'http://203.0.113.7'
+
+function mockFetchResponse({ status = 200, location = null, contentType = 'text/html', chunks = null } = {}) {
+  const text = (chunks || []).join('')
+  return {
+    status,
+    ok: status >= 200 && status < 300,
+    headers: {
+      get: (name) => {
+        const lower = String(name).toLowerCase()
+        if (lower === 'location') return location
+        if (lower === 'content-type') return contentType
+        if (lower === 'content-length') return String(Buffer.byteLength(text))
+        return null
+      },
+    },
+    body: chunks ? {
+      getReader() {
+        const data = chunks.map((chunk) => Buffer.from(chunk))
+        let index = 0
+        return {
+          read: async () => (index < data.length ? { done: false, value: data[index++] } : { done: true, value: undefined }),
+          cancel: async () => {},
+        }
+      },
+    } : undefined,
+  }
+}
+
+function withMockFetch(handler) {
+  const realFetch = globalThis.fetch
+  const calls = []
+  globalThis.fetch = async (url, options) => {
+    calls.push(String(url))
+    return handler(new URL(url), options)
+  }
+  return { calls, restore: () => { globalThis.fetch = realFetch } }
+}
+
+function sitemapWith(count, host = ROH22_HOME) {
+  let xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+  for (let i = 0; i < count; i += 1) xml += `<url><loc>${host}/p${i}</loc></url>`
+  return `${xml}</urlset>`
+}
+
+test('a sitemap of failing URLs stops at the configured attempt cap', async () => {
+  const mocked = withMockFetch(() => { throw new Error('connection refused') })
+  try {
+    const result = await crawlWebsite({
+      homeHtml: '<html><body><h1>Home</h1></body></html>',
+      homeUrl: new URL(`${ROH22_HOME}/`),
+      sitemapText: sitemapWith(1000),
+      requestDelay: 0,
+      maxAttempts: 25,
+      maxQueue: 5000,
+      timeLimitMs: 60000,
+    })
+    assert.equal(result.limits.attempts, 25)
+    assert.equal(result.limits.stoppedBy, 'attempt-limit')
+    assert.equal(result.pages.length, 1)
+    assert.equal(result.errors.length, 25)
+    assert.equal(mocked.calls.length, 25)
+    assert.equal(result.status, 'Partial')
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('robots-disallowed links are never requested', async () => {
+  const seen = []
+  const robots = { isAllowed: (href) => !String(href).includes('/private') }
+  const result = await checkInternalLinks(
+    [{ href: `${ROH22_HOME}/ok` }, { href: `${ROH22_HOME}/private` }],
+    {
+      robots,
+      checker: async (url) => {
+        seen.push(url.href)
+        return { url: url.href, status: 200 }
+      },
+    })
+  assert.deepEqual(seen, [`${ROH22_HOME}/ok`])
+  assert.equal(result.skippedRobots, 1)
+  assert.equal(result.checked, 1)
+})
+
+test('same-origin candidates that redirect off-origin are recorded, not traversed', async () => {
+  const mocked = withMockFetch((url) => {
+    if (url.pathname === '/go') return mockFetchResponse({ status: 301, location: `${ROH22_OFFSITE}/elsewhere` })
+    return mockFetchResponse({ chunks: ['<html><body><a href="/far">far</a></body></html>'] })
+  })
+  try {
+    const result = await crawlWebsite({
+      homeHtml: '<html><body><a href="/go">go</a></body></html>',
+      homeUrl: new URL(`${ROH22_HOME}/`),
+      requestDelay: 0,
+      maxAttempts: 10,
+    })
+    assert.equal(result.offOrigin.length, 1)
+    assert.equal(result.offOrigin[0].finalUrl, `${ROH22_OFFSITE}/elsewhere`)
+    assert.equal(result.pages.length, 1)
+    assert.ok(result.pages.every((page) => !String(page.url).includes('203.0.113.7')))
+    assert.equal(result.links.checked, 1)
+    assert.ok(result.links.results.every((item) => !String(item.url).includes('203.0.113.7') || String(item.url).includes('93.184.216.34/go')))
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('redirect loops stop with an explicit reason', async () => {
+  const mocked = withMockFetch(() => mockFetchResponse({ status: 301, location: `${ROH22_HOME}/loop` }))
+  try {
+    await assert.rejects(() => fetchPublicText(`${ROH22_HOME}/loop`), (error) => error.code === 'TOO_MANY_REDIRECTS')
+    assert.equal(mocked.calls.length, 6)
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('private destinations are rejected before any request', async () => {
+  const mocked = withMockFetch(() => mockFetchResponse({}))
+  try {
+    await assert.rejects(() => fetchPublicStatus('http://127.0.0.1/internal'), (error) => error.code === 'PRIVATE_NETWORK')
+    assert.equal(mocked.calls.length, 0)
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('oversized bodies stop before the body is read', async () => {
+  let readerCreated = false
+  const mocked = withMockFetch(() => ({
+    status: 200,
+    ok: true,
+    headers: { get: (name) => (String(name).toLowerCase() === 'content-length' ? '99999999' : 'text/html') },
+    body: { getReader: () => { readerCreated = true; throw new Error('should not read') } },
+  }))
+  try {
+    await assert.rejects(() => fetchPublicText(`${ROH22_HOME}/big`), (error) => error.code === 'PAGE_TOO_LARGE')
+    assert.equal(readerCreated, false)
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('long-running responses stop with a timeout reason', async () => {
+  const mocked = withMockFetch((_url, options) => new Promise((_, reject) => {
+    options.signal?.addEventListener('abort', () => reject(Object.assign(new Error('The operation timed out'), { name: 'TimeoutError' })))
+  }))
+  try {
+    await assert.rejects(() => fetchPublicText(`${ROH22_HOME}/slow`, { timeoutMs: 60 }), (error) => error.code === 'TIMEOUT')
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('a cancelled crawl keeps partial evidence and says so', async () => {
+  const seen = []
+  const controller = new AbortController()
+  controller.abort()
+  const result = await crawlWebsite({
+    homeHtml: '<html><body><a href="/a">a</a></body></html>',
+    homeUrl: new URL(`${ROH22_HOME}/`),
+    requestDelay: 0,
+    signal: controller.signal,
+  })
+  assert.equal(result.pages.length, 1)
+  assert.equal(result.limits.stoppedBy, 'cancelled')
+  assert.equal(result.status, 'Partial')
+  assert.equal(result.links.cancelled, true)
+  assert.deepEqual(seen, [])
+})
+
+test('a tiny time budget stops collection with a time reason', async () => {
+  const mocked = withMockFetch(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 25))
+    throw new Error('slow failure')
+  })
+  try {
+    const result = await crawlWebsite({
+      homeHtml: '<html><body></body></html>',
+      homeUrl: new URL(`${ROH22_HOME}/`),
+      sitemapText: sitemapWith(50),
+      requestDelay: 0,
+      maxAttempts: 1000,
+      timeLimitMs: 5,
+    })
+    assert.equal(result.limits.stoppedBy, 'time-limit')
+    assert.ok(result.limits.attempts >= 1 && result.limits.attempts < 50)
+    assert.equal(result.status, 'Partial')
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('queue flooding stops collection before any page fetch', async () => {
+  const mocked = withMockFetch(() => { throw new Error('unreachable') })
+  try {
+    const result = await crawlWebsite({
+      homeHtml: '<html><body></body></html>',
+      homeUrl: new URL(`${ROH22_HOME}/`),
+      sitemapText: sitemapWith(100),
+      requestDelay: 0,
+      maxAttempts: 1000,
+      maxQueue: 5,
+    })
+    assert.equal(result.limits.stoppedBy, 'queue-limit')
+    assert.equal(result.limits.attempts, 0)
+    assert.equal(result.pages.length, 1)
+    assert.equal(mocked.calls.length, 0)
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('total byte budget stops collection across many small pages', async () => {
+  const mocked = withMockFetch(() => mockFetchResponse({ chunks: ['<html><body><p>012345678901234567890123456789</p></body></html>'] }))
+  try {
+    const result = await crawlWebsite({
+      homeHtml: '<html><body></body></html>',
+      homeUrl: new URL(`${ROH22_HOME}/`),
+      sitemapText: sitemapWith(10),
+      requestDelay: 0,
+      maxAttempts: 100,
+      maxPages: 25,
+      maxTotalBytes: 100,
+    })
+    assert.equal(result.limits.stoppedBy, 'byte-limit')
+    assert.ok(result.pages.length >= 2 && result.pages.length <= 4)
+  } finally {
+    mocked.restore()
+  }
+})
+
+test('a healthy small crawl still completes without a stop reason', async () => {
+  const mocked = withMockFetch((url) => {
+    if (url.pathname === '/linked') return mockFetchResponse({ chunks: ['<html><body>linked</body></html>'] })
+    return mockFetchResponse({ status: 404 })
+  })
+  try {
+    const result = await crawlWebsite({
+      homeHtml: '<html><body><a href="/linked">linked</a></body></html>',
+      homeUrl: new URL(`${ROH22_HOME}/`),
+      requestDelay: 0,
+      maxAttempts: 10,
+    })
+    assert.equal(result.limits.stoppedBy, null)
+    assert.equal(result.pages.length, 2)
+    assert.equal(result.status, 'Completed')
+  } finally {
+    mocked.restore()
   }
 })
