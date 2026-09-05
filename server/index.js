@@ -13,6 +13,7 @@ import { describeGeographyCoverage, downloadDiscovery, filterSavedClientsByLocat
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
 import { acceptOutreachCandidate, buildRefreshPatch, dismissOutreachCandidates, getRev, resolveOutreachCompletion, resolveSynthesisCompletion, updateLeadFields } from './services/revisions.js'
+import { auditIdForJob, buildLeadReport, listAuditManifests, loadAuditForSynthesis, readManifest, renderLeadReportMarkdown, saveAuditArtifacts } from './services/artifacts.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
@@ -95,7 +96,7 @@ const ALLOWED_OUTREACH_VERSIONS = new Set(['Concise','Balanced','Detailed'])
 const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting','Insufficient evidence'])
 const ALLOWED_MANUAL_ACTIONS = new Set(['refresh','audit','muse','outreach','full'])
 const ALLOWED_SETTINGS_KEYS = new Set(Object.keys(defaultSettings))
-const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev'])
+const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale'])
 
 function isNonEmptyString(v, max = 120) {
   return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
@@ -271,9 +272,10 @@ function leadMarkdown(lead) {
   const list = (items = []) => items.length ? items.map((item) => `- ${item}`).join('\n') : '- None recorded'
   const metric = (key) => lead.businessIntelligence?.companyMetrics?.[key]?.value ?? 'Unknown — no source connected'
   const muse = lead.museAnalysis?.status === 'Completed'
-    ? `\n## Muse synthesis (advisory)\n\n- Recommendation: ${lead.museAnalysis.qualificationRecommendation}\n- Rationale: ${lead.museAnalysis.qualificationRationale}\n- Model: ${lead.museAnalysis.generation?.model || 'Not recorded'}\n- Generated: ${lead.museAnalysis.generation?.generatedAt || 'Not recorded'}\n\n${lead.museAnalysis.summary}\n\n### Prioritized opportunities\n\n${(lead.museAnalysis.topOpportunities || []).map((item) => `- **${item.severity} — ${item.title}:** ${item.evidence} Recommendation: ${item.recommendation}`).join('\n') || '- None recorded'}\n\n### Strengths\n\n${list(lead.museAnalysis.strengths)}\n\n### Unknowns\n\n${list(lead.museAnalysis.unknowns)}\n\nMuse is an evidence-synthesis aid. It does not alter the deterministic opportunity score.\n`
+    ? `\n## Muse synthesis (advisory${lead.museAnalysis.stale ? ' — STALE: a newer audit completed after this synthesis' : ''})\n\n- Recommendation: ${lead.museAnalysis.qualificationRecommendation}\n- Rationale: ${lead.museAnalysis.qualificationRationale}\n- Model: ${lead.museAnalysis.generation?.model || 'Not recorded'}\n- Generated: ${lead.museAnalysis.generation?.generatedAt || 'Not recorded'}\n\n${lead.museAnalysis.summary}\n\n### Prioritized opportunities\n\n${(lead.museAnalysis.topOpportunities || []).map((item) => `- **${item.severity} — ${item.title}:** ${item.evidence} Recommendation: ${item.recommendation}`).join('\n') || '- None recorded'}\n\n### Strengths\n\n${list(lead.museAnalysis.strengths)}\n\n### Unknowns\n\n${list(lead.museAnalysis.unknowns)}\n\nMuse is an evidence-synthesis aid. It does not alter the deterministic opportunity score.\n`
     : ''
   return `# ${lead.company}\n\n` +
+    (lead.currentAuditId ? `## Audit version\n\n- Audit ID: ${lead.currentAuditId}${lead.auditVersion != null ? ` (version ${lead.auditVersion})` : ''}\n- Provenance: versioned audit artifacts\n\n` : `## Audit version\n\n- Audit ID: legacy (unversioned)\n- Provenance: unknown — pre-versioning record\n\n`) +
     `## Business profile\n\n` +
     `- Category: ${lead.category}\n- Location: ${lead.location}\n- Website: https://${lead.website}\n- Phone: ${lead.phone}\n- Public email: ${lead.email}\n- Google rating: ${lead.rating} (${lead.reviews} reviews)\n\n` +
     `## Opportunity assessment\n\n- Preliminary opportunity: ${lead.prelimScore}/100\n- Opportunity score: ${lead.opportunityScore ?? 'Not analyzed'}\n- Confidence: ${lead.confidence ?? 'Not analyzed'}\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Research status: ${lead.researchStatus}\n- Rebuild feasibility: ${lead.rebuild}${lead.researchFailure ? `\n- Failed stage: ${['Scraped', 'Analyzed', 'Qualified'][lead.researchFailure.stage] || 'Unknown'}\n- Failure reason: ${lead.researchFailure.reason}` : ''}\n\n` +
@@ -284,20 +286,13 @@ function leadMarkdown(lead) {
     `## Findings\n\n${list(lead.problems)}\n\n` +
     `## Evidence\n\n${list(lead.evidence)}\n\n` +
     muse +
+    (lead.notes ? `## Reviewer notes\n\n${lead.notes}\n\n` : '') +
     `## Safety contract\n\nDo not invent revenue, decision-maker names, hosting costs, performance metrics, or unobserved facts. Outreach remains manual and must be reviewed before sending.\n` +
     (lead.contract ? `\n## Won contract\n\n- Approved value: ${lead.contract.currency || 'USD'} ${lead.contract.amount || 0}\n- Scope: ${lead.contract.scope || 'Not recorded'}\n- Terms: ${lead.contract.terms || 'Not recorded'}\n- Signed on: ${lead.contract.signedOn || 'Not recorded'}\n- Start date: ${lead.contract.startDate || 'Not recorded'}\n- Conditions: ${lead.contract.conditions || 'None recorded'}\n- Next step: ${lead.contract.nextStep || 'Not recorded'}\n` : '')
 }
 
-function writeLeadArtifacts(lead, includeProfile = false) {
-  const folder = join(dataDir, 'leads', lead.id)
-  mkdirSync(folder, { recursive: true })
-  const businessData = {
-    id: lead.id, company: lead.company, category: lead.category, location: lead.location,
-    website: lead.website, address: lead.address || null, phone: lead.phone, email: lead.email, rating: lead.rating,
-    reviews: lead.reviews, collectedAt: lead.collectedAt, sourceUrl: lead.sourceUrl || null,
-    businessIntelligence: lead.businessIntelligence || null,
-  }
-  const auditData = {
+function buildAuditData(lead) {
+  return {
     preliminaryScore: lead.prelimScore, opportunityScore: lead.opportunityScore, confidence: lead.confidence,
     source: lead.analysisSource, status: lead.researchStatus, mainIssue: lead.mainIssue,
     issueDetail: lead.issueDetail, pageCount: lead.pageCount, sitemapPageCount: lead.sitemapPageCount,
@@ -311,13 +306,27 @@ function writeLeadArtifacts(lead, includeProfile = false) {
     auditedUrl: lead.auditedUrl || null, auditedAt: lead.auditedAt || null,
     captureQuality: lead.captureQuality || null,
     lastAuditAttempt: lead.lastAuditAttempt || null, lastSuccessfulAudit: lead.lastSuccessfulAudit || null,
+    currentAuditId: lead.currentAuditId || null, auditVersion: lead.auditVersion ?? null,
     researchFailure: lead.researchFailure || null, history: lead.auditHistory || [],
   }
+}
+
+function writeLeadArtifacts(lead, includeProfile = false) {
+  const folder = join(dataDir, 'leads', lead.id)
+  mkdirSync(folder, { recursive: true })
+  const businessData = {
+    id: lead.id, company: lead.company, category: lead.category, location: lead.location,
+    website: lead.website, address: lead.address || null, phone: lead.phone, email: lead.email, rating: lead.rating,
+    reviews: lead.reviews, collectedAt: lead.collectedAt, sourceUrl: lead.sourceUrl || null,
+    businessIntelligence: lead.businessIntelligence || null,
+  }
+  const auditData = buildAuditData(lead)
   writeFileSync(join(folder, 'raw.json'), JSON.stringify(businessData, null, 2), 'utf8')
-  if (lead.businessIntelligence) writeFileSync(join(folder, 'business-intelligence.json'), JSON.stringify(lead.businessIntelligence, null, 2), 'utf8')
+  if (lead.businessIntelligence) writeFileSync(join(folder, 'business-intelligence.json'), JSON.stringify(businessData, null, 2), 'utf8')
   writeFileSync(join(folder, 'audit.json'), JSON.stringify(auditData, null, 2), 'utf8')
   if (lead.opportunityScore != null) {
-    writeFileSync(join(folder, 'analysis-v1.md'), `# Analysis — ${lead.company}\n\n- Opportunity score: ${lead.opportunityScore}/100\n- Confidence: ${lead.confidence}/100\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Status: ${lead.researchStatus}\n\n${lead.notes || lead.issueDetail || 'No manual analysis note recorded.'}\n`, 'utf8')
+    const manifest = lead.currentAuditId ? readManifest(dataDir, lead.id, lead.currentAuditId) : null
+    writeFileSync(join(folder, 'analysis-v1.md'), renderLeadReportMarkdown(lead, { manifest }), 'utf8')
   }
   if (lead.outreachDraft || Object.keys(lead.outreachDrafts || {}).length) {
     writeFileSync(join(folder, 'outreach.json'), JSON.stringify({
@@ -617,8 +626,10 @@ async function runAuditJob(job) {
   })
   const { _lighthouseReport, ...result } = rawResult
   const current = readLead(job.leadId)
+  const auditId = auditIdForJob(job.id)
+  const auditVersion = (current.auditHistory || []).length + 1
   const history = [...(current.auditHistory || []), {
-    jobId: job.id, at: result.auditedAt, url: result.auditedUrl, score: result.opportunityScore,
+    auditId, version: auditVersion, jobId: job.id, at: result.auditedAt, url: result.auditedUrl, score: result.opportunityScore,
     performance: result.performance, pages: result.pageCount, brokenLinks: result.brokenLinks,
   }].slice(-10)
   const inconclusive = result.researchStatus === 'Inconclusive'
@@ -631,11 +642,13 @@ async function runAuditJob(job) {
   const lastSuccessfulAudit = result.opportunityScore != null
     ? { at: result.auditedAt, url: result.auditedUrl, score: result.opportunityScore, confidence: result.confidence }
     : current.lastSuccessfulAudit || null
-  const updated = saveLead(enrichLead({
+  // A new attempt marks prior synthesis and drafts stale until regenerated or reviewed.
+  const synthesisStale = current.museAnalysis?.status === 'Completed' && current.museAnalysis?.auditId && current.museAnalysis.auditId !== auditId
+  const draftsStale = Boolean(current.outreachDraft || Object.keys(current.outreachDrafts || {}).length) && current.outreachGeneration?.auditId && current.outreachGeneration.auditId !== auditId
+  const pendingBase = enrichLead({
     ...current,
     ...result,
     prelimScore: result.opportunityScore,
-    auditVersion: (current.auditVersion || 0) + 1,
     researchFailure: null,
     lastAuditAttempt: attempt,
     lastSuccessfulAudit,
@@ -644,8 +657,29 @@ async function runAuditJob(job) {
       ? { status: 'Running', progress: 70, phase: inconclusive ? 'Capture inconclusive — review needed' : 'Website audit complete', jobId: job.id }
       : { status: 'Completed', progress: 100, phase: inconclusive ? 'Capture inconclusive — review needed' : 'Website audit complete', jobId: job.id, completedAt: nowIso() }) } : {}),
     auditHistory: history,
+    museAnalysis: synthesisStale ? { ...current.museAnalysis, stale: true, staleReason: `A newer audit (${auditId}) completed after this synthesis.` } : current.museAnalysis,
+    outreachStale: draftsStale ? true : current.outreachStale || false,
+    outreachStaleReason: draftsStale ? `A newer audit (${auditId}) completed after these drafts.` : current.outreachStaleReason || null,
     updated: 'Just now',
-  }))
+  })
+  // Persist versioned artifacts BEFORE the DB pointer advertises them. A
+  // persistence failure records an explicit attempt failure — a crash here
+  // leaves versioned files without a manifest or pointer, which synthesis
+  // refuses to trust, instead of a false completion.
+  let manifest = null
+  try {
+    ;({ manifest } = saveAuditArtifacts({
+      dataDir, leadId: job.leadId, auditId, auditVersion,
+      auditData: { ...buildAuditData(pendingBase), currentAuditId: auditId, auditVersion },
+      lighthouseReport: _lighthouseReport || null,
+    }))
+  } catch (error) {
+    saveLead({ ...pendingBase, researchStatus: 'Failed', researchFailure: { stage: 1, reason: `Audit artifacts could not be persisted: ${error.message}`, code: 'ARTIFACT_WRITE_FAILED', at: nowIso(), jobId: job.id }, updated: 'Just now' })
+    updateJob(job.id, { status: 'Failed', progress: 100, error: `Audit artifacts could not be persisted: ${error.message}` })
+    recordEvent('lead', lead.id, 'audit_artifact_failed', { jobId: job.id, auditId, reason: error.message })
+    throw new Error(`Audit artifacts could not be persisted: ${error.message}`)
+  }
+  const updated = saveLead({ ...pendingBase, currentAuditId: auditId, auditVersion })
   if (_lighthouseReport) {
     const folder = join(dataDir, 'leads', lead.id)
     mkdirSync(folder, { recursive: true })
@@ -671,7 +705,7 @@ async function generateAndSaveOutreach(lead, { manualAction = null } = {}) {
   const updated = writeJobCompletion(lead.id, (current) => {
     const decision = resolveOutreachCompletion({ started: startedSnap, current, generated, selectedVersion: current.outreachVersion })
     completionType = decision.type
-    const patch = { ...decision.patch }
+    const patch = { ...decision.patch, outreachStale: false, outreachStaleReason: null }
     if (manualAction) {
       patch.manualRun = manualRunState(current, manualAction, {
         status: 'Completed', progress: 100,
@@ -699,11 +733,17 @@ async function runSynthesisJob(job) {
     updated: 'Muse is analyzing evidence',
   })
   updateJob(job.id, { progress: 20 })
-  let lighthouseReport = null
-  const lighthousePath = join(dataDir, 'leads', lead.id, 'lighthouse.json')
-  if (existsSync(lighthousePath)) {
-    try { lighthouseReport = JSON.parse(readFileSync(lighthousePath, 'utf8')) } catch { /* The saved summary remains sufficient if the full report is unreadable. */ }
+  // Synthesis reads the explicit audit version the pointer names. A previous
+  // attempt's report is never substituted without a historical label.
+  let scopedAudit
+  try {
+    scopedAudit = loadAuditForSynthesis({ dataDir, lead: readLead(job.leadId) || lead })
+  } catch (error) {
+    throw new Error(`Cannot synthesize: ${error.message}`)
   }
+  const lighthouseReport = scopedAudit.lighthouseReport
+  const synthesisAuditId = scopedAudit.manifest?.auditId || null
+  const synthesisProvenance = scopedAudit.provenance
   updateJob(job.id, { progress: 45 })
   const activeLead = readLead(job.leadId)
   if (activeLead) saveLead({
@@ -723,6 +763,7 @@ async function runSynthesisJob(job) {
       if (rerun.type === 'stale') return {}
       return {
         ...rerun.patch,
+        museAnalysis: { ...rerun.patch.museAnalysis, auditId: synthesisAuditId, auditProvenance: synthesisProvenance, stale: false, staleReason: null },
         museJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Synthesis complete' },
         ...(manualAction ? { manualRun: manualRunState(current, manualAction, manualAction === 'full'
           ? { status: 'Running', progress: 92, phase: 'Generating outreach drafts', jobId: job.id }
@@ -1102,6 +1143,8 @@ app.patch('/api/leads/:id', (req, res) => {
     }
   }
   if ('outreachStatus' in body && !ALLOWED_OUTREACH_STATUS.has(body.outreachStatus)) push('outreachStatus', `Must be one of: ${[...ALLOWED_OUTREACH_STATUS].join(', ')}`)
+  if ('museStale' in body && typeof body.museStale !== 'boolean') push('museStale', 'Must be a boolean')
+  if ('outreachStale' in body && typeof body.outreachStale !== 'boolean') push('outreachStale', 'Must be a boolean')
   if ('contactedAt' in body) {
     const d = new Date(body.contactedAt)
     if (Number.isNaN(d.getTime())) push('contactedAt', 'Must be a valid ISO date string')
@@ -1140,6 +1183,11 @@ app.patch('/api/leads/:id', (req, res) => {
     })
   }
   const patched = applyLeadWorkflowChanges(fresh, changes)
+  if ('museStale' in changes) {
+    patched.museAnalysis = { ...(patched.museAnalysis || {}), stale: changes.museStale === true, staleReason: changes.museStale === true ? (patched.museAnalysis?.staleReason || 'Marked stale by reviewer.') : null }
+    delete patched.museStale
+  }
+  if (changes.outreachStale === false) patched.outreachStaleReason = null
   const draftEdited = ('outreachDraft' in changes && String(changes.outreachDraft || '') !== String(fresh.outreachDraft || '')) ||
     ('outreachDrafts' in changes && JSON.stringify(changes.outreachDrafts || {}) !== JSON.stringify(fresh.outreachDrafts || {})) ||
     ('outreachSubject' in changes && String(changes.outreachSubject || '') !== String(fresh.outreachSubject || ''))
@@ -1178,6 +1226,24 @@ app.post('/api/leads/:id/outreach/candidates', (req, res) => {
   } catch (error) {
     return unprocessable(res, error.message, 'outreachCandidates')
   }
+})
+
+app.get('/api/leads/:id/audits', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const manifests = listAuditManifests(dataDir, lead.id).map((manifest) => ({
+    auditId: manifest.auditId,
+    version: manifest.auditVersion ?? null,
+    status: manifest.status || null,
+    researchStatus: manifest.researchStatus || null,
+    auditedAt: manifest.auditedAt || null,
+    auditedUrl: manifest.auditedUrl || null,
+    current: manifest.auditId === lead.currentAuditId,
+    corrupt: Boolean(manifest.corrupt),
+    lighthouse: manifest.artifacts?.lighthouseJson?.missing ? 'missing' : manifest.artifacts?.lighthouseJson ? 'stored' : 'unknown',
+  }))
+  res.json({ currentAuditId: lead.currentAuditId || null, audits: manifests })
 })
 
 app.post('/api/leads/:id/analyze', (req, res) => {

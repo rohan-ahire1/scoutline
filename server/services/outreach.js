@@ -83,7 +83,7 @@ export function assertNoInventedClaims(text, where = 'outreach') {
 
 export function createLocalOutreach(lead) {
   const observations = buildObservations(lead)
-  const generation = { source: 'rules', model: null, generatedAt: new Date().toISOString(), targets: { Concise: 50, Balanced: 110, Detailed: 210 }, observationIds: observations.map((item) => item.id) }
+  const generation = { source: 'rules', model: null, generatedAt: new Date().toISOString(), auditId: lead.currentAuditId || null, targets: { Concise: 50, Balanced: 110, Detailed: 210 }, observationIds: observations.map((item) => item.id) }
   if (!observations.length) {
     return {
       subject: `Quick idea for ${lead.company}`,
@@ -316,6 +316,7 @@ export async function generateOutreach(lead, options = {}) {
       model: config.model,
       responseId: response.id,
       generatedAt: new Date().toISOString(),
+      auditId: lead.currentAuditId || null,
       targets: { Concise: 50, Balanced: 110, Detailed: 210 },
       observationIds: observations.map((item) => item.id),
       wordCounts: Object.fromEntries(OUTREACH_VERSIONS.map((version) => [version, wordCount(generated.drafts[version])])),
