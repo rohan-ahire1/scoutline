@@ -604,6 +604,10 @@ kbd { min-width: 21px; padding: 2px 4px; border: 1px solid var(--border); border
 .email-draft textarea { min-height: 86px; resize: vertical; line-height: 1.5; }
 .email-draft input:focus, .email-draft textarea:focus { border-color: rgba(240,90,55,.45); box-shadow: 0 0 0 3px var(--orange-soft); }
 .outreach-actions { margin-top: 10px; display: flex; justify-content: flex-end; gap: 6px; }
+.candidate-banner { margin-top: 9px; padding: 9px 11px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-raised); }
+.candidate-banner > span > strong { display: block; font-size: 9px; }
+.candidate-banner > span > small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; }
+.candidate-banner > div { display: flex; gap: 6px; flex-shrink: 0; }
 
 .pipeline-numbers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .pipeline-card { position: relative; padding: 0; overflow: visible; }

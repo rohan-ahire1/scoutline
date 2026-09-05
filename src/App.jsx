@@ -288,11 +288,14 @@ function findingAdvice(finding) {
 function outreachBody(lead, version = 'Concise') {
   if (lead.outreachDrafts?.[version]) return lead.outreachDrafts[version]
   if (lead.outreachDraft && outreachVersion(lead) === version) return lead.outreachDraft
-  const findings = (lead.problems?.length ? lead.problems : [lead.issueDetail]).filter(Boolean).slice(0, 3).map((item) => {
-    const clean = item.trim().replace(/[.!?]+$/, '')
-    return clean.charAt(0).toUpperCase() + clean.slice(1)
-  })
-  const [first = 'The customer journey could be clearer', second, third] = findings
+  // Client-side preview only renders verified findings; with none, it renders
+  // nothing instead of inventing default defects.
+  const findings = (lead.problems?.length ? lead.problems : (lead.issueDetail ? [lead.issueDetail] : [])).filter(Boolean).slice(0, 3).map((item) => {
+    const clean = String(item).trim().replace(/[.!?]+$/, '')
+    return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : ''
+  }).filter(Boolean)
+  if (!findings.length) return ''
+  const [first, second, third] = findings
   if (version === 'Detailed') {
     const observations = [first, second, third].filter(Boolean)
     const report = observations.map((finding, index) => {
@@ -567,9 +570,10 @@ function StagePicker({ lead, onChange }) {
   </div>}</div>
 }
 
-function OutreachCard({ lead, onOpen, onUpdate, onGenerate, onToast }) {
+function OutreachCard({ lead, onOpen, onUpdate, onGenerate, onCandidate, onToast }) {
   const [editing, setEditing] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [resolving, setResolving] = useState(false)
   const [version, setVersion] = useState(() => outreachVersion(lead))
   const [subject, setSubject] = useState(() => outreachSubject(lead))
   const [body, setBody] = useState(() => outreachBody(lead, outreachVersion(lead)))
@@ -596,18 +600,25 @@ function OutreachCard({ lead, onOpen, onUpdate, onGenerate, onToast }) {
     await onGenerate(lead)
     setGenerating(false)
   }
+  const showCandidate = lead.outreachUpdateAvailable && (lead.outreachCandidates || []).some((item) => item && !item.insufficientEvidence && item.drafts)
+  const resolveCandidate = async (action) => {
+    setResolving(true)
+    await onCandidate(lead, action, 0)
+    setResolving(false)
+  }
+  const insufficient = lead.outreachStatus === 'Insufficient evidence' && !body.trim()
   return (
     <article className={cn('outreach-card', contacted && 'is-contacted')}>
       <header className="outreach-client-head"><button onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{displayEmail ? lead.email : 'No email found · website form is still available'}</small></span></button><Badge tone={contacted ? statusTone[lead.salesStage] || 'blue' : getOutreachState(lead) === 'Needs draft' ? 'gray' : 'orange'} dot>{contacted ? lead.salesStage : getOutreachState(lead)}</Badge></header>
       <div className="outreach-card-grid">
         <section className="outreach-evidence"><span className="detail-label">Why this is relevant</span><ol>{findings.map((problem) => <li key={problem}>{problem}</li>)}</ol><button onClick={() => onOpen(lead)}>View full research <ArrowRight size={10} /></button></section>
-        <section className="email-draft"><div className="email-draft-meta"><span className="detail-label">Email draft</span><div className="email-version-tabs" role="tablist" aria-label={`Email length for ${lead.company}`}>{outreachVersions.map((item) => <button key={item} role="tab" aria-selected={version === item} className={version === item ? 'active' : ''} onClick={() => selectVersion(item)} disabled={editing || generating}>{item}</button>)}</div><small>{wordCount} words · {lead.outreachGeneration?.model || 'evidence template'}</small></div>{editing ? <><label><span>Subject</span><input value={subject} onChange={(event) => setSubject(event.target.value)} /></label><label><span>Message</span><textarea value={body} onChange={(event) => setBody(event.target.value)} /></label></> : <div className="email-preview"><small>Subject · {subject}</small><p>{body}</p></div>}<div className="outreach-actions">{editing ? <><button className="button button-quiet button-small" onClick={() => { setSubject(outreachSubject(lead)); setBody(outreachBody(lead, version)); setEditing(false) }}>Cancel</button><button className="button button-secondary button-small" onClick={save}><Check size={12} />Save {version.toLowerCase()}</button></> : <><button className="button button-quiet button-small" onClick={generate} disabled={generating}>{generating ? <LoaderCircle size={12} className="spin" /> : <WandSparkles size={12} />}{generating ? 'Generating…' : 'Generate 3 versions'}</button><button className="button button-secondary button-small" onClick={() => setEditing(true)}><FileText size={12} />Edit</button></>}<button className="button button-secondary button-small" onClick={copy} disabled={!hasEmail || generating}><Copy size={12} />Copy {version.toLowerCase()}</button>{!contacted && <button className="button button-primary button-small" onClick={markContacted} disabled={!hasEmail || generating}><CheckCircle2 size={12} />Mark contacted</button>}</div></section>
+        <section className="email-draft"><div className="email-draft-meta"><span className="detail-label">Email draft</span><div className="email-version-tabs" role="tablist" aria-label={`Email length for ${lead.company}`}>{outreachVersions.map((item) => <button key={item} role="tab" aria-selected={version === item} className={version === item ? 'active' : ''} onClick={() => selectVersion(item)} disabled={editing || generating}>{item}</button>)}</div><small>{wordCount} words · {lead.outreachGeneration?.model || 'evidence template'}</small></div>{showCandidate && <div className="candidate-banner"><span><strong>New generated draft available.</strong><small>Your current text was kept. Review the latest candidate before switching.</small></span><div><button className="button button-secondary button-small" onClick={() => resolveCandidate('accept')} disabled={resolving}>{resolving ? 'Applying…' : 'Use new draft'}</button><button className="button button-quiet button-small" onClick={() => resolveCandidate('dismiss')} disabled={resolving}>Keep current</button></div></div>}{insufficient && <div className="candidate-banner"><span><strong>No supported outreach.</strong><small>{lead.outreachCandidates?.[0]?.reason || 'The saved audit has no verified findings to write from.'}</small></span></div>}{editing ? <><label><span>Subject</span><input value={subject} onChange={(event) => setSubject(event.target.value)} /></label><label><span>Message</span><textarea value={body} onChange={(event) => setBody(event.target.value)} /></label></> : <div className="email-preview"><small>Subject · {subject}</small><p>{body}</p></div>}<div className="outreach-actions">{editing ? <><button className="button button-quiet button-small" onClick={() => { setSubject(outreachSubject(lead)); setBody(outreachBody(lead, version)); setEditing(false) }}>Cancel</button><button className="button button-secondary button-small" onClick={save}><Check size={12} />Save {version.toLowerCase()}</button></> : <><button className="button button-quiet button-small" onClick={generate} disabled={generating}>{generating ? <LoaderCircle size={12} className="spin" /> : <WandSparkles size={12} />}{generating ? 'Generating…' : 'Generate 3 versions'}</button><button className="button button-secondary button-small" onClick={() => setEditing(true)}><FileText size={12} />Edit</button></>}<button className="button button-secondary button-small" onClick={copy} disabled={!hasEmail || generating}><Copy size={12} />Copy {version.toLowerCase()}</button>{!contacted && <button className="button button-primary button-small" onClick={markContacted} disabled={!hasEmail || generating}><CheckCircle2 size={12} />Mark contacted</button>}</div></section>
       </div>
     </article>
   )
 }
 
-function OutreachPage({ leads, onOpen, onUpdate, onGenerate, onToast }) {
+function OutreachPage({ leads, onOpen, onUpdate, onGenerate, onCandidate, onToast }) {
   const [view, setView] = useState('All')
   const [selectedId, setSelectedId] = useState(null)
   const qualified = leads.filter((lead) => isQualifiedLead(lead) && !['Won', 'Lost'].includes(lead.salesStage))
@@ -625,7 +636,7 @@ function OutreachPage({ leads, onOpen, onUpdate, onGenerate, onToast }) {
       </PageHeader>
       <section className="panel outreach-panel">
         <div className="outreach-toolbar"><div><h2>Qualified clients</h2><span>{ready.length} waiting for a first message</span></div><div className="view-tabs" role="tablist" aria-label="Outreach views">{views.map((item) => <button role="tab" aria-selected={view === item.label} key={item.label} className={view === item.label ? 'active' : ''} onClick={() => setView(item.label)}><i className={`filter-dot filter-dot-${item.tone}`} /><span>{item.label}</span><em>{item.count}</em></button>)}</div></div>
-        {visible.length ? <div className="outreach-master-detail"><div className="outreach-queue-list" role="listbox" aria-label="Qualified clients">{visible.map((lead) => <button key={lead.id} role="option" aria-selected={selected?.id === lead.id} className={selected?.id === lead.id ? 'active' : ''} onClick={() => setSelectedId(lead.id)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{getOutreachState(lead)}</small></span><ChevronRight size={12} /></button>)}</div><div className="outreach-selected"><OutreachCard key={selected?.id} lead={selected} onOpen={onOpen} onUpdate={onUpdate} onGenerate={onGenerate} onToast={onToast} /></div></div> : <div className="empty-state"><Mail size={21} /><h3>No clients in this view</h3><p>Qualify a client in Research to prepare an outreach draft.</p></div>}
+        {visible.length ? <div className="outreach-master-detail"><div className="outreach-queue-list" role="listbox" aria-label="Qualified clients">{visible.map((lead) => <button key={lead.id} role="option" aria-selected={selected?.id === lead.id} className={selected?.id === lead.id ? 'active' : ''} onClick={() => setSelectedId(lead.id)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{getOutreachState(lead)}</small></span><ChevronRight size={12} /></button>)}</div><div className="outreach-selected"><OutreachCard key={selected?.id} lead={selected} onOpen={onOpen} onUpdate={onUpdate} onGenerate={onGenerate} onCandidate={onCandidate} onToast={onToast} /></div></div> : <div className="empty-state"><Mail size={21} /><h3>No clients in this view</h3><p>Qualify a client in Research to prepare an outreach draft.</p></div>}
       </section>
     </>
   )
@@ -1297,9 +1308,20 @@ export default function App() {
       const updated = await apiRequest(`/api/leads/${lead.id}/outreach/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
       setLeads((current) => current.map((item) => item.id === lead.id ? updated : item))
       setSelectedLead((current) => current?.id === lead.id ? updated : current)
-      setToast(`${lead.company} outreach generated with ${updated.outreachGeneration?.model || 'saved evidence'}`)
+      setToast(updated.outreachStatus === 'Insufficient evidence' && !updated.outreachDraft
+        ? `No supported outreach for ${lead.company} — no verified findings`
+        : `${lead.company} outreach generated with ${updated.outreachGeneration?.model || 'saved evidence'}`)
       return updated
     } catch (caught) { return showActionError(caught, 'Could not generate outreach') }
+  }
+  const resolveOutreachCandidate = async (lead, action, index = 0) => {
+    try {
+      const updated = await apiRequest(`/api/leads/${lead.id}/outreach/candidates`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, index }) })
+      setLeads((current) => current.map((item) => item.id === lead.id ? updated : item))
+      setSelectedLead((current) => current?.id === lead.id ? updated : current)
+      setToast(action === 'accept' ? `New draft applied for ${lead.company}` : `Kept current draft for ${lead.company}`)
+      return updated
+    } catch (caught) { return showActionError(caught, 'Could not update outreach draft') }
   }
   const exportLead = async (lead) => {
     try {
@@ -1388,7 +1410,7 @@ export default function App() {
   else if (route.clientId && !selectedLead) content = <NotFoundPage clientId={route.clientId} onNavigate={navigate} onBack={() => window.history.length > 1 ? window.history.back() : navigate('Clients')} />
   else if (page === 'Clients') content = <ClientsPage leads={leads} runs={runs} onOpen={openLead} onImport={() => csvInput.current?.click()} onExport={exportCsv} />
   else if (page === 'Research') content = <ResearchPage leads={leads} runs={runs} activeRunId={activeRunId} onOpen={openLead} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onNewRun={() => setRunModalOpen(true)} onTogglePause={toggleRunPause} onCancel={cancelRun} />
-  else if (page === 'Outreach') content = <OutreachPage leads={leads} onOpen={openLead} onUpdate={updateLead} onGenerate={generateOutreachVersions} onToast={setToast} />
+  else if (page === 'Outreach') content = <OutreachPage leads={leads} onOpen={openLead} onUpdate={updateLead} onGenerate={generateOutreachVersions} onCandidate={resolveOutreachCandidate} onToast={setToast} />
   else if (page === 'Pipeline') content = <PipelinePage leads={leads} onOpen={openLead} onUpdate={updateLead} goTo={navigate} onContract={setContractLead} />
   else if (page === 'Contracts') content = <ContractsPage leads={leads} onOpen={openLead} onContract={setContractLead} goTo={navigate} />
   else content = <SettingsPage apiStatus={apiStatus} settings={settingsData} onSave={saveSettings} />
