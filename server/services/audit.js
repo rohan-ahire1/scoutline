@@ -3,8 +3,9 @@ import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import robotsParser from 'robots-parser'
 import { MEASURE_SOURCES, scoreProvenance } from './measure.js'
+import { CHROME_SAFETY_FLAGS, CRAWL_LIMITS, createCrawlBounds, collectionStopEvidence, isSameSite, splitAllowedUrls } from './crawlPolicy.js'
 
-const MAX_PAGE_BYTES = 2 * 1024 * 1024
+const MAX_PAGE_BYTES = CRAWL_LIMITS.maxBytesPerPage
 const USER_AGENT = 'ScoutlineResearchBot/1.0 (+local, manual research)'
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
 const NON_PAGE_EXTENSION = /\.(?:avif|bmp|css|csv|docx?|eot|gif|ico|jpe?g|js|json|map|mov|mp3|mp4|pdf|png|pptx?|rar|rss|svg|tar|tiff?|txt|webm|webp|woff2?|xlsx?|xml|zip)$/i
@@ -102,48 +103,66 @@ async function readLimitedBody(response, maxBytes) {
   return new TextDecoder().decode(joined)
 }
 
+function throwIfCancelled(signal) {
+  if (signal?.aborted) throw new AuditError('Collection was cancelled; partial evidence is preserved', 'CANCELLED')
+}
+
+function combineSignals(signals) {
+  const active = (signals || []).filter(Boolean)
+  if (!active.length) return undefined
+  if (active.length === 1) return active[0]
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any(active)
+  return active[0]
+}
+
 export async function fetchPublicText(input, options = {}) {
   let url = normalizeWebsite(input)
-  const maxRedirects = options.maxRedirects ?? 5
+  const maxRedirects = options.maxRedirects ?? CRAWL_LIMITS.maxRedirects
   const maxBytes = options.maxBytes ?? MAX_PAGE_BYTES
+  let redirects = 0
   for (let redirect = 0; redirect <= maxRedirects; redirect += 1) {
+    throwIfCancelled(options.signal)
     await assertPublicUrl(url)
     let response
     try {
       response = await fetch(url, {
         redirect: 'manual',
-        signal: AbortSignal.timeout(options.timeoutMs ?? 12_000),
+        signal: combineSignals([options.signal, AbortSignal.timeout(options.timeoutMs ?? 12_000)]),
         headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xhtml+xml,application/xml,text/plain;q=0.8' },
       })
     } catch (error) {
       if (error?.name === 'TimeoutError') throw new AuditError('The website timed out', 'TIMEOUT')
+      if (options.signal?.aborted || error?.name === 'AbortError') throw new AuditError('Collection was cancelled; partial evidence is preserved', 'CANCELLED')
       throw new AuditError(`The website could not be reached: ${error.message}`, 'FETCH_FAILED')
     }
     if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get('location')
       if (!location) throw new AuditError('The website returned an invalid redirect', 'BAD_REDIRECT')
+      await response.body?.cancel().catch(() => {})
       url = new URL(location, url)
+      redirects += 1
       continue
     }
     if (!response.ok) throw new AuditError(`The website returned HTTP ${response.status}`, 'HTTP_ERROR')
     const text = await readLimitedBody(response, maxBytes)
-    return { text, url, status: response.status, contentType: response.headers.get('content-type') || '' }
+    return { text, url, status: response.status, contentType: response.headers.get('content-type') || '', redirects, bytes: text.length }
   }
   throw new AuditError('The website redirected too many times', 'TOO_MANY_REDIRECTS')
 }
 
 export async function fetchPublicStatus(input, options = {}) {
   let url = normalizeWebsite(input)
-  const maxRedirects = options.maxRedirects ?? 5
+  const maxRedirects = options.maxRedirects ?? CRAWL_LIMITS.maxRedirects
   let attempts = 0
   let method = 'HEAD'
   for (let redirect = 0; redirect <= maxRedirects; redirect += 1) {
+    throwIfCancelled(options.signal)
     await assertPublicUrl(url)
     let response
     try {
       attempts += 1
       response = await fetch(url, {
-        method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(options.timeoutMs ?? 7_000),
+        method: 'HEAD', redirect: 'manual', signal: combineSignals([options.signal, AbortSignal.timeout(options.timeoutMs ?? 7_000)]),
         headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,*/*;q=0.8' },
       })
       if ([405, 501].includes(response.status)) {
@@ -152,12 +171,24 @@ export async function fetchPublicStatus(input, options = {}) {
         attempts += 1
         method = 'GET'
         response = await fetch(url, {
-          method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(options.timeoutMs ?? 7_000),
+          method: 'GET', redirect: 'manual', signal: combineSignals([options.signal, AbortSignal.timeout(options.timeoutMs ?? 7_000)]),
           headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,*/*;q=0.8', Range: 'bytes=0-1023' },
         })
       }
     } catch (error) {
-      const failure = new AuditError(`The link could not be checked: ${error.message}`, error?.name === 'TimeoutError' ? 'TIMEOUT' : 'FETCH_FAILED')
+      if (error?.name === 'TimeoutError') {
+        const timeout = new AuditError('The link check timed out', 'TIMEOUT')
+        timeout.attempts = attempts
+        timeout.method = method
+        throw timeout
+      }
+      if (options.signal?.aborted || error?.name === 'AbortError') {
+        const cancelled = new AuditError('Link checking was cancelled', 'CANCELLED')
+        cancelled.attempts = attempts
+        cancelled.method = method
+        throw cancelled
+      }
+      const failure = new AuditError(`The link could not be checked: ${error.message}`, 'FETCH_FAILED')
       failure.attempts = attempts
       failure.method = method
       throw failure
@@ -270,10 +301,19 @@ export function classifyLinkOutcome({ status = null, error = null, code = null }
 }
 
 export async function checkInternalLinks(urls, options = {}) {
-  const checkOne = options.checker || ((url) => fetchPublicStatus(url, { timeoutMs: options.timeoutMs || 7_000 }))
-  const targets = [...new Map(urls.map((url) => [url.href, url])).values()].slice(0, Math.max(1, Math.min(100, Number(options.limit || 50))))
+  const checkOne = options.checker || ((url) => fetchPublicStatus(url, { timeoutMs: options.timeoutMs || 7_000, signal: options.signal }))
+  // Robots-disallowed destinations are filtered BEFORE any request so the
+  // checker never fetches them; they are reported, not silently dropped.
+  const { allowed, skipped } = splitAllowedUrls(urls, options.robots || null, USER_AGENT)
+  const skippedRobots = skipped.length
+  const targets = [...new Map(allowed.map((url) => [url.href, url])).values()].slice(0, Math.max(1, Math.min(100, Number(options.limit || CRAWL_LIMITS.maxLinks))))
   const observedAt = new Date().toISOString()
-  const results = await mapConcurrent(targets, Math.max(1, Math.min(8, Number(options.concurrency || 5))), async (url) => {
+  let cancelled = Boolean(options.signal?.aborted)
+  const results = await mapConcurrent(targets, Math.max(1, Math.min(8, Number(options.concurrency || CRAWL_LIMITS.maxLinkConcurrency))), async (url) => {
+    if (options.signal?.aborted) {
+      cancelled = true
+      return { __cancelled: true }
+    }
     try {
       const result = await checkOne(url)
       const outcome = classifyLinkOutcome({ status: result.status })
@@ -293,70 +333,107 @@ export async function checkInternalLinks(urls, options = {}) {
       }
     }
   })
+  const completed = results.filter((result) => !result?.__cancelled)
   const byOutcome = {}
-  for (const result of results) byOutcome[result.outcome] = (byOutcome[result.outcome] || 0) + 1
+  for (const result of completed) byOutcome[result.outcome] = (byOutcome[result.outcome] || 0) + 1
   const confirmed = byOutcome[LINK_OUTCOMES.CONFIRMED_BROKEN] || 0
   const reachable = byOutcome[LINK_OUTCOMES.REACHABLE] || 0
   return {
-    checked: results.length,
+    checked: completed.length,
     broken: confirmed,
     reachable,
-    unverified: results.length - reachable - confirmed,
+    unverified: completed.length - reachable - confirmed,
     byOutcome,
-    results,
-    truncated: urls.length > targets.length,
-    status: !results.length || (results.every((result) => result.verified) && !results.some((result) => result.outcome === LINK_OUTCOMES.SERVICE_ERROR)) ? 'Completed' : 'Partial',
+    results: completed,
+    skippedRobots,
+    cancelled,
+    truncated: allowed.length > targets.length,
+    status: cancelled ? 'Partial' : (!completed.length || (completed.every((result) => result.verified) && !completed.some((result) => result.outcome === LINK_OUTCOMES.SERVICE_ERROR)) ? 'Completed' : 'Partial'),
   }
 }
 
-export async function crawlWebsite({ homeHtml, homeUrl, sitemapText = '', robots = null, maxPages = 10, requestDelay = 500, maxLinks = 50, onProgress = null }) {
-  const pageLimit = Math.max(1, Math.min(25, Number(maxPages || 10)))
+export async function crawlWebsite({ homeHtml, homeUrl, sitemapText = '', robots = null, maxPages = 10, requestDelay = 500, maxLinks = 50, onProgress = null, maxAttempts, maxQueue, maxTotalBytes, timeLimitMs, signal = null }) {
+  const pageLimit = Math.max(1, Math.min(25, Number(maxPages || CRAWL_LIMITS.maxPages)))
   const delay = Math.max(0, Math.min(3_000, Number(requestDelay || 0)))
+  const bounds = createCrawlBounds({ maxAttempts, maxQueue, maxTotalBytes, timeLimitMs })
+  const homeOrigin = new URL(homeUrl).origin
   const pages = [summarizePage(homeHtml, homeUrl)]
   const errors = []
+  const offOrigin = []
   const visited = new Set([homeUrl.href])
   const discoveredLinks = new Map(extractInternalLinks(homeHtml, homeUrl).map((url) => [url.href, url]))
-  const queue = extractInternalLinks(homeHtml, homeUrl).map(pageCandidate).filter(Boolean)
+  const enqueue = (candidate) => {
+    if (!candidate || visited.has(candidate.href)) return
+    if (queue.length >= bounds.limits.maxQueue) {
+      bounds.noteQueue(queue.length + 1)
+      return
+    }
+    queue.push(candidate)
+  }
+  const queue = []
+  extractInternalLinks(homeHtml, homeUrl).map(pageCandidate).filter(Boolean).forEach(enqueue)
   if (sitemapText) {
     const sitemap = load(sitemapText, { xmlMode: true })
     sitemap('loc').each((_, element) => {
       const target = normalizeInternalLink(sitemap(element).text(), homeUrl)
       const candidate = target && pageCandidate(target)
-      if (candidate) queue.push(candidate)
+      if (candidate) enqueue(candidate)
     })
   }
+  bounds.noteQueue(queue.length)
 
-  while (queue.length && pages.length < pageLimit) {
+  while (queue.length && pages.length < pageLimit && !bounds.stopped()) {
+    if (signal?.aborted) {
+      bounds.cancel()
+      break
+    }
+    if (!bounds.checkTime()) break
     const candidate = queue.shift()
     if (!candidate || visited.has(candidate.href)) continue
     visited.add(candidate.href)
     if (robots?.isAllowed(candidate.href, USER_AGENT) === false) continue
+    if (!bounds.claimAttempt()) break
     if (delay) await wait(delay)
     try {
-      const page = await fetchPublicText(candidate, { timeoutMs: 12_000, maxBytes: MAX_PAGE_BYTES })
+      const page = await fetchPublicText(candidate, { timeoutMs: 12_000, maxBytes: MAX_PAGE_BYTES, signal })
+      bounds.noteRedirects(page.redirects)
+      if (!isSameSite(page.url, homeOrigin)) {
+        // A same-origin candidate redirected off-origin: record it, but never
+        // traverse the foreign page as same-site content.
+        offOrigin.push({ from: candidate.href, finalUrl: page.url.href })
+        continue
+      }
       if (!/html|xhtml/i.test(page.contentType) && !/<html[\s>]/i.test(page.text)) continue
+      if (!bounds.addPage(page.bytes)) break
       pages.push(summarizePage(page.text, page.url))
       extractInternalLinks(page.text, page.url).forEach((url) => {
         discoveredLinks.set(url.href, url)
-        const next = pageCandidate(url)
-        if (next && !visited.has(next.href)) queue.push(next)
+        enqueue(pageCandidate(url))
       })
+      if (bounds.stopped()) break
       onProgress?.({ phase: 'Crawling pages', pages: pages.length, pageLimit })
     } catch (error) {
+      if (error?.code === 'CANCELLED' || signal?.aborted) {
+        bounds.cancel()
+        break
+      }
       errors.push({ url: candidate.href, code: error.code || 'CRAWL_FAILED', error: error.message })
     }
   }
 
   onProgress?.({ phase: 'Checking links', checked: 0 })
-  const links = await checkInternalLinks([...discoveredLinks.values()], { limit: maxLinks, concurrency: 5 })
+  const links = await checkInternalLinks([...discoveredLinks.values()], { limit: maxLinks, concurrency: 5, robots, signal })
+  const limits = bounds.summary()
   return {
     pages,
     errors,
     links,
+    offOrigin,
     discoveredPages: visited.size + queue.length,
     pageLimit,
+    limits,
     truncated: queue.length > 0,
-    status: errors.length ? 'Partial' : 'Completed',
+    status: limits.stoppedBy || errors.length || links.cancelled ? 'Partial' : 'Completed',
   }
 }
 
@@ -370,11 +447,7 @@ export async function runLighthouseAudit(input, options = {}) {
   const [{ default: lighthouse }, chromeLauncher] = await Promise.all([import('lighthouse'), import('chrome-launcher')])
   const chrome = await chromeLauncher.launch({
     chromePath: options.chromePath || process.env.CHROME_PATH || undefined,
-    chromeFlags: [
-      '--headless', '--disable-background-networking', '--disable-default-apps', '--disable-extensions', '--disable-sync',
-      '--no-first-run', '--no-default-browser-check',
-      '--host-resolver-rules=MAP localhost ~NOTFOUND, MAP *.localhost ~NOTFOUND, MAP *.local ~NOTFOUND, MAP 127.0.0.1 ~NOTFOUND, MAP ::1 ~NOTFOUND, MAP 10.* ~NOTFOUND, MAP 192.168.* ~NOTFOUND',
-    ],
+    chromeFlags: [...CHROME_SAFETY_FLAGS],
   })
   try {
     const result = await lighthouse(url.href, {
@@ -663,6 +736,11 @@ export async function auditWebsite(website, options = {}) {
     maxPages: options.maxPages || 10,
     requestDelay: options.requestDelay ?? 500,
     maxLinks: options.maxLinks || 50,
+    maxAttempts: options.maxAttempts,
+    maxQueue: options.maxQueue,
+    maxTotalBytes: options.maxTotalBytes,
+    timeLimitMs: options.timeLimitMs,
+    signal: options.signal || null,
     onProgress: ({ phase, pages = 0, pageLimit = 10 }) => options.onProgress?.({ progress: phase === 'Checking links' ? 58 : Math.min(55, 30 + Math.round((pages / pageLimit) * 25)), phase }),
   })
 
@@ -710,6 +788,10 @@ export async function auditWebsite(website, options = {}) {
     if (seo != null) evidence.push(`SEO ${seo}/100 is an HTML-structure estimate, not a Lighthouse measurement`)
   }
   evidence.push(`Crawled ${crawl.pages.length} same-site page${crawl.pages.length === 1 ? '' : 's'} and checked ${crawl.links.checked} internal link${crawl.links.checked === 1 ? '' : 's'}`)
+  const stopEvidence = collectionStopEvidence(crawl.limits)
+  if (stopEvidence) evidence.push(stopEvidence)
+  if (crawl.links.skippedRobots) evidence.push(`${crawl.links.skippedRobots} link${crawl.links.skippedRobots === 1 ? ' was' : 's were'} skipped as robots-disallowed and never requested`)
+  if (crawl.offOrigin?.length) evidence.push(`${crawl.offOrigin.length} same-origin candidate${crawl.offOrigin.length === 1 ? '' : 's'} redirected off-origin and ${crawl.offOrigin.length === 1 ? 'was' : 'were'} not traversed as same-site content`)
   const linkSummary = {
     attempted: crawl.links.checked,
     reachable: crawl.links.reachable,
@@ -717,6 +799,7 @@ export async function auditWebsite(website, options = {}) {
     unverified: crawl.links.unverified,
     byOutcome: crawl.links.byOutcome,
     truncated: crawl.links.truncated,
+    skippedRobots: crawl.links.skippedRobots || 0,
   }
   if (brokenLinks > 0) {
     const detail = `${brokenLinks} confirmed broken internal link${brokenLinks === 1 ? ' was' : 's were'} found across the crawled pages (definitive 404/410 responses).`
@@ -736,7 +819,7 @@ export async function auditWebsite(website, options = {}) {
   }
   if (crawl.errors.length) evidence.push(`Page crawl warnings: ${crawl.errors.length}`)
   const componentStatuses = {
-    crawl: { status: crawl.status, pagesCrawled: crawl.pages.length, pageLimit: crawl.pageLimit, errors: crawl.errors.length, truncated: crawl.truncated },
+    crawl: { status: crawl.status, pagesCrawled: crawl.pages.length, pageLimit: crawl.pageLimit, errors: crawl.errors.length, truncated: crawl.truncated, stoppedBy: crawl.limits?.stoppedBy || null, attempts: crawl.limits?.attempts ?? null },
     links: { status: crawl.links.status, checked: crawl.links.checked, broken: crawl.links.broken, truncated: crawl.links.truncated, linkSummary },
     lighthouse: lighthouseSummary,
   }
