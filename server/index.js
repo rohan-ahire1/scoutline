@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { auditWebsite } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
+import { auditMetricsForLead, metricLabel } from './services/metrics.js'
 import { generateMuseAnalysis } from './services/insights.js'
 import { generateOutreach, getOutreachConfig } from './services/outreach.js'
 import { downloadDiscovery, getBrightDataConfig, mapDiscoveryRecord, pollDiscovery, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
@@ -241,6 +242,14 @@ function decorateRuns(runs = readRows('runs')) {
 function leadMarkdown(lead) {
   const list = (items = []) => items.length ? items.map((item) => `- ${item}`).join('\n') : '- None recorded'
   const metric = (key) => lead.businessIntelligence?.companyMetrics?.[key]?.value ?? 'Unknown — no source connected'
+  // ROH-15: provenance-aware audit lines. Heuristic values are labelled as
+  // estimates and legacy values as unknown-source; neither is presented as a
+  // Lighthouse result.
+  const auditMetrics = auditMetricsForLead(lead)
+  const maturity = lead.businessIntelligence?.digitalMaturity
+  const maturityLine = maturity?.score == null
+    ? 'Not calculated (insufficient measured evidence)'
+    : `${maturity.score}/100 (${maturity.band}) — formula v${maturity.version ?? '?'} · evidence coverage ${Math.round((maturity.coverage ?? 0) * 100)}%`
   const muse = lead.museAnalysis?.status === 'Completed'
     ? `\n## Muse synthesis (advisory)\n\n- Recommendation: ${lead.museAnalysis.qualificationRecommendation}\n- Rationale: ${lead.museAnalysis.qualificationRationale}\n- Model: ${lead.museAnalysis.generation?.model || 'Not recorded'}\n- Generated: ${lead.museAnalysis.generation?.generatedAt || 'Not recorded'}\n\n${lead.museAnalysis.summary}\n\n### Prioritized opportunities\n\n${(lead.museAnalysis.topOpportunities || []).map((item) => `- **${item.severity} — ${item.title}:** ${item.evidence} Recommendation: ${item.recommendation}`).join('\n') || '- None recorded'}\n\n### Strengths\n\n${list(lead.museAnalysis.strengths)}\n\n### Unknowns\n\n${list(lead.museAnalysis.unknowns)}\n\nMuse is an evidence-synthesis aid. It does not alter the deterministic opportunity score.\n`
     : ''
@@ -248,8 +257,8 @@ function leadMarkdown(lead) {
     `## Business profile\n\n` +
     `- Category: ${lead.category}\n- Location: ${lead.location}\n- Website: https://${lead.website}\n- Phone: ${lead.phone}\n- Public email: ${lead.email}\n- Google rating: ${lead.rating} (${lead.reviews} reviews)\n\n` +
     `## Opportunity assessment\n\n- Preliminary opportunity: ${lead.prelimScore}/100\n- Opportunity score: ${lead.opportunityScore ?? 'Not analyzed'}\n- Confidence: ${lead.confidence ?? 'Not analyzed'}\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Research status: ${lead.researchStatus}\n- Rebuild feasibility: ${lead.rebuild}${lead.researchFailure ? `\n- Failed stage: ${['Scraped', 'Analyzed', 'Qualified'][lead.researchFailure.stage] || 'Unknown'}\n- Failure reason: ${lead.researchFailure.reason}` : ''}\n\n` +
-    `## Website audit\n\n- Lighthouse mobile performance: ${lead.performance ?? 'Not measured'}\n- Lighthouse accessibility: ${lead.accessibility ?? 'Not measured'}\n- Lighthouse SEO: ${lead.seo ?? 'Not measured'}\n- Same-site pages crawled: ${lead.pageCount ?? 'Not measured'}\n- Internal links checked: ${lead.checkedLinks ?? 'Not measured'}\n- Broken internal links: ${lead.brokenLinks ?? 'Not measured'}\n- Mobile quality: ${lead.mobileQuality}\n- HTTPS: ${lead.https == null ? 'Not measured' : lead.https ? 'Yes' : 'No'}\n- Detected stack: ${(lead.stack || []).join(', ') || 'Unknown'}\n\n` +
-    `## Business intelligence\n\n- Digital maturity: ${lead.businessIntelligence?.digitalMaturity?.score ?? 'Not calculated'}/100${lead.businessIntelligence?.digitalMaturity?.band ? ` (${lead.businessIntelligence.digitalMaturity.band})` : ''}\n- Employees: ${metric('employeeCount')}\n- Annual revenue: ${metric('annualRevenue')}\n- Annual profit: ${metric('annualProfit')}\n- Founded: ${metric('foundedYear')}\n- Branch count: ${metric('branchCount')}\n- Locations observed in discovery: ${lead.businessIntelligence?.locationsObserved ?? 'Not observed'}\n- Google profile claimed: ${lead.businessIntelligence?.claimed == null ? 'Unknown' : lead.businessIntelligence.claimed ? 'Yes' : 'No'}\n- Online booking: ${lead.businessIntelligence?.onlineBooking ? 'Detected' : 'Not detected'}\n- Four- and five-star review share: ${lead.businessIntelligence?.positiveReviewShare ?? 'Unknown'}${lead.businessIntelligence?.positiveReviewShare != null ? '%' : ''}\n- Latest sampled review: ${lead.businessIntelligence?.latestObservedReviewAt || 'Unknown'}\n\nSource-backed fields remain unknown when no provider supplies them.\n\n` +
+    `## Website audit\n\n- Lighthouse mobile performance: ${metricLabel(auditMetrics.performance)}\n- Lighthouse accessibility: ${metricLabel(auditMetrics.accessibility)}\n- Lighthouse SEO: ${metricLabel(auditMetrics.seo)}\n- Lighthouse best practices: ${metricLabel(auditMetrics.bestPractices)}\n- Same-site pages crawled: ${lead.pageCount ?? 'Not measured'}\n- Internal links checked: ${lead.checkedLinks ?? 'Not measured'}\n- Broken internal links: ${lead.brokenLinks ?? 'Not measured'}\n- Mobile quality: ${lead.mobileQuality}\n- HTTPS: ${lead.https == null ? 'Not measured' : lead.https ? 'Yes' : 'No'}\n- Detected stack: ${(lead.stack || []).join(', ') || 'Unknown'}\n\n` +
+    `## Business intelligence\n\n- Digital maturity: ${maturityLine}\n- Employees: ${metric('employeeCount')}\n- Annual revenue: ${metric('annualRevenue')}\n- Annual profit: ${metric('annualProfit')}\n- Founded: ${metric('foundedYear')}\n- Branch count: ${metric('branchCount')}\n- Locations observed in discovery: ${lead.businessIntelligence?.locationsObserved ?? 'Not observed'}\n- Google profile claimed: ${lead.businessIntelligence?.claimed == null ? 'Unknown' : lead.businessIntelligence.claimed ? 'Yes' : 'No'}\n- Online booking: ${lead.businessIntelligence?.onlineBooking ? 'Detected' : 'Not detected'}\n- Four- and five-star review share: ${lead.businessIntelligence?.positiveReviewShare ?? 'Unknown'}${lead.businessIntelligence?.positiveReviewShare != null ? '%' : ''}\n- Latest sampled review: ${lead.businessIntelligence?.latestObservedReviewAt || 'Unknown'}\n\nSource-backed fields remain unknown when no provider supplies them.\n\n` +
     `## Main observed issue\n\n**${lead.mainIssue}:** ${lead.issueDetail}\n\n` +
     `## Findings\n\n${list(lead.problems)}\n\n` +
     `## Evidence\n\n${list(lead.evidence)}\n\n` +
@@ -271,7 +280,7 @@ function writeLeadArtifacts(lead, includeProfile = false) {
     preliminaryScore: lead.prelimScore, opportunityScore: lead.opportunityScore, confidence: lead.confidence,
     source: lead.analysisSource, status: lead.researchStatus, mainIssue: lead.mainIssue,
     issueDetail: lead.issueDetail, pageCount: lead.pageCount, sitemapPageCount: lead.sitemapPageCount,
-    performance: lead.performance, accessibility: lead.accessibility, seo: lead.seo, mobileQuality: lead.mobileQuality,
+    performance: lead.performance, accessibility: lead.accessibility, seo: lead.seo, auditMetrics: lead.auditMetrics || null, mobileQuality: lead.mobileQuality,
     https: lead.https, checkedLinks: lead.checkedLinks, brokenLinks: lead.brokenLinks, rebuild: lead.rebuild, stack: lead.stack,
     problems: lead.problems, evidence: lead.evidence, auditSummary: lead.auditSummary || null,
     auditStatus: lead.auditStatus || null, auditComponents: lead.auditComponents || null,
@@ -581,14 +590,17 @@ async function runAuditJob(job) {
   })
   const { _lighthouseReport, ...result } = rawResult
   const current = readLead(job.leadId)
+  // ROH-15: history entries carry the digital-maturity formula version so old
+  // and new values are never compared without a version label.
+  const enriched = enrichLead({ ...current, ...result, prelimScore: result.opportunityScore })
+  const maturity = enriched.businessIntelligence?.digitalMaturity
   const history = [...(current.auditHistory || []), {
     jobId: job.id, at: result.auditedAt, url: result.auditedUrl, score: result.opportunityScore,
     performance: result.performance, pages: result.pageCount, brokenLinks: result.brokenLinks,
+    digitalMaturity: maturity?.score ?? null, digitalMaturityVersion: maturity?.version ?? null,
   }].slice(-10)
-  const updated = saveLead(enrichLead({
-    ...current,
-    ...result,
-    prelimScore: result.opportunityScore,
+  const updated = saveLead({
+    ...enriched,
     researchFailure: null,
     researchJob: { id: job.id, status: 'Completed', progress: 100 },
     ...(manualAction ? { manualRun: manualRunState(current, manualAction, manualAction === 'full'
@@ -596,7 +608,7 @@ async function runAuditJob(job) {
       : { status: 'Completed', progress: 100, phase: 'Website audit complete', jobId: job.id, completedAt: nowIso() }) } : {}),
     auditHistory: history,
     updated: 'Just now',
-  }))
+  })
   if (_lighthouseReport) {
     const folder = join(dataDir, 'leads', lead.id)
     mkdirSync(folder, { recursive: true })

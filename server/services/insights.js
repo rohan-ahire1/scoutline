@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { extractResponseText, getOutreachConfig } from './outreach.js'
+import { auditMetricsForLead, parseMetricNumber } from './metrics.js'
 
 const opportunitySchema = {
   type: 'object',
@@ -34,9 +35,11 @@ function compactText(value, limit = 400) {
   return text.length > limit ? `${text.slice(0, limit - 1).trimEnd()}…` : text
 }
 
+// ROH-15: one nullable finite-number parser shared by all metric consumers.
+// Null, undefined, empty and whitespace-only strings remain unknown; a real
+// numeric zero remains zero.
 function finiteNumber(value) {
-  if (value == null || value === '') return null
-  return Number.isFinite(Number(value)) ? Number(value) : null
+  return parseMetricNumber(value && typeof value === 'object' && 'value' in value ? value.value : value)
 }
 
 export function extractLighthouseEvidence(report, limit = 15) {
@@ -58,8 +61,13 @@ export function extractLighthouseEvidence(report, limit = 15) {
 
 export function buildMuseEvidencePacket(lead, options = {}) {
   const lighthouse = lead.lighthouse || lead.auditComponents?.lighthouse || null
+  // ROH-15: provenance-aware scores. `scores` keeps bare compatibility numbers;
+  // `scoreProvenance` records per-metric value/source/status so Muse never
+  // mistakes an HTML estimate or legacy value for a Lighthouse measurement.
+  const scoreProvenance = auditMetricsForLead(lead)
   return {
-    evidencePolicy: 'Every conclusion must be supported by this packet. Missing information is unknown, not permission to guess.',
+    evidencePolicy: 'Every conclusion must be supported by this packet. Missing information is unknown, not permission to guess. Only scores with source "lighthouse" and status "measured" are Lighthouse measurements; "html_heuristic"/estimated values are approximations and "legacy" values have an unknown source.',
+    scoreProvenance,
     business: {
       company: compactText(lead.company, 160),
       category: compactText(lead.category, 100),
@@ -81,11 +89,12 @@ export function buildMuseEvidencePacket(lead, options = {}) {
       status: lead.auditStatus || null,
       auditedUrl: lead.auditedUrl || null,
       auditedAt: lead.auditedAt || null,
+      lighthouseStatus: lighthouse?.status || null,
       scores: {
-        performance: finiteNumber(lead.performance),
-        accessibility: finiteNumber(lead.accessibility),
-        bestPractices: finiteNumber(lighthouse?.scores?.bestPractices),
-        seo: finiteNumber(lead.seo),
+        performance: scoreProvenance.performance.value,
+        accessibility: scoreProvenance.accessibility.value,
+        bestPractices: scoreProvenance.bestPractices.value,
+        seo: scoreProvenance.seo.value,
       },
       timings: lighthouse?.metrics || null,
       pageCount: finiteNumber(lead.pageCount),
