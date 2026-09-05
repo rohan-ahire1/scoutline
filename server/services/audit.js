@@ -2,6 +2,7 @@ import { load } from 'cheerio'
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import robotsParser from 'robots-parser'
+import { MEASURE_SOURCES, scoreProvenance } from './measure.js'
 
 const MAX_PAGE_BYTES = 2 * 1024 * 1024
 const USER_AGENT = 'ScoutlineResearchBot/1.0 (+local, manual research)'
@@ -445,6 +446,26 @@ export function analyzeHtml(html, finalUrl, sitemapPageCount = null) {
   }
 }
 
+export function composeScoreProvenance(lighthouseSummary, baseline = {}, { observedAt = null } = {}) {
+  const measured = lighthouseSummary?.status === 'Completed'
+  const at = observedAt || new Date().toISOString()
+  const lighthouseAt = lighthouseSummary?.fetchedAt || at
+  return {
+    performance: measured
+      ? scoreProvenance({ value: lighthouseSummary.scores?.performance, source: MEASURE_SOURCES.LIGHTHOUSE, status: 'measured', observedAt: lighthouseAt })
+      : scoreProvenance({ observedAt: at }),
+    accessibility: measured
+      ? scoreProvenance({ value: lighthouseSummary.scores?.accessibility, source: MEASURE_SOURCES.LIGHTHOUSE, status: 'measured', observedAt: lighthouseAt })
+      : scoreProvenance({ value: baseline.accessibility, source: MEASURE_SOURCES.HTML_HEURISTIC, status: 'estimated', observedAt: at }),
+    bestPractices: measured
+      ? scoreProvenance({ value: lighthouseSummary.scores?.bestPractices, source: MEASURE_SOURCES.LIGHTHOUSE, status: 'measured', observedAt: lighthouseAt })
+      : scoreProvenance({ observedAt: at }),
+    seo: measured
+      ? scoreProvenance({ value: lighthouseSummary.scores?.seo, source: MEASURE_SOURCES.LIGHTHOUSE, status: 'measured', observedAt: lighthouseAt })
+      : scoreProvenance({ value: baseline.seo, source: MEASURE_SOURCES.HTML_HEURISTIC, status: 'estimated', observedAt: at }),
+  }
+}
+
 export async function auditWebsite(website, options = {}) {
   const startUrl = normalizeWebsite(website)
   const origin = new URL(startUrl.origin)
@@ -496,9 +517,14 @@ export async function auditWebsite(website, options = {}) {
     }
   }
 
-  const performance = lighthouseSummary?.scores?.performance ?? null
-  const accessibility = lighthouseSummary?.scores?.accessibility ?? baseline.accessibility
-  const seo = lighthouseSummary?.scores?.seo ?? baseline.seo
+  // Provenance for every score: Lighthouse values are measured, HTML-derived
+  // fallbacks are estimates and must never be presented as Lighthouse results.
+  const measuredAt = new Date().toISOString()
+  const lighthouseMeasured = lighthouseSummary?.status === 'Completed'
+  const measureProvenance = composeScoreProvenance(lighthouseSummary, baseline, { observedAt: measuredAt })
+  const performance = measureProvenance.performance.value
+  const accessibility = measureProvenance.accessibility.value
+  const seo = measureProvenance.seo.value
   const brokenLinks = crawl.links.broken
   const problems = [...baseline.problems]
   const evidence = [...baseline.evidence]
@@ -506,7 +532,7 @@ export async function auditWebsite(website, options = {}) {
   let issueDetail = baseline.issueDetail
   let scoreAdjustment = 0
   if (performance != null) {
-    const lcp = lighthouseSummary.metrics.largestContentfulPaintMs
+    const lcp = lighthouseSummary.metrics?.largestContentfulPaintMs
     evidence.push(`Lighthouse mobile performance: ${performance}/100${lcp != null ? `; largest contentful paint: ${(lcp / 1000).toFixed(1)}s` : ''}`)
     if (performance < 70) {
       const detail = `The measured mobile Lighthouse performance score is ${performance}/100${lcp != null ? ` with a ${(lcp / 1000).toFixed(1)}s largest contentful paint` : ''}.`
@@ -514,6 +540,11 @@ export async function auditWebsite(website, options = {}) {
       scoreAdjustment += performance < 50 ? 12 : 7
       if (performance < 50) { mainIssue = 'Mobile performance'; issueDetail = detail }
     }
+  }
+  if (!lighthouseMeasured) {
+    evidence.push(`Mobile performance not measured by Lighthouse (${lighthouseSummary?.status || 'Unknown'}${lighthouseSummary?.error ? `: ${lighthouseSummary.error}` : ''})`)
+    if (accessibility != null) evidence.push(`Accessibility ${accessibility}/100 is an HTML-structure estimate, not a Lighthouse measurement`)
+    if (seo != null) evidence.push(`SEO ${seo}/100 is an HTML-structure estimate, not a Lighthouse measurement`)
   }
   evidence.push(`Crawled ${crawl.pages.length} same-site page${crawl.pages.length === 1 ? '' : 's'} and checked ${crawl.links.checked} internal link${crawl.links.checked === 1 ? '' : 's'}`)
   if (brokenLinks > 0) {
@@ -534,7 +565,7 @@ export async function auditWebsite(website, options = {}) {
     ...baseline,
     opportunityScore: cap(baseline.opportunityScore + scoreAdjustment, 35, 96),
     confidence: cap(baseline.confidence + Math.min(5, crawl.pages.length) + (lighthouseSummary.status === 'Completed' ? 5 : 0), 55, 96),
-    analysisSource: 'Multi-page website audit + Lighthouse',
+    analysisSource: lighthouseMeasured ? 'Multi-page website audit + Lighthouse' : 'Multi-page website audit (Lighthouse unavailable)',
     mainIssue,
     issueDetail,
     problems: [...new Set(problems)].slice(0, 7),
@@ -544,6 +575,7 @@ export async function auditWebsite(website, options = {}) {
     performance,
     accessibility,
     seo,
+    measureProvenance,
     brokenLinks,
     checkedLinks: crawl.links.checked,
     mobileQuality: performance == null ? baseline.mobileQuality : performance >= 75 ? 'Good' : performance >= 50 ? 'Fair' : 'Poor',
