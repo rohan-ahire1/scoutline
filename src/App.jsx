@@ -737,6 +737,41 @@ function MuseSynthesis({ lead, onAnalyze }) {
   </section>
 }
 
+// ROH-15: client-side provenance derivation mirroring server/services/metrics.js.
+// Bare heuristic values are labelled estimates; legacy bare values keep an
+// unknown source and are never presented as Lighthouse results.
+function leadScoreProvenance(lead) {
+  if (lead.auditMetrics && typeof lead.auditMetrics === 'object') return lead.auditMetrics
+  const lighthouseStatus = lead.lighthouse?.status || lead.auditComponents?.lighthouse?.status || null
+  const entry = (value, source, status) => ({ value: value ?? null, source: value == null ? null : source, status: value == null ? 'unmeasured' : status })
+  if (lighthouseStatus === 'Completed') {
+    return {
+      performance: entry(lead.performance, 'lighthouse', 'measured'),
+      accessibility: entry(lead.accessibility, 'lighthouse', 'measured'),
+      seo: entry(lead.seo, 'lighthouse', 'measured'),
+      bestPractices: entry(lead.lighthouse?.scores?.bestPractices ?? lead.auditComponents?.lighthouse?.scores?.bestPractices, 'lighthouse', 'measured'),
+    }
+  }
+  if (lighthouseStatus == null) {
+    const legacy = (value) => entry(value, 'legacy', 'legacy')
+    return { performance: legacy(lead.performance), accessibility: legacy(lead.accessibility), seo: legacy(lead.seo), bestPractices: legacy(lead.lighthouse?.scores?.bestPractices) }
+  }
+  return {
+    performance: entry(null, null, 'unmeasured'),
+    accessibility: entry(lead.accessibility, 'html_heuristic', 'estimated'),
+    seo: entry(lead.seo, 'html_heuristic', 'estimated'),
+    bestPractices: entry(null, null, 'unmeasured'),
+  }
+}
+
+function scoreLabel(entry) {
+  if (!entry || entry.value == null) return 'Not measured'
+  if (entry.status === 'measured') return `Lighthouse ${entry.value}/100`
+  if (entry.status === 'estimated') return `HTML estimate ${entry.value}/100 — not a Lighthouse measurement`
+  if (entry.status === 'legacy') return `${entry.value}/100 — legacy record, unknown source`
+  return `${entry.value}/100`
+}
+
 function BusinessIntelligence({ lead }) {
   const intelligence = lead.businessIntelligence
   if (!intelligence) return null
@@ -753,7 +788,7 @@ function BusinessIntelligence({ lead }) {
   ]
   return <section className="detail-section intelligence-section">
     <div className="detail-heading"><span className="detail-label">Business intelligence</span><Badge tone="blue">{intelligence.source || 'Saved evidence'}</Badge></div>
-    <div className="maturity-card"><div><span>Digital maturity</span><strong>{maturity?.score ?? '—'}<small>/100</small></strong><em>{maturity?.band || 'Not calculated'}</em></div><div className="maturity-track"><i style={{ width: `${maturity?.score || 0}%` }} /></div><p>Calculated from measured website, technology, booking, profile, and maintenance signals.</p></div>
+    <div className="maturity-card"><div><span>Digital maturity</span><strong>{maturity?.score ?? '—'}<small>/100</small></strong><em>{maturity?.band || 'Not calculated'}</em></div><div className="maturity-track"><i style={{ width: `${maturity?.score || 0}%` }} /></div><p>Formula v{maturity?.version ?? '—'} · evidence coverage {maturity?.coverage != null ? `${Math.round(maturity.coverage * 100)}%` : '—'}. Unmeasured signals are excluded, never scored as poor.</p></div>
     <div className="intelligence-metrics">{metrics.map(([label, value, note]) => <article key={label} className={value === 'Unknown' ? 'is-unknown' : ''}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</div>
     <div className="intelligence-signals"><span><CheckCircle2 size={11} />{intelligence.claimed ? 'Google profile claimed' : 'Claim status unknown'}</span><span><CalendarDays size={11} />{intelligence.onlineBooking ? 'Online booking detected' : intelligence.onlineEstimates ? 'Online estimates offered' : 'No online booking detected'}</span><span><Star size={11} />{intelligence.positiveReviewShare != null ? `${intelligence.positiveReviewShare}% positive reviews` : 'Review mix unknown'}</span><span><Clock3 size={11} />Latest sampled review {latestReview}</span></div>
     <p className="intelligence-note"><ShieldCheck size={11} />Unknown fields stay unknown until a named source supplies them. Muse cannot estimate them.</p>
@@ -865,6 +900,7 @@ function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAn
               return <article key={label} className={cn(done[index] && 'complete', failed && 'failed')}><span>{failed ? <X size={13} /> : done[index] ? <Check size={13} /> : index + 1}</span><div><strong>{label}</strong><small>{detail}</small></div></article>
             })}</div>
             {done[1] && <div className="audit-metrics deep-audit-metrics"><article><Activity size={15} /><span>Lighthouse performance</span><strong>{lead.performance ?? '—'}{lead.performance != null && <small>/100</small>}</strong><small>{lead.lighthouse?.status === 'Completed' ? 'Measured on mobile' : lead.lighthouse?.status || 'Not measured'}</small><i className={lead.performance == null ? '' : lead.performance >= 75 ? 'good' : lead.performance >= 50 ? 'fair' : 'bad'} /></article><article><Globe2 size={15} /><span>Pages crawled</span><strong>{lead.pageCount ?? '—'}</strong><small>of {lead.auditComponents?.crawl?.pageLimit || 10} maximum</small><i className={lead.pageCount > 1 ? 'good' : 'fair'} /></article><article><ExternalLink size={15} /><span>Links checked</span><strong>{lead.checkedLinks ?? '—'}</strong><small>Same-site destinations</small><i className={lead.checkedLinks > 0 ? 'good' : 'fair'} /></article><article><CircleAlert size={15} /><span>Broken links</span><strong>{lead.brokenLinks ?? '—'}</strong><small>{lead.auditStatus || 'Not measured'}</small><i className={lead.brokenLinks == null ? '' : lead.brokenLinks === 0 ? 'good' : lead.brokenLinks <= 2 ? 'fair' : 'bad'} /></article></div>}
+            {done[1] && (() => { const provenance = leadScoreProvenance(lead); const estimates = [['Accessibility', provenance.accessibility], ['SEO', provenance.seo]].filter(([, entry]) => entry && entry.value != null && entry.status !== 'measured'); return estimates.length ? <p className="estimate-note">Lighthouse not measured — {estimates.map(([label, entry]) => `${label}: ${scoreLabel(entry)}`).join(' · ')}</p> : null })()}
             {done[1] && <MuseSynthesis lead={lead} onAnalyze={onMuseAnalyze} />}
             <div className="research-detail-actions"><button className="button button-secondary" onClick={() => onExport(lead)}><Download size={13} />Export research packet</button>{done[1] && <button className="button button-secondary" onClick={() => onInsight(lead)}><FileText size={13} />Adjust score</button>}{!failure && <button className="button button-quiet" onClick={() => onFailure(lead)}><CircleAlert size={13} />Mark stage failed</button>}</div>
           </div>}

@@ -17,6 +17,45 @@ test('builds a bounded Muse packet from saved audit evidence', () => {
   assert.equal(packet.crawledPages[0].h1Count, 1)
 })
 
+test('labels failed-Lighthouse estimates as estimates in the Muse packet', () => {
+  const packet = buildMuseEvidencePacket({
+    company: 'Acme Roofing', category: 'Roofing', location: 'Salt Lake City', website: 'acme.example',
+    rating: 4.8, reviews: 125, opportunityScore: 70, confidence: 85, analysisSource: 'Multi-page website audit + Lighthouse',
+    mainIssue: 'Mobile performance', issueDetail: 'Lighthouse did not run.', performance: null, accessibility: 82, seo: 77,
+    checkedLinks: 12, brokenLinks: 1, pageCount: 3, problems: [], evidence: [], crawlPages: [],
+    lighthouse: { status: 'Failed', error: 'TIMEOUT' },
+  })
+  assert.equal(packet.measuredAudit.lighthouseStatus, 'Failed')
+  assert.equal(packet.measuredAudit.scores.performance, null)
+  assert.equal(packet.measuredAudit.scores.accessibility, 82)
+  assert.equal(packet.scoreProvenance.performance.status, 'unmeasured')
+  assert.equal(packet.scoreProvenance.accessibility.source, 'html_heuristic')
+  assert.equal(packet.scoreProvenance.accessibility.status, 'estimated')
+  assert.match(packet.evidencePolicy, /html_heuristic/)
+})
+
+test('keeps legacy packet values without attributing them to Lighthouse', () => {
+  const packet = buildMuseEvidencePacket({
+    company: 'Legacy Co', category: 'HVAC', location: 'Ogden', website: 'legacy.example',
+    opportunityScore: 60, confidence: 70, performance: 55, accessibility: 80, seo: 90,
+    problems: [], evidence: [], crawlPages: [],
+  })
+  assert.equal(packet.measuredAudit.scores.accessibility, 80)
+  assert.equal(packet.scoreProvenance.accessibility.source, 'legacy')
+  assert.equal(packet.scoreProvenance.accessibility.status, 'legacy')
+})
+
+test('whitespace metric strings never become measured 0 in the packet', () => {
+  const packet = buildMuseEvidencePacket({
+    company: 'Blank Co', category: 'HVAC', location: 'Ogden', website: 'blank.example',
+    opportunityScore: 60, confidence: 70, performance: '   ', accessibility: '', seo: null,
+    problems: [], evidence: [], crawlPages: [],
+  })
+  assert.equal(packet.measuredAudit.scores.performance, null)
+  assert.equal(packet.measuredAudit.scores.accessibility, null)
+  assert.equal(packet.measuredAudit.scores.seo, null)
+})
+
 test('extracts only failed, useful Lighthouse audits', () => {
   const evidence = extractLighthouseEvidence({ audits: {
     good: { id: 'good', title: 'Good', score: 1, scoreDisplayMode: 'binary' },

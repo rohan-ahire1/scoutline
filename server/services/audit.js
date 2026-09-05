@@ -2,6 +2,7 @@ import { load } from 'cheerio'
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import robotsParser from 'robots-parser'
+import { makeMetricProvenance, METRIC_SOURCES, METRIC_STATUS } from './metrics.js'
 
 const MAX_PAGE_BYTES = 2 * 1024 * 1024
 const USER_AGENT = 'ScoutlineResearchBot/1.0 (+local, manual research)'
@@ -496,9 +497,30 @@ export async function auditWebsite(website, options = {}) {
     }
   }
 
-  const performance = lighthouseSummary?.scores?.performance ?? null
-  const accessibility = lighthouseSummary?.scores?.accessibility ?? baseline.accessibility
-  const seo = lighthouseSummary?.scores?.seo ?? baseline.seo
+  const lighthouseMeasured = lighthouseSummary?.status === 'Completed'
+  const observedAt = new Date().toISOString()
+  // Provenance-aware scores. HTML-derived accessibility/SEO fallbacks are
+  // estimates and are never presented as Lighthouse measurements; the bare
+  // compatibility fields below preserve the previous payload shape.
+  const auditMetrics = {
+    performance: makeMetricProvenance({
+      value: lighthouseSummary?.scores?.performance ?? null,
+      source: METRIC_SOURCES.LIGHTHOUSE, status: METRIC_STATUS.MEASURED, observedAt,
+    }),
+    accessibility: lighthouseMeasured
+      ? makeMetricProvenance({ value: lighthouseSummary.scores.accessibility, source: METRIC_SOURCES.LIGHTHOUSE, status: METRIC_STATUS.MEASURED, observedAt })
+      : makeMetricProvenance({ value: baseline.accessibility, source: METRIC_SOURCES.HTML_HEURISTIC, status: METRIC_STATUS.ESTIMATED, observedAt }),
+    seo: lighthouseMeasured
+      ? makeMetricProvenance({ value: lighthouseSummary.scores.seo, source: METRIC_SOURCES.LIGHTHOUSE, status: METRIC_STATUS.MEASURED, observedAt })
+      : makeMetricProvenance({ value: baseline.seo, source: METRIC_SOURCES.HTML_HEURISTIC, status: METRIC_STATUS.ESTIMATED, observedAt }),
+    bestPractices: makeMetricProvenance({
+      value: lighthouseSummary?.scores?.bestPractices ?? null,
+      source: METRIC_SOURCES.LIGHTHOUSE, status: METRIC_STATUS.MEASURED, observedAt,
+    }),
+  }
+  const performance = auditMetrics.performance.value
+  const accessibility = auditMetrics.accessibility.value
+  const seo = auditMetrics.seo.value
   const brokenLinks = crawl.links.broken
   const problems = [...baseline.problems]
   const evidence = [...baseline.evidence]
@@ -514,6 +536,10 @@ export async function auditWebsite(website, options = {}) {
       scoreAdjustment += performance < 50 ? 12 : 7
       if (performance < 50) { mainIssue = 'Mobile performance'; issueDetail = detail }
     }
+  }
+  if (!lighthouseMeasured) {
+    evidence.push(`Lighthouse accessibility: not measured (HTML estimate ${accessibility}/100, not a Lighthouse measurement)`)
+    evidence.push(`Lighthouse SEO: not measured (HTML estimate ${seo}/100, not a Lighthouse measurement)`)
   }
   evidence.push(`Crawled ${crawl.pages.length} same-site page${crawl.pages.length === 1 ? '' : 's'} and checked ${crawl.links.checked} internal link${crawl.links.checked === 1 ? '' : 's'}`)
   if (brokenLinks > 0) {
@@ -544,6 +570,7 @@ export async function auditWebsite(website, options = {}) {
     performance,
     accessibility,
     seo,
+    auditMetrics,
     brokenLinks,
     checkedLinks: crawl.links.checked,
     mobileQuality: performance == null ? baseline.mobileQuality : performance >= 75 ? 'Good' : performance >= 50 ? 'Fair' : 'Poor',
