@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { analyzeHtml, assertPublicUrl, extractInternalLinks, isPrivateAddress, normalizeWebsite } from './audit.js'
+import { analyzeHtml, assertPublicUrl, composeScoreProvenance, extractInternalLinks, isPrivateAddress, normalizeWebsite } from './audit.js'
 
 test('normalizes public website inputs', () => {
   assert.equal(normalizeWebsite('example.com').href, 'https://example.com/')
@@ -35,4 +35,24 @@ test('extracts safe same-site crawl candidates without action routes', () => {
     <a href="https://other.example/about">External</a>
   `, new URL('https://example.com/'))
   assert.deepEqual(links.map((url) => url.href), ['https://example.com/services', 'https://example.com/contact?from=home'])
+})
+
+test('failed Lighthouse audits keep estimates labelled as estimates', () => {
+  const failed = composeScoreProvenance({ status: 'Failed', error: 'timeout' }, { accessibility: 88, seo: 92 }, { observedAt: '2026-09-05T00:00:00.000Z' })
+  assert.equal(failed.performance.value, null)
+  assert.equal(failed.performance.status, 'unmeasured')
+  assert.equal(failed.accessibility.value, 88)
+  assert.equal(failed.accessibility.source, 'html_heuristic')
+  assert.equal(failed.accessibility.status, 'estimated')
+  assert.equal(failed.seo.source, 'html_heuristic')
+  assert.equal(failed.bestPractices.status, 'unmeasured')
+})
+
+test('completed Lighthouse audits record measured provenance', () => {
+  const done = composeScoreProvenance({ status: 'Completed', fetchedAt: '2026-09-05T00:00:00.000Z', scores: { performance: 0, accessibility: 93, 'bestPractices': 100, seo: 91 } }, { accessibility: 70, seo: 60 })
+  assert.equal(done.performance.value, 0)
+  assert.equal(done.performance.source, 'lighthouse')
+  assert.equal(done.performance.status, 'measured')
+  assert.equal(done.accessibility.value, 93)
+  assert.equal(done.accessibility.source, 'lighthouse')
 })

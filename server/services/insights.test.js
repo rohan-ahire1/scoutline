@@ -11,10 +11,34 @@ test('builds a bounded Muse packet from saved audit evidence', () => {
     evidence: ['Lighthouse mobile performance: 42/100'], crawlPages: [{ url: 'https://acme.example/', path: '/', title: 'Acme', h1Count: 1, wordCount: 400, forms: 1, inputCount: 4 }],
   }
   const packet = buildMuseEvidencePacket(lead)
-  assert.equal(packet.measuredAudit.scores.performance, 42)
+  assert.equal(packet.measuredAudit.scores.performance.value, 42)
+  assert.equal(packet.measuredAudit.scores.performance.source, 'legacy')
+  assert.equal(packet.measuredAudit.scores.performance.status, 'legacy')
   assert.equal(packet.deterministicAssessment.opportunityScore, 76)
   assert.equal(packet.deterministicAssessment.findings.length, 8)
   assert.equal(packet.crawledPages[0].h1Count, 1)
+})
+
+test('evidence packet carries measurement provenance instead of bare scores', () => {
+  const packet = buildMuseEvidencePacket({
+    company: 'Acme', performance: null, accessibility: 88, seo: 92,
+    measureProvenance: {
+      performance: { value: null, source: null, status: 'unmeasured' },
+      accessibility: { value: 88, source: 'html_heuristic', status: 'estimated' },
+      seo: { value: 92, source: 'html_heuristic', status: 'estimated' },
+    },
+  })
+  assert.equal(packet.measuredAudit.scores.performance.value, null)
+  assert.equal(packet.measuredAudit.scores.performance.status, 'unmeasured')
+  assert.equal(packet.measuredAudit.scores.accessibility.source, 'html_heuristic')
+  assert.equal(packet.measuredAudit.scores.accessibility.status, 'estimated')
+  assert.equal(packet.measuredAudit.scores.seo.value, 92)
+})
+
+test('whitespace-only metrics never become measured zeros in the packet', () => {
+  const packet = buildMuseEvidencePacket({ company: 'Acme', performance: '   ', accessibility: '', seo: null })
+  assert.equal(packet.measuredAudit.scores.performance.value, null)
+  assert.equal(packet.measuredAudit.scores.accessibility.value, null)
 })
 
 test('extracts only failed, useful Lighthouse audits', () => {
