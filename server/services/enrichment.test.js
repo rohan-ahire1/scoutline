@@ -90,3 +90,16 @@ test('a genuine Lighthouse zero stays zero and keeps its source', () => {
   assert.equal(mobile.evidence, 'Lighthouse 0/100')
   assert.equal(mobile.points, 4)
 })
+
+test('maintenance evidence separates confirmed broken from unverified links', () => {
+  const result = calculateDigitalMaturity({
+    performance: 80, accessibility: 90, seo: 90, brokenLinks: 1, checkedLinks: 10,
+    linkSummary: { attempted: 10, reachable: 6, confirmedBroken: 1, unverified: 3, byOutcome: { reachable: 6, confirmed_broken: 1, blocked: 2, timeout: 1 }, truncated: false },
+    lighthouse: { scores: { bestPractices: 90 } }, auditSummary: { hasSchema: true, viewport: true },
+    stack: [], businessIntelligence: {},
+  })
+  const maintenance = result.components.find((item) => item.label === 'Site maintenance')
+  assert.match(maintenance.evidence, /1 confirmed broken of 10 attempted/)
+  assert.match(maintenance.evidence, /3 unverified/)
+  assert.match(maintenance.evidence, /not scored as broken/)
+})
