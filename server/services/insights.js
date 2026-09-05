@@ -123,6 +123,17 @@ export function buildMuseEvidencePacket(lead, options = {}) {
       sitemapPageCount: finiteNumber(lead.sitemapPageCount),
       linksChecked: finiteNumber(lead.checkedLinks),
       brokenLinks: finiteNumber(lead.brokenLinks),
+      linkSummary: lead.linkSummary && typeof lead.linkSummary === 'object' ? {
+        attempted: finiteNumber(lead.linkSummary.attempted),
+        reachable: finiteNumber(lead.linkSummary.reachable),
+        confirmedBroken: finiteNumber(lead.linkSummary.confirmedBroken),
+        unverified: finiteNumber(lead.linkSummary.unverified),
+        byOutcome: lead.linkSummary.byOutcome || {},
+        truncated: Boolean(lead.linkSummary.truncated),
+      } : null,
+      unverifiedLinks: (lead.unverifiedLinkDetails || []).slice(0, 20).map((item) => ({
+        url: compactText(item.url, 300), outcome: item.outcome || null, status: finiteNumber(item.status), error: compactText(item.error, 200) || null,
+      })),
       mobileQuality: lead.mobileQuality || null,
       https: typeof lead.https === 'boolean' ? lead.https : null,
       detectedStack: (lead.stack || []).slice(0, 12).map((item) => compactText(item, 100)),
@@ -149,7 +160,7 @@ export function buildMuseEvidencePacket(lead, options = {}) {
       h1Count: finiteNumber(page.h1Count), wordCount: finiteNumber(page.wordCount), forms: finiteNumber(page.forms), inputCount: finiteNumber(page.inputCount),
     })),
     brokenLinkDetails: (lead.brokenLinkDetails || []).slice(0, 20).map((item) => ({
-      url: compactText(item.url, 300), status: finiteNumber(item.status), error: compactText(item.error, 200) || null,
+      url: compactText(item.url, 300), outcome: item.outcome || 'confirmed_broken', status: finiteNumber(item.status), error: compactText(item.error, 200) || null,
     })),
     crawlWarnings: (lead.crawlErrors || []).slice(0, 10).map((item) => ({
       url: compactText(item.url, 300), code: item.code || null, error: compactText(item.error, 200),
