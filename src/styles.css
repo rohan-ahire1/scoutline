@@ -608,6 +608,12 @@ kbd { min-width: 21px; padding: 2px 4px; border: 1px solid var(--border); border
 .candidate-banner > span > strong { display: block; font-size: 9px; }
 .candidate-banner > span > small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; }
 .candidate-banner > div { display: flex; gap: 6px; flex-shrink: 0; }
+.audit-history { margin-top: 10px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 7px; }
+.audit-history > ol { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.audit-history > ol > li { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 8px; }
+.audit-history > ol > li > strong { font-size: 9px; }
+.audit-history > ol > li > small { color: var(--muted); }
+.stale-badge { display: inline-block; padding: 1px 7px; border-radius: 20px; background: #fdf0e3; color: #9a5b00; font-size: 8px; font-weight: 700; }
 
 .pipeline-numbers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .pipeline-card { position: relative; padding: 0; overflow: visible; }
