@@ -9,7 +9,7 @@ import { auditWebsite } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
 import { acceptOutreachCandidate, applyOutreachGeneration, dismissOutreachCandidates, generateOutreach, getOutreachConfig } from './services/outreach.js'
-import { downloadDiscovery, getBrightDataConfig, mapDiscoveryRecord, pollDiscovery, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
+import { describeGeographyCoverage, downloadDiscovery, filterSavedClientsByLocation, getBrightDataConfig, legacySearchFromSettings, mapDiscoveryRecord, pollDiscovery, reconcileRecords, resolveSearchDefinition, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
 
@@ -741,11 +741,13 @@ async function runDiscoveryJob(job) {
   const run = readRun(job.runId)
   if (!run) throw new Error('Run not found')
   const settings = readSettings()
+  // The job always uses the run's immutable search snapshot — never live settings.
+  const search = run.searchDefinition || legacySearchFromSettings(run, settings)
   if (!job.payload.snapshotId) {
-    const started = await triggerDiscovery({ categories: run.categories, location: run.location, limit: run.limit, settings })
+    const started = await triggerDiscovery({ search, limit: run.limit, settings })
     updateJob(job.id, { status: 'Waiting', progress: 10, payload: { ...job.payload, ...started }, nextAttemptAt: new Date(Date.now() + 10_000).toISOString() })
-    saveRun({ ...run, providerSnapshotId: started.snapshotId, progress: 10, duration: 'Waiting for discovery' })
-    recordEvent('run', run.id, 'discovery_started', { snapshotId: started.snapshotId })
+    saveRun({ ...run, searchDefinition: search, providerSnapshotId: started.snapshotId, submittedGeography: started.submittedGeography, progress: 10, duration: 'Waiting for discovery' })
+    recordEvent('run', run.id, 'discovery_started', { snapshotId: started.snapshotId, submittedGeography: started.submittedGeography })
     return
   }
   const progress = await pollDiscovery(job.payload.snapshotId, settings)
@@ -756,15 +758,25 @@ async function runDiscoveryJob(job) {
   }
   const records = await downloadDiscovery(job.payload.snapshotId, settings)
   const limit = Math.max(1, Number(run.limit || 25))
-  const mapped = records.map((record) => mapDiscoveryRecord(record, run.categories[0], run.location)).filter(Boolean).slice(0, limit)
-  const leads = mapped.map((record, index) => insertUniqueLead(record, index, 'Bright Data Google Maps', { runId: run.id })).filter(Boolean)
+  const reconciled = reconcileRecords(records, { fallbackCategory: 'Unknown', fallbackLocation: search.displayLocation, limit })
+  const leads = reconciled.retained.map((record, index) => insertUniqueLead(record, index, 'Bright Data Google Maps', { runId: run.id })).filter(Boolean)
   const uniqueLeads = [...new Map(leads.map((lead) => [lead.id, lead])).values()]
   const newClientIds = [...new Set(uniqueLeads.filter((lead) => lead._runImport?.created).map((lead) => lead.id))]
   const matchedClientIds = [...new Set(uniqueLeads.filter((lead) => !lead._runImport?.created).map((lead) => lead.id))]
   uniqueLeads.slice(0, Math.max(1, Number(run.deepAuditLimit || 10))).forEach((lead) => queueJob({ type: 'audit', runId: run.id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
-  saveRun({ ...readRun(run.id), discovered: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id), newClientIds, matchedClientIds, providerSnapshotId: job.payload.snapshotId, duration: 'Auditing discovered websites' })
-  updateJob(job.id, { status: 'Completed', progress: 100, result: { records: records.length, imported: uniqueLeads.length }, error: null })
-  recordEvent('run', run.id, 'discovery_completed', { records: records.length, imported: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id) })
+  const geography = describeGeographyCoverage(search, reconciled.retained)
+  saveRun({ ...readRun(run.id), searchDefinition: search, discovered: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id), newClientIds, matchedClientIds, providerSnapshotId: job.payload.snapshotId, duration: 'Auditing discovered websites',
+    reconciliation: {
+      returned: reconciled.returned, mapped: reconciled.mapped, retained: reconciled.retained.length,
+      rejected: reconciled.rejectedCount, duplicates: reconciled.duplicates, unusable: reconciled.unusable,
+      rejectedRows: reconciled.rejected.slice(0, 20),
+    },
+    requestedGeography: geography.requested,
+    actualGeography: { recordsTotal: geography.recordsTotal, recordsWithCoordinates: geography.recordsWithCoordinates, outOfArea: geography.outOfArea },
+    coverageNote: geography.coverageNote,
+  })
+  updateJob(job.id, { status: 'Completed', progress: 100, result: { records: reconciled.returned, retained: reconciled.retained.length, rejected: reconciled.rejectedCount, imported: uniqueLeads.length }, error: null })
+  recordEvent('run', run.id, 'discovery_completed', { records: reconciled.returned, retained: reconciled.retained.length, rejected: reconciled.rejectedCount, imported: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id) })
 }
 
 let workerBusy = false
@@ -1235,6 +1247,19 @@ app.post('/api/runs', (req, res) => {
     const n = clampInt(body.limit, 1, 50)
     if (n == null) details.push({ field: 'limit', message: 'limit must be an integer 1-50' })
   }
+  for (const [field, min, max] of [['latitude', -90, 90], ['longitude', -180, 180]]) {
+    if (field in body && body[field] != null && body[field] !== '') {
+      const n = Number(body[field])
+      if (!Number.isFinite(n) || n < min || n > max) details.push({ field, message: `${field} must be a number ${min} to ${max}` })
+    }
+  }
+  if ('country' in body && body.country != null && body.country !== '' && !/^[A-Za-z]{2}$/.test(String(body.country).trim())) {
+    details.push({ field: 'country', message: 'country must be a 2-letter code' })
+  }
+  if ('zoom' in body && body.zoom != null && body.zoom !== '') {
+    const n = Number(body.zoom)
+    if (!Number.isFinite(n) || n < 12 || n > 16) details.push({ field: 'zoom', message: 'zoom must be a number 12-16' })
+  }
   if ('deepAuditLimit' in body && body.deepAuditLimit != null) {
     const n = clampInt(body.deepAuditLimit, 1, 50)
     if (n == null) details.push({ field: 'deepAuditLimit', message: 'deepAuditLimit must be an integer 1-50' })
@@ -1257,28 +1282,50 @@ app.post('/api/runs', (req, res) => {
   const requestedDeep = clampInt(body.deepAuditLimit ?? settings.deepAuditLimit ?? 10, 1, 50) ?? 10
   const deepAuditLimit = Math.max(1, Math.min(limit, requestedDeep))
   const location = isStringWithLength(String(body.location || ''), 1, 120) ? String(body.location).trim() : settings.defaultLocation
+  let searchDefinition
+  try {
+    searchDefinition = resolveSearchDefinition({
+      location,
+      latitude: body.latitude ?? null,
+      longitude: body.longitude ?? null,
+      country: body.country ?? null,
+      zoom: body.zoom ?? null,
+      categories,
+      settings,
+    })
+  } catch (error) {
+    return badRequest(res, 'location', error.message, [{ field: 'location', message: error.message }])
+  }
   const run = {
     id,
     createdAt: now.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·'),
     startedAt: now.toISOString(),
-    location,
+    location: searchDefinition.displayLocation,
     categories,
+    searchDefinition,
     source: brightData.ready ? 'Bright Data Google Maps' : 'Existing client websites',
     status: 'Running', progress: 0, discovered: 0, crawled: 0, audited: 0, failed: 0, datasets: 0, duration: 'Starting',
     limit, deepAuditLimit, options: (body.options && typeof body.options === 'object' && !Array.isArray(body.options)) ? body.options : {},
   }
   db.prepare('INSERT INTO runs (id, payload) VALUES (?, ?)').run(id, JSON.stringify(run))
-  recordEvent('run', id, 'started', { source: run.source, categories, location: run.location })
+  recordEvent('run', id, 'started', { source: run.source, categories, location: run.location, searchDefinition })
   if (brightData.ready) {
     queueJob({ type: 'discover', runId: id, payload: {}, maxAttempts: 3 })
   } else {
     const normalizedCategories = new Set(categories.map((value) => String(value).toLowerCase()))
-    const leads = readRows('leads')
+    const candidates = readRows('leads')
       .filter((lead) => lead.website && (normalizedCategories.size === 0 || normalizedCategories.has(String(lead.category).toLowerCase())))
+    const geoFilter = filterSavedClientsByLocation(candidates, searchDefinition.displayLocation)
+    const leads = geoFilter.matched
       .sort((a, b) => Number(a.opportunityScore != null) - Number(b.opportunityScore != null) || Number(b.prelimScore || 0) - Number(a.prelimScore || 0))
       .slice(0, deepAuditLimit)
     leads.forEach((lead) => queueJob({ type: 'audit', runId: id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
-    saveRun({ ...run, discovered: leads.length, duration: leads.length ? 'Auditing saved websites' : 'No matching websites' })
+    saveRun({
+      ...run,
+      discovered: leads.length,
+      savedClientFilter: { mode: 'city-text', city: geoFilter.city, scanned: geoFilter.scanned, matched: geoFilter.matched.length, audited: leads.length },
+      duration: leads.length ? `Auditing ${leads.length} saved websites near ${geoFilter.city || searchDefinition.displayLocation}` : 'No matching saved websites in this location',
+    })
     if (!leads.length) saveRun({ ...readRun(id), status: 'Completed', progress: 100, duration: '0s', completedAt: nowIso() })
   }
   res.status(201).json(decorateRun(syncRun(id) || readRun(id)))

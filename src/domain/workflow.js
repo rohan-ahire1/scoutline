@@ -110,12 +110,20 @@ export function validateLeadDraft(draft) {
   return { errors, isValid: Object.keys(errors).length === 0 }
 }
 
-export function validateRunConfig({ location, categories, limit, maxRecords, connected }) {
+export function validateRunConfig({ location, categories, limit, maxRecords, connected, latitude = null, longitude = null }) {
   const errors = {}
   const loc = String(location || '').trim()
   if (!loc) errors.location = 'Location is required'
   else if (loc.length < 2) errors.location = 'Location must be at least 2 characters'
   if (!Array.isArray(categories) || categories.length === 0) errors.categories = 'Choose at least one business type'
+  const hasLat = latitude !== '' && latitude != null
+  const hasLon = longitude !== '' && longitude != null
+  if (hasLat || hasLon) {
+    const lat = Number(latitude)
+    const lon = Number(longitude)
+    if (!hasLat || !Number.isFinite(lat) || lat < -90 || lat > 90) errors.latitude = 'Latitude must be -90 to 90'
+    if (!hasLon || !Number.isFinite(lon) || lon < -180 || lon > 180) errors.longitude = 'Longitude must be -180 to 180'
+  }
   const n = Number(limit)
   if (!Number.isFinite(n) || !Number.isInteger(n)) errors.limit = 'Enter a whole number 1-50'
   else if (n < 1 || n > 50) errors.limit = 'Limit must be 1-50'
