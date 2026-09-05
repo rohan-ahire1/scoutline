@@ -354,6 +354,52 @@ function cleanText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim()
 }
 
+const SUPPORTED_CONTENT = /html|xhtml/i
+const APP_MOUNT_ID = /^(root|app|__next|main|content|app-root)$/i
+const CHALLENGE_PATTERNS = [
+  /just a moment/i, /attention required/i, /verify you are (a )?human/i, /captcha/i,
+  /cf-challenge|__cf_chl|checking your browser/i, /datadome|perimeterx|kasada|arkose/i,
+  /access denied/i, /forbidden/i, /request blocked/i, /are you a robot/i,
+  /unusual traffic/i, /enable javascript and cookies/i,
+]
+
+// Capture-quality gate: negative DOM findings are only valid when the fetched
+// page is usable HTML. Anything else is inconclusive, never evidence of defects.
+export function classifyCapture({ text = '', contentType = '', url = null } = {}) {
+  const body = String(text || '')
+  const type = String(contentType || '').split(';')[0].trim()
+  if (!body.trim()) {
+    return { quality: 'empty-response', reason: `The server returned an empty response body for ${url?.href || 'the homepage'}, so no DOM findings can be assessed.`, captureMethod: 'static-fetch' }
+  }
+  if (type && !SUPPORTED_CONTENT.test(type) && !/<html[\s>]/i.test(body)) {
+    return { quality: 'unsupported-content', reason: `The homepage returned ${type || 'a non-HTML response'} instead of a readable page, so no DOM findings can be assessed.`, captureMethod: 'static-fetch' }
+  }
+  let title = ''
+  let words = 0
+  let externalScripts = 0
+  let mountNodes = 0
+  try {
+    const $ = load(body)
+    title = cleanText($('title').first().text())
+    const bodyText = cleanText($('body').text())
+    words = bodyText ? bodyText.split(/\s+/).length : 0
+    externalScripts = $('script[src]').length
+    mountNodes = $('div[id]').filter((_, element) => APP_MOUNT_ID.test(String($(element).attr('id') || ''))).length
+  } catch { /* Unparseable markup is itself a quality signal; fall through to text checks. */ }
+  if (CHALLENGE_PATTERNS.some((pattern) => pattern.test(title))) {
+    return { quality: 'challenge', reason: `The homepage served a bot challenge or access-control page ("${title.slice(0, 80)}"). Challenge pages are never bypassed, so no DOM findings can be assessed.`, captureMethod: 'static-fetch' }
+  }
+  const head = body.slice(0, 4000)
+  const distinctHits = CHALLENGE_PATTERNS.filter((pattern) => pattern.test(head)).length
+  if (distinctHits >= 2) {
+    return { quality: 'challenge', reason: 'The homepage served a bot challenge or access-control page. Challenge pages are never bypassed, so no DOM findings can be assessed.', captureMethod: 'static-fetch' }
+  }
+  if (words < 10 && (externalScripts > 0 || mountNodes > 0)) {
+    return { quality: 'js-shell', reason: `The homepage is a JavaScript application shell (${words} readable words, ${externalScripts} external scripts). Static markup cannot show the rendered content, calls to action, or contact paths, so no DOM findings can be assessed.`, captureMethod: 'static-fetch', renderedFallback: 'deferred' }
+  }
+  return { quality: 'usable-html', reason: null, captureMethod: 'static-fetch' }
+}
+
 function detectStack(html) {
   const rules = [
     ['WordPress', /wp-content|wp-includes/i], ['Elementor', /elementor/i], ['Wix', /wixstatic|wix-code/i],
@@ -366,7 +412,36 @@ function detectStack(html) {
 
 function cap(value, min = 0, max = 100) { return Math.max(min, Math.min(max, Math.round(value))) }
 
-export function analyzeHtml(html, finalUrl, sitemapPageCount = null) {
+export function inconclusiveAssessment({ capture, finalUrl, sitemapPageCount = null }) {
+  const checkedAt = new Date().toISOString()
+  return {
+    opportunityScore: null,
+    confidence: null,
+    researchStatus: 'Inconclusive',
+    analysisSource: null,
+    captureQuality: { ...capture, checkedAt },
+    mainIssue: 'Capture inconclusive',
+    issueDetail: capture.reason,
+    problems: [],
+    evidence: [capture.reason, `Capture method: ${capture.captureMethod}${capture.renderedFallback ? `; rendered-page fallback: ${capture.renderedFallback}` : ''}`],
+    pageCount: sitemapPageCount || null,
+    sitemapPageCount: sitemapPageCount || null,
+    performance: null,
+    accessibility: null,
+    seo: null,
+    brokenLinks: null,
+    checkedLinks: null,
+    mobileQuality: null,
+    https: finalUrl?.protocol === 'https:',
+    rebuild: null,
+    stack: [],
+    auditSummary: { captureQuality: { ...capture, checkedAt } },
+  }
+}
+
+export function analyzeHtml(html, finalUrl, sitemapPageCount = null, options = {}) {
+  const capture = classifyCapture({ text: html, contentType: options?.contentType || '', url: finalUrl })
+  if (capture.quality !== 'usable-html') return inconclusiveAssessment({ capture, finalUrl, sitemapPageCount })
   const $ = load(html)
   const title = cleanText($('title').first().text())
   const description = cleanText($('meta[name="description" i]').attr('content'))
@@ -418,7 +493,9 @@ export function analyzeHtml(html, finalUrl, sitemapPageCount = null) {
   findings.sort((a, b) => b.weight - a.weight)
   const top = findings.slice(0, 5)
   const opportunityScore = cap(38 + top.reduce((sum, item) => sum + item.weight, 0) * 0.7, 35, 96)
-  const confidence = cap(55 + Math.min(evidence.length, 8) * 4 + (sitemapPageCount ? 6 : 0), 55, 91)
+  // Confidence reflects distinct substantive checks that fired — not the number
+  // of boilerplate evidence strings — plus sitemap coverage.
+  const confidence = cap(55 + top.length * 6 + (sitemapPageCount ? 4 : 0), 55, 91)
   const seo = cap(100 - (!title ? 22 : title.length < 20 || title.length > 65 ? 10 : 0) - (!description ? 18 : description.length < 70 ? 8 : 0) - (!hasSchema ? 10 : 0) - (robotsNoIndex ? 45 : 0) - (h1Count !== 1 ? 10 : 0))
   const accessibility = cap(100 - (100 - altCoverage) * 0.35 - (!viewport ? 20 : 0) - (h1Count !== 1 ? 8 : 0))
   const stack = detectStack(html)
@@ -429,6 +506,7 @@ export function analyzeHtml(html, finalUrl, sitemapPageCount = null) {
     confidence,
     researchStatus: 'Analyzed',
     analysisSource: 'Deterministic website audit',
+    captureQuality: { ...capture, checkedAt: new Date().toISOString() },
     mainIssue: main.title,
     issueDetail: main.detail,
     problems: top.map((item) => item.detail),
@@ -490,7 +568,18 @@ export async function auditWebsite(website, options = {}) {
     sitemapPageCount = matches?.length || null
     sitemapText = sitemap.text
   } catch { /* Sitemap evidence is optional. */ }
-  const baseline = analyzeHtml(page.text, page.url, sitemapPageCount)
+  const baseline = analyzeHtml(page.text, page.url, sitemapPageCount, { contentType: page.contentType })
+  const shellCapture = baseline.researchStatus === 'Inconclusive' && baseline.captureQuality?.quality === 'js-shell'
+  if (baseline.researchStatus === 'Inconclusive' && !shellCapture) {
+    // Challenge pages, unsupported content and empty responses: stop honestly.
+    // No crawl, no Lighthouse, no defect-derived claims.
+    return {
+      ...baseline,
+      sitemapPageCount,
+      auditedUrl: page.url.href,
+      auditedAt: new Date().toISOString(),
+    }
+  }
   options.onProgress?.({ progress: 30, phase: 'Crawling pages' })
   const crawl = await crawlWebsite({
     homeHtml: page.text,
@@ -561,6 +650,54 @@ export async function auditWebsite(website, options = {}) {
     lighthouse: lighthouseSummary,
   }
   const auditStatus = lighthouseSummary.status === 'Completed' && crawl.status === 'Completed' ? 'Completed' : 'Partial'
+  if (shellCapture) {
+    // JavaScript shell: lab measurements are real and kept, but the DOM was
+    // never rendered, so no defect-derived opportunity or confidence is claimed.
+    const shellEvidence = [
+      baseline.captureQuality.reason,
+      'Capture method: static-fetch; rendered-page fallback: deferred (no rendered-DOM support claimed)',
+      ...(lighthouseSummary.status === 'Completed'
+        ? [`Lighthouse mobile performance is a lab measurement of the rendered page: ${performance}/100`]
+        : [`Lighthouse ${lighthouseSummary.status === 'Skipped' ? 'was skipped' : 'did not complete'} (${lighthouseSummary.error || lighthouseSummary.status}); no rendered measurement available`]),
+      `Crawled ${crawl.pages.length} same-site page${crawl.pages.length === 1 ? '' : 's'} and checked ${crawl.links.checked} internal link${crawl.links.checked === 1 ? '' : 's'} (fetched markup only; shell content not rendered)`,
+    ]
+    return {
+      ...baseline,
+      opportunityScore: null,
+      confidence: null,
+      researchStatus: 'Inconclusive',
+      analysisSource: null,
+      mainIssue: 'Capture inconclusive',
+      issueDetail: baseline.captureQuality.reason,
+      problems: [],
+      evidence: [...new Set(shellEvidence)],
+      pageCount: crawl.pages.length,
+      sitemapPageCount,
+      performance,
+      accessibility,
+      seo,
+      brokenLinks,
+      checkedLinks: crawl.links.checked,
+      mobileQuality: performance == null ? null : performance >= 75 ? 'Good' : performance >= 50 ? 'Fair' : 'Poor',
+      auditStatus: 'Inconclusive',
+      auditComponents: componentStatuses,
+      crawlPages: crawl.pages,
+      crawlErrors: crawl.errors,
+      brokenLinkDetails: crawl.links.results.filter((result) => result.broken).slice(0, 20),
+      lighthouse: lighthouseSummary,
+      auditSummary: {
+        ...baseline.auditSummary,
+        sitemapPageCount,
+        pagesCrawled: crawl.pages.length,
+        linksChecked: crawl.links.checked,
+        brokenLinks,
+        lighthouse: lighthouseSummary,
+      },
+      _lighthouseReport: lighthouseResult?.report || null,
+      auditedUrl: page.url.href,
+      auditedAt: new Date().toISOString(),
+    }
+  }
   return {
     ...baseline,
     opportunityScore: cap(baseline.opportunityScore + scoreAdjustment, 35, 96),
