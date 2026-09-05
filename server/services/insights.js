@@ -1,15 +1,16 @@
 import OpenAI from 'openai'
-import { extractResponseText, getOutreachConfig } from './outreach.js'
+import { assertNoInventedClaims, buildObservations, extractResponseText, getOutreachConfig } from './outreach.js'
 import { parseFiniteNumber as finiteNumber, resolveMetricProvenance, resolveNestedProvenance } from './measure.js'
 
 const opportunitySchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['title', 'severity', 'evidence', 'whyItMatters', 'recommendation'],
+  required: ['title', 'severity', 'evidence', 'evidenceIds', 'whyItMatters', 'recommendation'],
   properties: {
     title: { type: 'string', minLength: 3, maxLength: 100 },
     severity: { type: 'string', enum: ['High', 'Medium', 'Low'] },
     evidence: { type: 'string', minLength: 3, maxLength: 400 },
+    evidenceIds: { type: 'array', minItems: 1, maxItems: 5, items: { type: 'string', minLength: 1, maxLength: 60 } },
     whyItMatters: { type: 'string', minLength: 3, maxLength: 500 },
     recommendation: { type: 'string', minLength: 3, maxLength: 500 },
   },
@@ -18,16 +19,50 @@ const opportunitySchema = {
 export const museAnalysisSchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['summary', 'topOpportunities', 'strengths', 'unknowns', 'qualificationRecommendation', 'qualificationRationale', 'outreachAngles'],
+  required: ['summary', 'topOpportunities', 'strengths', 'unknowns', 'qualificationRecommendation', 'qualificationRationale', 'outreachAngles', 'noSupportedOpportunity'],
   properties: {
     summary: { type: 'string', minLength: 10, maxLength: 800 },
-    topOpportunities: { type: 'array', minItems: 1, maxItems: 5, items: opportunitySchema },
+    topOpportunities: { type: 'array', minItems: 0, maxItems: 5, items: opportunitySchema },
     strengths: { type: 'array', maxItems: 5, items: { type: 'string', minLength: 3, maxLength: 300 } },
     unknowns: { type: 'array', maxItems: 5, items: { type: 'string', minLength: 3, maxLength: 300 } },
     qualificationRecommendation: { type: 'string', enum: ['Pursue', 'Review', 'Pass'] },
     qualificationRationale: { type: 'string', minLength: 3, maxLength: 500 },
-    outreachAngles: { type: 'array', minItems: 1, maxItems: 4, items: { type: 'string', minLength: 3, maxLength: 300 } },
+    outreachAngles: { type: 'array', minItems: 0, maxItems: 4, items: { type: 'string', minLength: 3, maxLength: 300 } },
+    noSupportedOpportunity: { type: 'boolean' },
   },
+}
+
+const CLAIM_STOPWORDS = new Set('the,a,an,and,or,of,to,in,on,for,with,without,from,by,is,are,was,were,be,as,at,it,its,this,that,these,those,they,their,not,no,do,does,will,would,could,should,may,can,has,have,had,was,were,been,being,your,you,we,our,us,i,my,me,he,she,they,them,his,her,into,over,under,than,then,there,here,when,where,which,who,what,how,all,any,each,more,most,other,some,such,only,own,same,so,too,very,just,about,into,through,during,before,after,above,below,between,again,once,while,because,until,against,among,per,via,lack,missing'.split(','))
+
+function significantTokens(text) {
+  return new Set(String(text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((token) => token.length > 3 && !CLAIM_STOPWORDS.has(token)))
+}
+
+// Adversarial claim-to-evidence check: ID membership is necessary but not proof
+// of semantic correctness, so the claim text must also share substance with the
+// observations it cites — otherwise it fails instead of silently becoming prose.
+export function assertOpportunityGrounded(opportunity, observations, { index = 0 } = {}) {
+  const refs = Array.isArray(opportunity?.evidenceIds) ? opportunity.evidenceIds : []
+  const cited = observations.filter((item) => refs.includes(item.id))
+  if (!refs.length) throw new Error(`Muse opportunity ${index + 1} cites no evidence IDs; every opportunity must reference the observations it is built from`)
+  if (cited.length !== refs.length) {
+    const unknown = refs.filter((id) => !observations.some((item) => item.id === id))
+    throw new Error(`Muse opportunity ${index + 1} references unknown or stale evidence IDs (${unknown.join(', ')}); validation failed instead of saving ungrounded prose`)
+  }
+  const claimTokens = significantTokens(`${opportunity.title} ${opportunity.evidence}`)
+  const citedText = cited.map((item) => item.text).join('\n')
+  const citedTokens = significantTokens(citedText)
+  const overlap = [...claimTokens].filter((token) => citedTokens.has(token))
+  const verbatim = cited.some((item) => {
+    const clean = String(item.text || '').replace(/\s+/g, ' ').trim().toLowerCase()
+    const claim = `${opportunity.title} ${opportunity.evidence}`.toLowerCase()
+    if (clean.length >= 10 && claim.includes(clean.slice(0, Math.min(clean.length, 24)))) return true
+    return false
+  })
+  if (!verbatim && overlap.length < 2) {
+    throw new Error(`Muse opportunity ${index + 1} ("${opportunity.title}") does not match the evidence it cites; shared substance: ${overlap.slice(0, 5).join(', ') || 'none'}`)
+  }
+  return true
 }
 
 function compactText(value, limit = 400) {
@@ -123,24 +158,44 @@ export function buildMuseEvidencePacket(lead, options = {}) {
   }
 }
 
-export function validateMuseAnalysis(result) {
-  if (!result || typeof result !== 'object') throw new Error('Muse returned an invalid analysis payload')
+export function validateMuseAnalysis(result, { observations = null, allowedEvidenceIds = null } = {}) {
+  if (!result || typeof result !== 'object') throw new Error('Muse returned an invalid analysis payload (expected a JSON object)')
   if (typeof result.summary !== 'string' || !result.summary.trim()) throw new Error('Muse did not return a summary')
-  if (!Array.isArray(result.topOpportunities) || !result.topOpportunities.length) throw new Error('Muse did not return any opportunities')
   if (!['Pursue', 'Review', 'Pass'].includes(result.qualificationRecommendation)) throw new Error('Muse returned an invalid qualification recommendation')
-  const topOpportunities = result.topOpportunities.slice(0, 5).map((item) => {
+  if (!Array.isArray(result.topOpportunities)) throw new Error('Muse returned malformed opportunities; previous analysis is unchanged — retry synthesis or edit manually')
+  const allowed = allowedEvidenceIds || (observations || []).map((item) => item.id)
+  const topOpportunities = result.topOpportunities.slice(0, 5).map((item, index) => {
     if (!item || !['High', 'Medium', 'Low'].includes(item.severity)) throw new Error('Muse returned an invalid opportunity severity')
     for (const field of ['title', 'evidence', 'whyItMatters', 'recommendation']) {
       if (typeof item[field] !== 'string' || !item[field].trim()) throw new Error(`Muse returned an opportunity without ${field}`)
     }
-    return Object.fromEntries(['title', 'severity', 'evidence', 'whyItMatters', 'recommendation'].map((field) => [field, item[field].trim()]))
+    if (!Array.isArray(item.evidenceIds) || !item.evidenceIds.length) {
+      throw new Error(`Muse opportunity ${index + 1} cites no evidence IDs; every opportunity must reference the observations it is built from`)
+    }
+    if (allowed.length) {
+      const unknown = item.evidenceIds.filter((id) => !allowed.includes(id))
+      if (unknown.length) throw new Error(`Muse opportunity ${index + 1} references unknown or stale evidence IDs (${unknown.join(', ')}); validation failed instead of saving ungrounded prose`)
+    }
+    for (const field of ['title', 'evidence', 'whyItMatters', 'recommendation']) {
+      assertNoInventedClaims(item[field], `Muse opportunity ${index + 1} ${field}`)
+    }
+    if (observations) assertOpportunityGrounded(item, observations, { index })
+    return Object.fromEntries(['title', 'severity', 'evidence', 'evidenceIds', 'whyItMatters', 'recommendation'].map((field) => field === 'evidenceIds' ? [field, [...item.evidenceIds]] : [field, item[field].trim()]))
   })
+  const noSupportedOpportunity = result.noSupportedOpportunity === true
+  if (!topOpportunities.length && !noSupportedOpportunity) {
+    throw new Error('Muse returned no opportunities without the explicit no-supported-opportunity outcome; refusing to invent one')
+  }
+  if (noSupportedOpportunity && topOpportunities.length) {
+    throw new Error('Muse declared no supported opportunity while returning opportunities; refusing the contradictory payload')
+  }
   const cleanList = (value, limit) => (Array.isArray(value) ? value : []).filter((item) => typeof item === 'string' && item.trim()).slice(0, limit).map((item) => item.trim())
   const outreachAngles = cleanList(result.outreachAngles, 4)
-  if (!outreachAngles.length) throw new Error('Muse did not return an outreach angle')
   return {
     summary: result.summary.trim(),
     topOpportunities,
+    outcome: noSupportedOpportunity ? 'no-supported-opportunity' : 'supported',
+    noSupportedOpportunity,
     strengths: cleanList(result.strengths, 5),
     unknowns: cleanList(result.unknowns, 5),
     qualificationRecommendation: result.qualificationRecommendation,
@@ -154,18 +209,21 @@ export async function generateMuseAnalysis(lead, options = {}) {
   const config = getOutreachConfig(options)
   if (!config.configured) throw new Error('Muse is not configured')
   const client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: 60_000, maxRetries: 2 })
-  const evidencePacket = buildMuseEvidencePacket(lead, options)
+  const observations = buildObservations(lead)
+  const evidencePacket = { ...buildMuseEvidencePacket(lead, options), observations }
   const developerPrompt = `You are the evidence-synthesis layer for a website opportunity research tool. Analyze only the supplied evidence packet.
 
 Grounding rules:
 - Never invent traffic, conversion rates, revenue, customer behavior, decision-maker names, hosting costs, or measurements.
 - Treat deterministic scores as immutable inputs. Do not recalculate or replace them.
+- Every opportunity must reference the packet observation IDs it is built from in evidenceIds. Never cite an ID that is not listed.
+- When the evidence supports no addressable opportunity, return empty topOpportunities and outreachAngles with noSupportedOpportunity true. Never invent an opportunity to fill the list.
 - Separate observed evidence from reasonable business implications. Phrase implications as possibilities, not measured outcomes.
 - Put missing evidence in unknowns instead of guessing.
 - Prefer specific measured facts and page observations over generic web-design advice.
 - Qualification is advisory for a human reviewer. "Pursue" means the evidence shows clear, addressable website opportunities; "Review" means mixed or incomplete evidence; "Pass" means little addressable opportunity or unreliable evidence.
 - Outreach angles must be concise, factual, and suitable for later email generation. Do not claim the business is losing customers.`
-  const userPrompt = `Synthesize this saved website research into a prioritized, practical assessment. Return 3-5 opportunities when the evidence supports them, ordered by likely importance. Each evidence field must cite an exact fact from the packet.\n\n${JSON.stringify(evidencePacket, null, 2)}`
+  const userPrompt = `Synthesize this saved website research into a prioritized, practical assessment. Return up to 5 opportunities when the evidence supports them, ordered by likely importance; return none with noSupportedOpportunity true when it does not. Each evidence field must cite an exact fact from the packet observations listed by ID.\n\n${JSON.stringify(evidencePacket, null, 2)}`
   const response = config.provider === 'meta'
     ? await client.chat.completions.create({
       model: config.model,
@@ -181,8 +239,14 @@ Grounding rules:
       text: { format: { type: 'json_schema', name: 'scoutline_muse_analysis', strict: true, schema: museAnalysisSchema } },
     })
   const responseText = extractResponseText(response)
-  if (!responseText) throw new Error('Muse returned no analysis text')
-  const analysis = validateMuseAnalysis(JSON.parse(responseText))
+  if (!responseText) throw new Error('Muse returned no analysis text; previous analysis is unchanged — retry synthesis or edit manually')
+  let parsed
+  try {
+    parsed = JSON.parse(responseText)
+  } catch {
+    throw new Error('Muse returned malformed analysis JSON; previous analysis is unchanged — retry synthesis or edit manually')
+  }
+  const analysis = validateMuseAnalysis(parsed, { observations })
   return {
     ...analysis,
     generation: {

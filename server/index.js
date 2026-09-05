@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto'
 import { auditWebsite } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
-import { generateOutreach, getOutreachConfig } from './services/outreach.js'
+import { acceptOutreachCandidate, applyOutreachGeneration, dismissOutreachCandidates, generateOutreach, getOutreachConfig } from './services/outreach.js'
 import { downloadDiscovery, getBrightDataConfig, mapDiscoveryRecord, pollDiscovery, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
@@ -91,7 +91,7 @@ app.use(express.json({ limit: '1mb' }))
 const ALLOWED_CATEGORIES = new Set(['Roofing','HVAC','Flooring','Plumbing','Electrical','Solar','Remodeling','Landscaping','Painting','Cleaning','General','Uncategorized'])
 const ALLOWED_SALES_STAGES = new Set(['Qualified','Contacted','Replied','Meeting','Proposal','Won','Lost'])
 const ALLOWED_OUTREACH_VERSIONS = new Set(['Concise','Balanced','Detailed'])
-const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting'])
+const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting','Insufficient evidence'])
 const ALLOWED_MANUAL_ACTIONS = new Set(['refresh','audit','muse','outreach','full'])
 const ALLOWED_SETTINGS_KEYS = new Set(Object.keys(defaultSettings))
 const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus'])
@@ -297,6 +297,9 @@ function writeLeadArtifacts(lead, includeProfile = false) {
       generation: lead.outreachGeneration || null,
       status: lead.outreachStatus || 'Draft',
       contactedAt: lead.contactedAt || null,
+      editedByHuman: Boolean(lead.outreachEdited),
+      updateAvailable: Boolean(lead.outreachUpdateAvailable),
+      candidates: lead.outreachCandidates || [],
     }, null, 2), 'utf8')
   }
   if (lead.museAnalysis) writeFileSync(join(folder, 'muse-analysis.json'), JSON.stringify(lead.museAnalysis, null, 2), 'utf8')
@@ -590,6 +593,7 @@ async function runAuditJob(job) {
     ...current,
     ...result,
     prelimScore: result.opportunityScore,
+    auditVersion: (current.auditVersion || 0) + 1,
     researchFailure: null,
     researchJob: { id: job.id, status: 'Completed', progress: 100 },
     ...(manualAction ? { manualRun: manualRunState(current, manualAction, manualAction === 'full'
@@ -612,19 +616,16 @@ async function runAuditJob(job) {
 
 async function generateAndSaveOutreach(lead, { manualAction = null } = {}) {
   const generated = await generateOutreach(lead)
-  const selectedVersion = ['Concise', 'Balanced', 'Detailed'].includes(lead.outreachVersion) ? lead.outreachVersion : 'Concise'
+  // A failed model call throws before any save, so previous drafts survive and
+  // the caller surfaces retry/manual editing.
+  const applied = applyOutreachGeneration(lead, generated, { selectedVersion: lead.outreachVersion })
   const updated = saveLead({
     ...lead,
-    outreachSubject: generated.subject,
-    outreachDrafts: generated.drafts,
-    outreachVersion: selectedVersion,
-    outreachDraft: generated.drafts[selectedVersion],
-    outreachGeneration: generated.generation,
-    outreachStatus: lead.outreachStatus || 'Draft',
-    ...(manualAction ? { manualRun: manualRunState(lead, manualAction, { status: 'Completed', progress: 100, phase: 'Outreach drafts ready', completedAt: nowIso() }) } : {}),
+    ...applied,
+    ...(manualAction ? { manualRun: manualRunState(lead, manualAction, { status: 'Completed', progress: 100, phase: generated.insufficientEvidence ? 'Insufficient evidence for outreach' : 'Outreach drafts ready', completedAt: nowIso() }) } : {}),
     updated: 'Just now',
   })
-  recordEvent('lead', lead.id, 'outreach_generated', { source: generated.generation.source, model: generated.generation.model, manualAction })
+  recordEvent('lead', lead.id, 'outreach_generated', { source: generated.generation.source, model: generated.generation.model, manualAction, insufficientEvidence: Boolean(generated.insufficientEvidence), preservedEdits: Boolean(applied.outreachUpdateAvailable && !generated.insufficientEvidence) })
   return updated
 }
 
@@ -1051,9 +1052,38 @@ app.patch('/api/leads/:id', (req, res) => {
   if ('email' in body && body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) push('email', 'Invalid email format')
   if (details.length) return badRequest(res, null, 'Invalid lead patch values', details)
 
-  const updated = saveLead({ ...applyLeadWorkflowChanges(lead, body), updated: 'Just now' })
-  recordEvent('lead', lead.id, 'updated', { fields: Object.keys(body) })
+  const patched = applyLeadWorkflowChanges(lead, body)
+  const draftEdited = ('outreachDraft' in body && String(body.outreachDraft || '') !== String(lead.outreachDraft || '')) ||
+    ('outreachDrafts' in body && JSON.stringify(body.outreachDrafts || {}) !== JSON.stringify(lead.outreachDrafts || {})) ||
+    ('outreachSubject' in body && String(body.outreachSubject || '') !== String(lead.outreachSubject || ''))
+  const updated = saveLead({ ...patched, ...(draftEdited ? { outreachEdited: true } : {}), updated: 'Just now' })
+  recordEvent('lead', lead.id, 'updated', { fields: Object.keys(body), draftEdited })
   res.json(updated)
+})
+
+app.post('/api/leads/:id/outreach/candidates', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
+  const action = String(body.action || '').trim().toLowerCase()
+  if (!['accept', 'dismiss'].includes(action)) return badRequest(res, 'action', 'Unsupported candidate action', [{ field: 'action', message: 'Must be accept or dismiss' }])
+  try {
+    let applied
+    if (action === 'accept') {
+      const index = body.index == null ? 0 : Number(body.index)
+      if (!Number.isInteger(index) || index < 0) return badRequest(res, 'index', 'Candidate index must be a non-negative integer')
+      applied = acceptOutreachCandidate(lead, index)
+    } else {
+      applied = dismissOutreachCandidates(lead)
+    }
+    const updated = saveLead({ ...lead, ...applied, updated: 'Just now' })
+    recordEvent('lead', lead.id, action === 'accept' ? 'outreach_candidate_accepted' : 'outreach_candidates_dismissed', { index: body.index ?? null })
+    res.json(updated)
+  } catch (error) {
+    return unprocessable(res, error.message, 'outreachCandidates')
+  }
 })
 
 app.post('/api/leads/:id/analyze', (req, res) => {

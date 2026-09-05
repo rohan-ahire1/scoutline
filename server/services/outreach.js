@@ -45,24 +45,143 @@ function findingAdvice(finding) {
 
 export function wordCount(value) { return String(value || '').trim().split(/\s+/).filter(Boolean).length }
 
+// Stable observation IDs scoped to an audit version so AI references can be
+// validated against the exact audit that produced them.
+export function auditScope(lead) {
+  if (lead?.auditVersion != null && String(lead.auditVersion).trim() !== '') return String(lead.auditVersion)
+  return 'legacy'
+}
+
+export function buildObservations(lead) {
+  const scope = auditScope(lead)
+  const source = (lead?.problems?.length ? lead.problems : (lead?.issueDetail ? [lead.issueDetail] : []))
+  return source
+    .map((text) => cleanFinding(text))
+    .filter(Boolean)
+    .map((text, index) => ({ id: `obs-${scope}-${index + 1}`, auditScope: scope, text }))
+}
+
+// Adversarial guard: rendered outreach and AI claims must never invent business
+// metrics or promise outcomes. Evidence-ID membership is necessary but not proof
+// of semantic correctness, so the text itself is scanned as well.
+const INVENTED_CLAIM_PATTERNS = [
+  { pattern: /\$\s?\d[\d,]*/, label: 'a monetary amount' },
+  { pattern: /\b\d[\d,.]*\s?%\s?(more|increase|growth|uplift|conversion|revenue|traffic|customers|leads|sales)\b/i, label: 'a percentage outcome' },
+  { pattern: /\b(revenue|profit|income|roi|turnover)\b[^.\n]{0,40}\$\s?\d/i, label: 'a revenue figure' },
+  { pattern: /\b\d[\d,]*\s?(new\s)?(customers|visitors|leads|sales|calls|bookings)\b[^.\n]{0,30}\b(more|extra|additional|guaranteed|per month|a month)\b/i, label: 'a customer/volume outcome' },
+  { pattern: /\b(guarantee[sd]?|guaranteed results)\b/i, label: 'a guarantee' },
+  { pattern: /\bwill (increase|double|triple|boost|grow|skyrocket)\b[^.\n]{0,40}\b(revenue|traffic|sales|leads|customers|rankings|conversion)\b/i, label: 'a promised business outcome' },
+]
+
+export function assertNoInventedClaims(text, where = 'outreach') {
+  const value = String(text || '')
+  for (const { pattern, label } of INVENTED_CLAIM_PATTERNS) {
+    if (pattern.test(value)) throw new Error(`Unverified ${label} in ${where}: claims must cite measured audit evidence, not invented outcomes`)
+  }
+  return true
+}
+
 export function createLocalOutreach(lead) {
-  const findings = (lead.problems?.length ? lead.problems : [lead.issueDetail]).map(cleanFinding).filter(Boolean)
-  const [first = 'The customer journey could be clearer', second = 'The next step is not prominent', third = 'Trust proof could be placed closer to the enquiry'] = findings
+  const observations = buildObservations(lead)
+  const generation = { source: 'rules', model: null, generatedAt: new Date().toISOString(), targets: { Concise: 50, Balanced: 110, Detailed: 210 }, observationIds: observations.map((item) => item.id) }
+  if (!observations.length) {
+    return {
+      subject: `Quick idea for ${lead.company}`,
+      drafts: null,
+      findings: [],
+      observations,
+      insufficientEvidence: true,
+      reason: 'No verified audit findings for this lead, so no outreach claim can be supported. A redesign is not asserted.',
+      generation,
+    }
+  }
+  const findings = observations.map((item) => item.text)
   const mainIssue = String(lead.mainIssue || 'a clearer customer journey').toLowerCase()
-  const detailedFindings = [first, second, third].map((finding, index) => {
+  const [first, second] = findings
+  const reportCount = Math.min(findings.length, 4)
+  const detailedFindings = findings.slice(0, reportCount).map((finding, index) => {
     const advice = findingAdvice(finding)
     return `${index + 1}. ${finding}\nWhy it matters: ${advice.why}\nWhat I would change: I would ${advice.change}.`
   }).join('\n\n')
+  const countNoun = findings.length === 1 ? 'one opportunity stood out' : `${findings.length} opportunities stood out`
   const drafts = {
     Concise: `Hi — I reviewed ${lead.company}'s website and noticed ${first.toLowerCase()}. I have a straightforward way to improve that and make the next step easier for visitors. If useful, I can send a free homepage redesign so you can judge the direction before deciding anything. Would you like to see it?`,
-    Balanced: `Hi —\n\nI reviewed ${lead.company}'s website and two opportunities stood out:\n\n• ${first}\n• ${second}\n\nThese issues can make it harder for visitors to understand the offer and take the next step, especially on mobile. I would focus a redesign on ${mainIssue}, one clear primary action, stronger proof near the enquiry point, and a simpler path from interest to contact.\n\nIf useful, I can create a free homepage concept showing how those changes could work together. You can review the direction before deciding whether to move forward. Would you like me to send it?`,
+    Balanced: second
+      ? `Hi —\n\nI reviewed ${lead.company}'s website and two opportunities stood out:\n\n• ${first}\n• ${second}\n\nThese issues can make it harder for visitors to understand the offer and take the next step, especially on mobile. I would focus a redesign on ${mainIssue}, one clear primary action, stronger proof near the enquiry point, and a simpler path from interest to contact.\n\nIf useful, I can create a free homepage concept showing how those changes could work together. You can review the direction before deciding whether to move forward. Would you like me to send it?`
+      : `Hi —\n\nI reviewed ${lead.company}'s website and ${countNoun}:\n\n• ${first}\n\nThis can make it harder for visitors to understand the offer and take the next step. I would focus a redesign on ${mainIssue} and a simpler path from interest to contact.\n\nIf useful, I can create a free homepage concept showing how that change could work. You can review the direction before deciding whether to move forward. Would you like me to send it?`,
     Detailed: `Hi —\n\nI reviewed ${lead.company}'s website and prepared a short report on the clearest opportunities:\n\n${detailedFindings}\n\nRecommended direction\nI would build the redesign around ${mainIssue}, a clearer content hierarchy, stronger proof beside the key decision points, and a simpler route from the first visit to an enquiry. The goal would be to preserve the useful business information already present while removing friction and making the offer easier to understand on mobile and desktop.\n\nIf useful, I can turn these findings into a free homepage concept. You can review the proposed structure, message, and visual direction before deciding whether any paid work makes sense. Would you like me to send it over?`,
   }
+  for (const [version, text] of Object.entries(drafts)) assertNoInventedClaims(text, `local ${version} draft`)
   return {
     subject: `Quick idea for ${lead.company}`,
     drafts,
-    generation: { source: 'rules', model: null, generatedAt: new Date().toISOString(), targets: { Concise: 50, Balanced: 110, Detailed: 210 } },
+    findings,
+    observations,
+    insufficientEvidence: false,
+    generation,
   }
+}
+
+// A regenerated draft must never silently destroy human edits. New output is a
+// candidate; the current selection only changes explicitly.
+export function applyOutreachGeneration(lead, generated, { selectedVersion = null } = {}) {
+  const candidate = {
+    subject: generated.subject,
+    drafts: generated.drafts,
+    findings: generated.findings || [],
+    observationIds: generated.observationIds || generated.generation?.observationIds || [],
+    insufficientEvidence: Boolean(generated.insufficientEvidence),
+    reason: generated.reason || null,
+    generation: generated.generation,
+    createdAt: new Date().toISOString(),
+  }
+  const candidates = [candidate, ...((lead || {}).outreachCandidates || [])].slice(0, 5)
+  if (generated.insufficientEvidence) {
+    return {
+      outreachCandidates: candidates,
+      outreachUpdateAvailable: true,
+      outreachStatus: (lead || {}).outreachDraft || Object.keys((lead || {}).outreachDrafts || {}).length ? (lead || {}).outreachStatus || 'Draft' : 'Insufficient evidence',
+    }
+  }
+  const edited = Boolean((lead || {}).outreachEdited) && Boolean((lead || {}).outreachDraft)
+  if (edited) {
+    return { outreachCandidates: candidates, outreachUpdateAvailable: true }
+  }
+  const version = ['Concise', 'Balanced', 'Detailed'].includes(selectedVersion) ? selectedVersion : 'Concise'
+  return {
+    outreachSubject: generated.subject,
+    outreachDrafts: generated.drafts,
+    outreachVersion: version,
+    outreachDraft: generated.drafts[version],
+    outreachGeneration: generated.generation,
+    outreachCandidates: candidates,
+    outreachUpdateAvailable: false,
+    outreachEdited: false,
+    outreachStatus: (lead || {}).outreachStatus || 'Draft',
+  }
+}
+
+export function acceptOutreachCandidate(lead, index = 0) {
+  const candidates = [...((lead || {}).outreachCandidates || [])]
+  const candidate = candidates[index]
+  if (!candidate || !candidate.drafts) throw new Error('No generated outreach candidate at that position')
+  candidates.splice(index, 1)
+  const version = ['Concise', 'Balanced', 'Detailed'].includes(lead?.outreachVersion) ? lead.outreachVersion : 'Concise'
+  return {
+    outreachSubject: candidate.subject,
+    outreachDrafts: candidate.drafts,
+    outreachVersion: version,
+    outreachDraft: candidate.drafts[version],
+    outreachGeneration: candidate.generation,
+    outreachCandidates: candidates,
+    outreachUpdateAvailable: candidates.length > 0,
+    outreachEdited: false,
+    outreachStatus: (lead || {}).outreachStatus && (lead || {}).outreachStatus !== 'Insufficient evidence' ? (lead || {}).outreachStatus : 'Draft',
+  }
+}
+
+export function dismissOutreachCandidates(lead) {
+  return { outreachCandidates: [], outreachUpdateAvailable: false }
 }
 
 const outreachSchema = {
@@ -80,12 +199,20 @@ const outreachSchema = {
   },
 }
 
-function validateGenerated(result) {
-  if (!result || typeof result.subject !== 'string' || !result.drafts) throw new Error('The model returned an invalid outreach payload')
+export function validateGeneratedOutreach(result) {
+  if (!result || typeof result !== 'object') throw new Error('The model returned an invalid outreach payload (expected a JSON object)')
+  if (typeof result.subject !== 'string' || !result.subject.trim()) throw new Error('The model returned no outreach subject')
+  if (!result.drafts || typeof result.drafts !== 'object') throw new Error('The model returned no outreach drafts')
   OUTREACH_VERSIONS.forEach((version) => {
     if (typeof result.drafts[version] !== 'string' || !result.drafts[version].trim()) throw new Error(`The model did not return a ${version.toLowerCase()} draft`)
   })
-  return { subject: result.subject.trim(), drafts: Object.fromEntries(OUTREACH_VERSIONS.map((version) => [version, result.drafts[version].trim()])) }
+  const drafts = Object.fromEntries(OUTREACH_VERSIONS.map((version) => [version, result.drafts[version].trim()]))
+  for (const [version, text] of Object.entries(drafts)) assertNoInventedClaims(text, `AI ${version} draft`)
+  return { subject: result.subject.trim(), drafts }
+}
+
+function validateGenerated(result) {
+  return validateGeneratedOutreach(result)
 }
 
 export function extractResponseText(response) {
@@ -166,12 +293,22 @@ export async function generateOutreach(lead, options = {}) {
       text: { format: { type: 'json_schema', name: 'scoutline_outreach', strict: true, schema: outreachSchema } },
     })
 
+  const observations = buildObservations(lead)
   const response = await requestModel(userPrompt)
   const responseText = extractResponseText(response)
   if (!responseText) throw new Error('The model returned no outreach text')
-  const generated = validateGenerated(JSON.parse(responseText))
+  let parsed
+  try {
+    parsed = JSON.parse(responseText)
+  } catch {
+    throw new Error('The model returned malformed outreach JSON; previous drafts are unchanged — retry generation or edit manually')
+  }
+  const generated = validateGenerated(parsed)
   return {
     ...generated,
+    findings: observations.map((item) => item.text),
+    observations,
+    insufficientEvidence: false,
     generation: {
       source: config.provider,
       provider: config.provider,
@@ -180,6 +317,7 @@ export async function generateOutreach(lead, options = {}) {
       responseId: response.id,
       generatedAt: new Date().toISOString(),
       targets: { Concise: 50, Balanced: 110, Detailed: 210 },
+      observationIds: observations.map((item) => item.id),
       wordCounts: Object.fromEntries(OUTREACH_VERSIONS.map((version) => [version, wordCount(generated.drafts[version])])),
     },
   }
