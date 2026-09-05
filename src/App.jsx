@@ -198,6 +198,17 @@ function mapsUrl(lead) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
 }
 
+function auditAge(iso) {
+  const time = new Date(iso || '').getTime()
+  if (Number.isNaN(time)) return 'unknown age'
+  const minutes = Math.max(0, Math.round((Date.now() - time) / 60000))
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 48) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
+
 function parseCsv(text) {
   const rows = []
   let row = [], cell = '', quoted = false
@@ -867,6 +878,7 @@ function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAn
                     : <Badge tone="purple" dot>In sales</Badge>}
             </div>
             <ManualRunStatus lead={lead} onRun={onRunAction} />
+            {lead.researchStatus === 'Inconclusive' && <div className="candidate-banner"><span><strong>Latest capture inconclusive — no score claimed.</strong><small> {lead.captureQuality?.reason || lead.lastAuditAttempt?.reason || 'The page could not be assessed.'} Method: {lead.captureQuality?.captureMethod || 'static-fetch'}{lead.captureQuality?.renderedFallback ? ` · rendered fallback: ${lead.captureQuality.renderedFallback}` : ''}{lead.lastSuccessfulAudit ? ` · Last successful audit ${lead.lastSuccessfulAudit.score}/100 (${auditAge(lead.lastSuccessfulAudit.at)}).` : ' · No successful audit yet.'} The business stays available for manual qualification.</small></span><div><button className="button button-secondary button-small" onClick={() => onAnalyze(lead)}>Retry audit</button></div></div>}
             <div className="research-checklist">{researchLabels.map((label, index) => {
               const failed = failure?.stage === index
               const detail = failed ? failure.reason

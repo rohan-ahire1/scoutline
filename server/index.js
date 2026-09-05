@@ -251,6 +251,7 @@ function leadMarkdown(lead) {
     `## Opportunity assessment\n\n- Preliminary opportunity: ${lead.prelimScore}/100\n- Opportunity score: ${lead.opportunityScore ?? 'Not analyzed'}\n- Confidence: ${lead.confidence ?? 'Not analyzed'}\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Research status: ${lead.researchStatus}\n- Rebuild feasibility: ${lead.rebuild}${lead.researchFailure ? `\n- Failed stage: ${['Scraped', 'Analyzed', 'Qualified'][lead.researchFailure.stage] || 'Unknown'}\n- Failure reason: ${lead.researchFailure.reason}` : ''}\n\n` +
     `## Website audit\n\n- Mobile performance: ${formatProvenanceScore(resolveMetricProvenance(lead, 'performance'))}\n- Accessibility: ${formatProvenanceScore(resolveMetricProvenance(lead, 'accessibility'))}\n- SEO: ${formatProvenanceScore(resolveMetricProvenance(lead, 'seo'))}\n- Best practices: ${formatProvenanceScore(resolveNestedProvenance(lead?.measureProvenance?.bestPractices, lead?.lighthouse?.scores?.bestPractices))}\n- Same-site pages crawled: ${lead.pageCount ?? 'Not measured'}\n- Internal links checked: ${lead.checkedLinks ?? 'Not measured'}\n- Broken internal links: ${lead.brokenLinks ?? 'Not measured'}\n- Mobile quality: ${lead.mobileQuality}\n- HTTPS: ${lead.https == null ? 'Not measured' : lead.https ? 'Yes' : 'No'}\n- Detected stack: ${(lead.stack || []).join(', ') || 'Unknown'}\n\n` +
     `## Business intelligence\n\n- Digital maturity: ${lead.businessIntelligence?.digitalMaturity?.score ?? 'Not calculated'}/100${lead.businessIntelligence?.digitalMaturity?.band ? ` (${lead.businessIntelligence.digitalMaturity.band})` : ''}${lead.businessIntelligence?.digitalMaturity?.version ? ` [formula v${lead.businessIntelligence.digitalMaturity.version}]` : ''}${lead.businessIntelligence?.digitalMaturity?.coverage ? ` — evidence coverage ${lead.businessIntelligence.digitalMaturity.coverage.measuredComponents}/${lead.businessIntelligence.digitalMaturity.coverage.totalComponents} components (${lead.businessIntelligence.digitalMaturity.coverage.share}% of weighted signals measured)` : ''}\n- Employees: ${metric('employeeCount')}\n- Annual revenue: ${metric('annualRevenue')}\n- Annual profit: ${metric('annualProfit')}\n- Founded: ${metric('foundedYear')}\n- Branch count: ${metric('branchCount')}\n- Locations observed in discovery: ${lead.businessIntelligence?.locationsObserved ?? 'Not observed'}\n- Google profile claimed: ${lead.businessIntelligence?.claimed == null ? 'Unknown' : lead.businessIntelligence.claimed ? 'Yes' : 'No'}\n- Online booking: ${lead.businessIntelligence?.onlineBooking ? 'Detected' : 'Not detected'}\n- Four- and five-star review share: ${lead.businessIntelligence?.positiveReviewShare ?? 'Unknown'}${lead.businessIntelligence?.positiveReviewShare != null ? '%' : ''}\n- Latest sampled review: ${lead.businessIntelligence?.latestObservedReviewAt || 'Unknown'}\n\nSource-backed fields remain unknown when no provider supplies them.\n\n` +
+    (lead.captureQuality || lead.researchStatus === 'Inconclusive' ? `## Capture quality\n\n- Assessment: ${lead.researchStatus === 'Inconclusive' ? 'Inconclusive — no defect-derived score is claimed' : lead.researchStatus}\n- Capture: ${lead.captureQuality?.quality || 'Not recorded'} via ${lead.captureQuality?.captureMethod || 'unknown method'}\n- Reason: ${lead.captureQuality?.reason || lead.lastAuditAttempt?.reason || 'Not recorded'}\n- Rendered-page fallback: ${lead.captureQuality?.renderedFallback || 'not applicable'}\n- Last successful audit: ${lead.lastSuccessfulAudit ? `${lead.lastSuccessfulAudit.score}/100 on ${lead.lastSuccessfulAudit.at} (${lead.lastSuccessfulAudit.url || 'URL not recorded'})` : 'None recorded'}\n\n` : '') +
     `## Main observed issue\n\n**${lead.mainIssue}:** ${lead.issueDetail}\n\n` +
     `## Findings\n\n${list(lead.problems)}\n\n` +
     `## Evidence\n\n${list(lead.evidence)}\n\n` +
@@ -279,6 +280,8 @@ function writeLeadArtifacts(lead, includeProfile = false) {
     crawlPages: lead.crawlPages || [], crawlErrors: lead.crawlErrors || [], brokenLinkDetails: lead.brokenLinkDetails || [],
     lighthouse: lead.lighthouse || null,
     auditedUrl: lead.auditedUrl || null, auditedAt: lead.auditedAt || null,
+    captureQuality: lead.captureQuality || null,
+    lastAuditAttempt: lead.lastAuditAttempt || null, lastSuccessfulAudit: lead.lastSuccessfulAudit || null,
     researchFailure: lead.researchFailure || null, history: lead.auditHistory || [],
   }
   writeFileSync(join(folder, 'raw.json'), JSON.stringify(businessData, null, 2), 'utf8')
@@ -589,16 +592,28 @@ async function runAuditJob(job) {
     jobId: job.id, at: result.auditedAt, url: result.auditedUrl, score: result.opportunityScore,
     performance: result.performance, pages: result.pageCount, brokenLinks: result.brokenLinks,
   }].slice(-10)
+  const inconclusive = result.researchStatus === 'Inconclusive'
+  const attempt = {
+    jobId: job.id, at: result.auditedAt, url: result.auditedUrl,
+    status: inconclusive ? 'Inconclusive' : 'Completed',
+    reason: result.captureQuality?.reason || null,
+    captureQuality: result.captureQuality?.quality || null,
+  }
+  const lastSuccessfulAudit = result.opportunityScore != null
+    ? { at: result.auditedAt, url: result.auditedUrl, score: result.opportunityScore, confidence: result.confidence }
+    : current.lastSuccessfulAudit || null
   const updated = saveLead(enrichLead({
     ...current,
     ...result,
     prelimScore: result.opportunityScore,
     auditVersion: (current.auditVersion || 0) + 1,
     researchFailure: null,
+    lastAuditAttempt: attempt,
+    lastSuccessfulAudit,
     researchJob: { id: job.id, status: 'Completed', progress: 100 },
     ...(manualAction ? { manualRun: manualRunState(current, manualAction, manualAction === 'full'
-      ? { status: 'Running', progress: 70, phase: 'Website audit complete', jobId: job.id }
-      : { status: 'Completed', progress: 100, phase: 'Website audit complete', jobId: job.id, completedAt: nowIso() }) } : {}),
+      ? { status: 'Running', progress: 70, phase: inconclusive ? 'Capture inconclusive — review needed' : 'Website audit complete', jobId: job.id }
+      : { status: 'Completed', progress: 100, phase: inconclusive ? 'Capture inconclusive — review needed' : 'Website audit complete', jobId: job.id, completedAt: nowIso() }) } : {}),
     auditHistory: history,
     updated: 'Just now',
   }))
@@ -609,7 +624,7 @@ async function runAuditJob(job) {
   }
   updateJob(job.id, { status: 'Completed', progress: 100, result: { opportunityScore: result.opportunityScore, confidence: result.confidence, auditedUrl: result.auditedUrl }, error: null })
   recordEvent('lead', lead.id, 'audit_completed', { jobId: job.id, score: result.opportunityScore, source: result.analysisSource })
-  if (['analysis', 'full'].includes(job.payload.workflow) && getOutreachConfig().configured) return queueMuseSynthesis(updated, { auditJobId: job.id, researchRunId: job.runId || null, workflow: job.payload.workflow, manualAction, continueRun: Boolean(manualAction) }).lead
+  if (['analysis', 'full'].includes(job.payload.workflow) && getOutreachConfig().configured && result.opportunityScore != null) return queueMuseSynthesis(updated, { auditJobId: job.id, researchRunId: job.runId || null, workflow: job.payload.workflow, manualAction, continueRun: Boolean(manualAction) }).lead
   if (manualAction === 'full') return saveLead({ ...updated, manualRun: manualRunState(updated, 'full', { status: 'Failed', progress: 70, phase: 'Muse is not configured', error: 'Muse is not configured', completedAt: nowIso() }) })
   return updated
 }
@@ -786,6 +801,7 @@ async function processNextJob() {
         ...lead,
         researchStatus: retry ? 'Queued' : 'Failed',
         researchFailure: retry ? null : { stage: 1, reason: error.message, code: error.code || 'AUDIT_FAILED', at: nowIso(), jobId: job.id },
+        lastAuditAttempt: retry ? lead.lastAuditAttempt || null : { jobId: job.id, at: nowIso(), url: lead.website || null, status: 'Failed', reason: error.message, captureQuality: null },
         researchJob: { id: job.id, status: retry ? 'Queued' : 'Failed', progress: retry ? 5 : 100 },
         updated: retry ? 'Retrying soon' : 'Just now',
       })
