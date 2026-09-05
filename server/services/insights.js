@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { extractResponseText, getOutreachConfig } from './outreach.js'
+import { parseFiniteNumber as finiteNumber, resolveMetricProvenance, resolveNestedProvenance } from './measure.js'
 
 const opportunitySchema = {
   type: 'object',
@@ -32,11 +33,6 @@ export const museAnalysisSchema = {
 function compactText(value, limit = 400) {
   const text = String(value || '').replace(/\s+/g, ' ').trim()
   return text.length > limit ? `${text.slice(0, limit - 1).trimEnd()}…` : text
-}
-
-function finiteNumber(value) {
-  if (value == null || value === '') return null
-  return Number.isFinite(Number(value)) ? Number(value) : null
 }
 
 export function extractLighthouseEvidence(report, limit = 15) {
@@ -82,10 +78,10 @@ export function buildMuseEvidencePacket(lead, options = {}) {
       auditedUrl: lead.auditedUrl || null,
       auditedAt: lead.auditedAt || null,
       scores: {
-        performance: finiteNumber(lead.performance),
-        accessibility: finiteNumber(lead.accessibility),
-        bestPractices: finiteNumber(lighthouse?.scores?.bestPractices),
-        seo: finiteNumber(lead.seo),
+        performance: resolveMetricProvenance(lead, 'performance'),
+        accessibility: resolveMetricProvenance(lead, 'accessibility'),
+        bestPractices: resolveNestedProvenance(lead?.measureProvenance?.bestPractices, lighthouse?.scores?.bestPractices, { observedAt: lead.auditedAt || null }),
+        seo: resolveMetricProvenance(lead, 'seo'),
       },
       timings: lighthouse?.metrics || null,
       pageCount: finiteNumber(lead.pageCount),
