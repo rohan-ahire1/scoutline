@@ -8,10 +8,11 @@ import { randomUUID } from 'node:crypto'
 import { auditWebsite } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
-import { acceptOutreachCandidate, applyOutreachGeneration, dismissOutreachCandidates, generateOutreach, getOutreachConfig } from './services/outreach.js'
+import { generateOutreach, getOutreachConfig } from './services/outreach.js'
 import { describeGeographyCoverage, downloadDiscovery, filterSavedClientsByLocation, getBrightDataConfig, legacySearchFromSettings, mapDiscoveryRecord, pollDiscovery, reconcileRecords, resolveSearchDefinition, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
+import { acceptOutreachCandidate, buildRefreshPatch, dismissOutreachCandidates, getRev, resolveOutreachCompletion, resolveSynthesisCompletion, updateLeadFields } from './services/revisions.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
@@ -94,7 +95,7 @@ const ALLOWED_OUTREACH_VERSIONS = new Set(['Concise','Balanced','Detailed'])
 const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting','Insufficient evidence'])
 const ALLOWED_MANUAL_ACTIONS = new Set(['refresh','audit','muse','outreach','full'])
 const ALLOWED_SETTINGS_KEYS = new Set(Object.keys(defaultSettings))
-const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus'])
+const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev'])
 
 function isNonEmptyString(v, max = 120) {
   return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
@@ -175,9 +176,36 @@ const readRun = (id) => {
   return row ? JSON.parse(row.payload) : null
 }
 const saveLead = (lead) => {
-  db.prepare('UPDATE leads SET payload = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(JSON.stringify(lead), lead.id)
-  writeLeadArtifacts(lead)
-  return lead
+  const next = { ...lead, rev: getRev(lead) + 1 }
+  db.prepare('UPDATE leads SET payload = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(JSON.stringify(next), lead.id)
+  writeLeadArtifacts(next)
+  return next
+}
+
+// Field-scoped write with optimistic revision checking for async completions:
+// merges `patch` into the latest row (never a stale whole object) and bumps
+// the revision. Exported for tests via the revisions module contract.
+const scopedLeadUpdate = (id, patch, { expectedRev = null } = {}) => {
+  const next = updateLeadFields(db, id, patch, { expectedRev })
+  writeLeadArtifacts(next)
+  return next
+}
+
+// Run a completion builder against the latest row; on a revision conflict,
+// rebuild once against the truly-latest row and write field-scoped.
+const writeJobCompletion = (id, build) => {
+  const current = readLead(id)
+  if (!current) throw new Error('Lead not found')
+  try {
+    return scopedLeadUpdate(id, build(current), { expectedRev: getRev(current) })
+  } catch (error) {
+    if (error?.code !== 'REVISION_CONFLICT') throw error
+    const latest = readLead(id)
+    if (!latest) throw new Error('Lead not found')
+    const rebuilt = scopedLeadUpdate(id, build(latest), {})
+    recordEvent('lead', id, 'revision_conflict_resolved', { expectedRev: getRev(current), rev: getRev(latest) })
+    return rebuilt
+  }
 }
 const saveRun = (run) => {
   db.prepare('UPDATE runs SET payload = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(JSON.stringify(run), run.id)
@@ -631,17 +659,30 @@ async function runAuditJob(job) {
 }
 
 async function generateAndSaveOutreach(lead, { manualAction = null } = {}) {
-  const generated = await generateOutreach(lead)
-  // A failed model call throws before any save, so previous drafts survive and
-  // the caller surfaces retry/manual editing.
-  const applied = applyOutreachGeneration(lead, generated, { selectedVersion: lead.outreachVersion })
-  const updated = saveLead({
-    ...lead,
-    ...applied,
-    ...(manualAction ? { manualRun: manualRunState(lead, manualAction, { status: 'Completed', progress: 100, phase: generated.insufficientEvidence ? 'Insufficient evidence for outreach' : 'Outreach drafts ready', completedAt: nowIso() }) } : {}),
-    updated: 'Just now',
+  // Snapshot the revision before the provider await; completion merges into
+  // the latest row so concurrent user edits are never overwritten.
+  const started = readLead(lead.id) || lead
+  const startedSnap = { rev: getRev(started), outreachDraft: started.outreachDraft, outreachVersion: started.outreachVersion }
+  const generationStartedAt = nowIso()
+  const generated = await generateOutreach(started)
+  // A failed provider throws before any save: previous drafts survive and the caller surfaces retry/manual editing.
+  generated.generation = { ...generated.generation, generatedAt: generationStartedAt }
+  let completionType = 'apply'
+  const updated = writeJobCompletion(lead.id, (current) => {
+    const decision = resolveOutreachCompletion({ started: startedSnap, current, generated, selectedVersion: current.outreachVersion })
+    completionType = decision.type
+    const patch = { ...decision.patch }
+    if (manualAction) {
+      patch.manualRun = manualRunState(current, manualAction, {
+        status: 'Completed', progress: 100,
+        phase: decision.type === 'apply' ? 'Outreach drafts ready' : decision.type === 'insufficient' ? 'Insufficient evidence for outreach' : 'New outreach kept as a candidate — review required',
+        completedAt: nowIso(),
+      })
+    }
+    patch.updated = decision.type === 'apply' ? 'Just now' : current.updated
+    return patch
   })
-  recordEvent('lead', lead.id, 'outreach_generated', { source: generated.generation.source, model: generated.generation.model, manualAction, insufficientEvidence: Boolean(generated.insufficientEvidence), preservedEdits: Boolean(applied.outreachUpdateAvailable && !generated.insufficientEvidence) })
+  recordEvent('lead', lead.id, 'outreach_generated', { source: generated.generation.source, model: generated.generation.model, manualAction, completion: completionType, insufficientEvidence: Boolean(generated.insufficientEvidence) })
   return updated
 }
 
@@ -671,22 +712,29 @@ async function runSynthesisJob(job) {
     ...(manualAction ? { manualRun: manualRunState(activeLead, manualAction, { status: 'Running', progress: manualAction === 'full' ? 84 : 45, phase: 'Synthesizing with Muse', jobId: job.id }) } : {}),
     updated: 'Muse is synthesizing findings',
   })
+  const synthesisStartedAt = nowIso()
   const result = await generateMuseAnalysis(readLead(job.leadId), { lighthouseReport })
-  const current = readLead(job.leadId)
-  const updated = saveLead({
-    ...current,
-    museAnalysis: { status: 'Completed', ...result, error: null },
-    museJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Synthesis complete' },
-    ...(manualAction ? { manualRun: manualRunState(current, manualAction, manualAction === 'full'
-      ? { status: 'Running', progress: 92, phase: 'Generating outreach drafts', jobId: job.id }
-      : { status: 'Completed', progress: 100, phase: 'Muse analysis complete', jobId: job.id, completedAt: nowIso() }) } : {}),
-    updated: 'Just now',
-  })
+  result.generatedAt = synthesisStartedAt
+  const synthesisDecision = resolveSynthesisCompletion({ current: readLead(job.leadId) || {}, result })
+  const updated = synthesisDecision.type === 'stale'
+    ? readLead(job.leadId)
+    : writeJobCompletion(job.leadId, (current) => {
+      const rerun = resolveSynthesisCompletion({ current, result })
+      if (rerun.type === 'stale') return {}
+      return {
+        ...rerun.patch,
+        museJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Synthesis complete' },
+        ...(manualAction ? { manualRun: manualRunState(current, manualAction, manualAction === 'full'
+          ? { status: 'Running', progress: 92, phase: 'Generating outreach drafts', jobId: job.id }
+          : { status: 'Completed', progress: 100, phase: 'Muse analysis complete', jobId: job.id, completedAt: nowIso() }) } : {}),
+        updated: 'Just now',
+      }
+    })
   updateJob(job.id, {
     status: 'Completed', progress: 100, error: null,
-    result: { recommendation: result.qualificationRecommendation, opportunities: result.topOpportunities.length, model: result.generation.model },
+    result: { recommendation: result.qualificationRecommendation, opportunities: result.topOpportunities.length, model: result.generation.model, stale: synthesisDecision.type === 'stale' },
   })
-  recordEvent('lead', lead.id, 'muse_synthesis_completed', { jobId: job.id, recommendation: result.qualificationRecommendation, model: result.generation.model })
+  recordEvent('lead', lead.id, synthesisDecision.type === 'stale' ? 'muse_synthesis_stale' : 'muse_synthesis_completed', { jobId: job.id, recommendation: result.qualificationRecommendation, model: result.generation.model })
   if (job.payload.workflow === 'full') return generateAndSaveOutreach(updated, { manualAction: 'full' })
   return updated
 }
@@ -699,10 +747,11 @@ async function runRefreshJob(job) {
   if (!job.payload.snapshotId) {
     const started = await triggerRecordRefresh({ url: lead.sourceUrl, settings })
     updateJob(job.id, { status: 'Waiting', progress: 8, payload: { ...job.payload, ...started }, nextAttemptAt: new Date(Date.now() + 10_000).toISOString() })
+    const waiting = readLead(job.leadId) || lead
     saveLead({
-      ...lead,
+      ...waiting,
       refreshJob: { id: job.id, status: 'Waiting', progress: 8, phase: 'Bright Data is refreshing the record' },
-      manualRun: manualRunState(lead, manualAction, { status: 'Waiting', progress: manualAction === 'full' ? 5 : 8, phase: 'Bright Data is refreshing the record', jobId: job.id }),
+      manualRun: manualRunState(waiting, manualAction, { status: 'Waiting', progress: manualAction === 'full' ? 5 : 8, phase: 'Bright Data is refreshing the record', jobId: job.id }),
       updated: 'Refreshing business data',
     })
     return
@@ -718,15 +767,14 @@ async function runRefreshJob(job) {
   const records = await downloadDiscovery(job.payload.snapshotId, settings)
   const fresh = records.map((record) => mapDiscoveryRecord(record, lead.category, lead.location)).find(Boolean)
   if (!fresh) throw new Error('Bright Data returned no usable business record for this client')
-  let updated = saveLead(enrichLead({
-    ...lead,
-    phone: fresh.phone !== 'Not collected' ? fresh.phone : lead.phone,
-    email: fresh.email !== 'Not collected' ? fresh.email : lead.email,
-    location: fresh.location !== 'Unknown' ? fresh.location : lead.location,
-    rating: fresh.rating || lead.rating,
-    reviews: fresh.reviews || lead.reviews,
+  // Merge into the latest row: provider fills only empty contact slots, so
+  // concurrent user edits (notes, chosen contacts, stage, contract, drafts)
+  // survive the refresh.
+  let updated = writeJobCompletion(job.leadId, (current) => enrichLead({
+    ...current,
+    ...buildRefreshPatch({ current, fresh }),
     refreshJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Business data refreshed' },
-    manualRun: manualRunState(lead, manualAction, manualAction === 'full'
+    manualRun: manualRunState(current, manualAction, manualAction === 'full'
       ? { status: 'Running', progress: 18, phase: 'Business data refreshed', jobId: job.id }
       : { status: 'Completed', progress: 100, phase: 'Business data refreshed', jobId: job.id, completedAt: nowIso() }),
     updated: 'Just now',
@@ -1079,15 +1127,32 @@ app.patch('/api/leads/:id', (req, res) => {
   if ('location' in body && typeof body.location !== 'string') push('location', 'Must be a string')
   if ('phone' in body && body.phone != null && String(body.phone).trim() && String(body.phone).trim() !== 'Not collected' && !isPhoneLike(String(body.phone))) push('phone', 'Invalid phone format')
   if ('email' in body && body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) push('email', 'Invalid email format')
+  if ('rev' in body && (!Number.isInteger(body.rev) || body.rev < 0)) push('rev', 'Must be a non-negative integer revision')
   if (details.length) return badRequest(res, null, 'Invalid lead patch values', details)
 
-  const patched = applyLeadWorkflowChanges(lead, body)
-  const draftEdited = ('outreachDraft' in body && String(body.outreachDraft || '') !== String(lead.outreachDraft || '')) ||
-    ('outreachDrafts' in body && JSON.stringify(body.outreachDrafts || {}) !== JSON.stringify(lead.outreachDrafts || {})) ||
-    ('outreachSubject' in body && String(body.outreachSubject || '') !== String(lead.outreachSubject || ''))
+  const { rev: expectedRev, ...changes } = body
+  const fresh = readLead(req.params.id)
+  if (!fresh) return notFound(res, 'Lead not found', 'id')
+  if (expectedRev != null && getRev(fresh) !== expectedRev) {
+    return res.status(409).json({
+      error: `This client changed while your edit was in flight (expected revision ${expectedRev}, current ${getRev(fresh)}). Reload and reapply the edit.`,
+      code: 'REVISION_CONFLICT', expectedRev, rev: getRev(fresh),
+    })
+  }
+  const patched = applyLeadWorkflowChanges(fresh, changes)
+  const draftEdited = ('outreachDraft' in changes && String(changes.outreachDraft || '') !== String(fresh.outreachDraft || '')) ||
+    ('outreachDrafts' in changes && JSON.stringify(changes.outreachDrafts || {}) !== JSON.stringify(fresh.outreachDrafts || {})) ||
+    ('outreachSubject' in changes && String(changes.outreachSubject || '') !== String(fresh.outreachSubject || ''))
   const updated = saveLead({ ...patched, ...(draftEdited ? { outreachEdited: true } : {}), updated: 'Just now' })
-  recordEvent('lead', lead.id, 'updated', { fields: Object.keys(body), draftEdited })
+  recordEvent('lead', lead.id, 'updated', { fields: Object.keys(changes), draftEdited })
   res.json(updated)
+})
+
+app.get('/api/leads/:id', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  res.json(lead)
 })
 
 app.post('/api/leads/:id/outreach/candidates', (req, res) => {
@@ -1105,7 +1170,7 @@ app.post('/api/leads/:id/outreach/candidates', (req, res) => {
       if (!Number.isInteger(index) || index < 0) return badRequest(res, 'index', 'Candidate index must be a non-negative integer')
       applied = acceptOutreachCandidate(lead, index)
     } else {
-      applied = dismissOutreachCandidates(lead)
+      applied = dismissOutreachCandidates()
     }
     const updated = saveLead({ ...lead, ...applied, updated: 'Just now' })
     recordEvent('lead', lead.id, action === 'accept' ? 'outreach_candidate_accepted' : 'outreach_candidates_dismissed', { index: body.index ?? null })
