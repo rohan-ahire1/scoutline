@@ -77,6 +77,8 @@ const defaultSettings = {
   maxPages: 10,
   requestDelay: 1500,
   respectRobots: true,
+  crawlMaxAttempts: 60,
+  crawlTimeLimitMs: 120000,
   blockPrivateNetworks: true,
   discoveryCountry: 'US',
   discoveryLatitude: 40.7608,
@@ -613,6 +615,8 @@ async function runAuditJob(job) {
     maxPages: settings.maxPages || 10,
     requestDelay: settings.requestDelay ?? 500,
     maxLinks: 50,
+    maxAttempts: settings.crawlMaxAttempts || 60,
+    timeLimitMs: settings.crawlTimeLimitMs || 120000,
     onProgress: ({ progress, phase }) => {
       updateJob(job.id, { progress })
       const activeLead = readLead(job.leadId)
@@ -1021,6 +1025,8 @@ app.patch('/api/settings', (req, res) => {
   if ('maxPages' in body) { const n = clampInt(body.maxPages, 1, 50); if (n == null) push('maxPages', 'Must be an integer 1-50') }
   if ('requestDelay' in body) { const n = clampInt(body.requestDelay, 0, 10000); if (n == null) push('requestDelay', 'Must be an integer 0-10000') }
   if ('respectRobots' in body && typeof body.respectRobots !== 'boolean') push('respectRobots', 'Must be a boolean')
+  if ('crawlMaxAttempts' in body) { const n = clampInt(body.crawlMaxAttempts, 10, 500); if (n == null) push('crawlMaxAttempts', 'Must be an integer 10-500') }
+  if ('crawlTimeLimitMs' in body) { const n = clampInt(body.crawlTimeLimitMs, 15000, 600000); if (n == null) push('crawlTimeLimitMs', 'Must be an integer 15000-600000') }
   if ('blockPrivateNetworks' in body && typeof body.blockPrivateNetworks !== 'boolean') push('blockPrivateNetworks', 'Must be a boolean')
   if ('discoveryCountry' in body && !isStringWithLength(body.discoveryCountry, 2, 3)) push('discoveryCountry', 'Must be 2-3 character country code')
   if ('discoveryLatitude' in body) { const n = Number(body.discoveryLatitude); if (!Number.isFinite(n) || n < -90 || n > 90) push('discoveryLatitude', 'Must be a number -90 to 90') }
