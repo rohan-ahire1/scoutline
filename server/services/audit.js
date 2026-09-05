@@ -135,34 +135,52 @@ export async function fetchPublicText(input, options = {}) {
 export async function fetchPublicStatus(input, options = {}) {
   let url = normalizeWebsite(input)
   const maxRedirects = options.maxRedirects ?? 5
+  let attempts = 0
+  let method = 'HEAD'
   for (let redirect = 0; redirect <= maxRedirects; redirect += 1) {
     await assertPublicUrl(url)
     let response
     try {
+      attempts += 1
       response = await fetch(url, {
         method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(options.timeoutMs ?? 7_000),
         headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,*/*;q=0.8' },
       })
       if ([405, 501].includes(response.status)) {
+        // Bounded HEAD-to-GET fallback: one ranged retry, body cancelled.
+        await response.body?.cancel().catch(() => {})
+        attempts += 1
+        method = 'GET'
         response = await fetch(url, {
           method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(options.timeoutMs ?? 7_000),
           headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,*/*;q=0.8', Range: 'bytes=0-1023' },
         })
       }
     } catch (error) {
-      throw new AuditError(`The link could not be checked: ${error.message}`, error?.name === 'TimeoutError' ? 'TIMEOUT' : 'FETCH_FAILED')
+      const failure = new AuditError(`The link could not be checked: ${error.message}`, error?.name === 'TimeoutError' ? 'TIMEOUT' : 'FETCH_FAILED')
+      failure.attempts = attempts
+      failure.method = method
+      throw failure
     }
     if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get('location')
-      if (!location) throw new AuditError('The link returned an invalid redirect', 'BAD_REDIRECT')
+      if (!location) {
+        const failure = new AuditError('The link returned an invalid redirect', 'BAD_REDIRECT')
+        failure.attempts = attempts
+        failure.method = method
+        throw failure
+      }
       await response.body?.cancel().catch(() => {})
       url = new URL(location, url)
       continue
     }
     await response.body?.cancel().catch(() => {})
-    return { url: url.href, status: response.status, ok: response.status < 400 }
+    return { url: url.href, status: response.status, ok: response.status < 400, attempts, method }
   }
-  throw new AuditError('The link redirected too many times', 'TOO_MANY_REDIRECTS')
+  const failure = new AuditError('The link redirected too many times', 'TOO_MANY_REDIRECTS')
+  failure.attempts = attempts
+  failure.method = method
+  throw failure
 }
 
 function normalizeInternalLink(value, baseUrl) {
@@ -222,17 +240,73 @@ async function mapConcurrent(values, concurrency, worker) {
   return results
 }
 
+export const LINK_OUTCOMES = {
+  REACHABLE: 'reachable',
+  CONFIRMED_BROKEN: 'confirmed_broken',
+  BLOCKED: 'blocked',
+  RATE_LIMITED: 'rate_limited',
+  SERVICE_ERROR: 'service_error',
+  TIMEOUT: 'timeout',
+  NETWORK_ERROR: 'network_error',
+  UNCHECKED: 'unchecked',
+}
+
+// A failed check is unavailable evidence, not a proven dead page. Only
+// definitive missing-resource responses count as confirmed broken.
+export function classifyLinkOutcome({ status = null, error = null, code = null } = {}) {
+  if (status != null) {
+    if (status < 400) return LINK_OUTCOMES.REACHABLE
+    if (status === 404 || status === 410) return LINK_OUTCOMES.CONFIRMED_BROKEN
+    if (status === 401 || status === 403) return LINK_OUTCOMES.BLOCKED
+    if (status === 429) return LINK_OUTCOMES.RATE_LIMITED
+    if (status >= 500) return LINK_OUTCOMES.SERVICE_ERROR
+    return LINK_OUTCOMES.CONFIRMED_BROKEN
+  }
+  if (code === 'TIMEOUT') return LINK_OUTCOMES.TIMEOUT
+  if (code === 'DNS_FAILED') return LINK_OUTCOMES.NETWORK_ERROR
+  if (code === 'FETCH_FAILED') return LINK_OUTCOMES.NETWORK_ERROR
+  if (error && /timeout/i.test(error.message || '')) return LINK_OUTCOMES.TIMEOUT
+  return LINK_OUTCOMES.UNCHECKED
+}
+
 export async function checkInternalLinks(urls, options = {}) {
+  const checkOne = options.checker || ((url) => fetchPublicStatus(url, { timeoutMs: options.timeoutMs || 7_000 }))
   const targets = [...new Map(urls.map((url) => [url.href, url])).values()].slice(0, Math.max(1, Math.min(100, Number(options.limit || 50))))
+  const observedAt = new Date().toISOString()
   const results = await mapConcurrent(targets, Math.max(1, Math.min(8, Number(options.concurrency || 5))), async (url) => {
     try {
-      const result = await fetchPublicStatus(url, { timeoutMs: options.timeoutMs || 7_000 })
-      return { url: url.href, status: result.status, broken: !result.ok, error: null }
+      const result = await checkOne(url)
+      const outcome = classifyLinkOutcome({ status: result.status })
+      return {
+        url: url.href, finalUrl: result.url || url.href, status: result.status, outcome,
+        broken: outcome === LINK_OUTCOMES.CONFIRMED_BROKEN, verified: outcome === LINK_OUTCOMES.REACHABLE || outcome === LINK_OUTCOMES.CONFIRMED_BROKEN,
+        error: null, code: null, observedAt, attempts: result.attempts || 1, method: result.method || 'HEAD',
+      }
     } catch (error) {
-      return { url: url.href, status: null, broken: true, error: error.message }
+      // Fallback exhaustion or a transport failure is unverified — never a
+      // broken-link assertion.
+      const outcome = classifyLinkOutcome({ error, code: error?.code })
+      return {
+        url: url.href, finalUrl: url.href, status: null, outcome,
+        broken: false, verified: false,
+        error: error?.message || 'Link check failed', code: error?.code || 'CHECK_FAILED', observedAt, attempts: error?.attempts || 1, method: error?.method || 'HEAD',
+      }
     }
   })
-  return { checked: results.length, broken: results.filter((result) => result.broken).length, results, truncated: urls.length > targets.length }
+  const byOutcome = {}
+  for (const result of results) byOutcome[result.outcome] = (byOutcome[result.outcome] || 0) + 1
+  const confirmed = byOutcome[LINK_OUTCOMES.CONFIRMED_BROKEN] || 0
+  const reachable = byOutcome[LINK_OUTCOMES.REACHABLE] || 0
+  return {
+    checked: results.length,
+    broken: confirmed,
+    reachable,
+    unverified: results.length - reachable - confirmed,
+    byOutcome,
+    results,
+    truncated: urls.length > targets.length,
+    status: !results.length || (results.every((result) => result.verified) && !results.some((result) => result.outcome === LINK_OUTCOMES.SERVICE_ERROR)) ? 'Completed' : 'Partial',
+  }
 }
 
 export async function crawlWebsite({ homeHtml, homeUrl, sitemapText = '', robots = null, maxPages = 10, requestDelay = 500, maxLinks = 50, onProgress = null }) {
@@ -636,20 +710,37 @@ export async function auditWebsite(website, options = {}) {
     if (seo != null) evidence.push(`SEO ${seo}/100 is an HTML-structure estimate, not a Lighthouse measurement`)
   }
   evidence.push(`Crawled ${crawl.pages.length} same-site page${crawl.pages.length === 1 ? '' : 's'} and checked ${crawl.links.checked} internal link${crawl.links.checked === 1 ? '' : 's'}`)
+  const linkSummary = {
+    attempted: crawl.links.checked,
+    reachable: crawl.links.reachable,
+    confirmedBroken: crawl.links.broken,
+    unverified: crawl.links.unverified,
+    byOutcome: crawl.links.byOutcome,
+    truncated: crawl.links.truncated,
+  }
   if (brokenLinks > 0) {
-    const detail = `${brokenLinks} broken internal link${brokenLinks === 1 ? ' was' : 's were'} found across the crawled pages.`
+    const detail = `${brokenLinks} confirmed broken internal link${brokenLinks === 1 ? ' was' : 's were'} found across the crawled pages (definitive 404/410 responses).`
     problems.unshift(detail)
-    evidence.push(`Broken internal links: ${brokenLinks} of ${crawl.links.checked} checked`)
+    evidence.push(`Confirmed broken internal links: ${brokenLinks} of ${crawl.links.checked} checked`)
     scoreAdjustment += Math.min(12, brokenLinks * 3)
     if (brokenLinks >= 3 && performance >= 50) { mainIssue = 'Broken customer paths'; issueDetail = detail }
+  }
+  if (linkSummary.unverified > 0) {
+    const parts = Object.entries(linkSummary.byOutcome)
+      .filter(([outcome]) => ![LINK_OUTCOMES.REACHABLE, LINK_OUTCOMES.CONFIRMED_BROKEN].includes(outcome))
+      .map(([outcome, count]) => `${count} ${outcome.replace(/_/g, ' ')}`)
+    evidence.push(`Link verification incomplete: ${linkSummary.unverified} of ${linkSummary.attempted} checked links could not be verified (${parts.join(', ')}). Unverified links are not broken and add no score.`)
+  }
+  if ((linkSummary.byOutcome[LINK_OUTCOMES.SERVICE_ERROR] || 0) > 0) {
+    evidence.push(`Observed service errors: ${linkSummary.byOutcome[LINK_OUTCOMES.SERVICE_ERROR]} links returned HTTP 5xx. These are observed service errors, not proven dead pages, and add no score.`)
   }
   if (crawl.errors.length) evidence.push(`Page crawl warnings: ${crawl.errors.length}`)
   const componentStatuses = {
     crawl: { status: crawl.status, pagesCrawled: crawl.pages.length, pageLimit: crawl.pageLimit, errors: crawl.errors.length, truncated: crawl.truncated },
-    links: { status: 'Completed', checked: crawl.links.checked, broken: crawl.links.broken, truncated: crawl.links.truncated },
+    links: { status: crawl.links.status, checked: crawl.links.checked, broken: crawl.links.broken, truncated: crawl.links.truncated, linkSummary },
     lighthouse: lighthouseSummary,
   }
-  const auditStatus = lighthouseSummary.status === 'Completed' && crawl.status === 'Completed' ? 'Completed' : 'Partial'
+  const auditStatus = lighthouseSummary.status === 'Completed' && crawl.status === 'Completed' && crawl.links.status === 'Completed' ? 'Completed' : 'Partial'
   if (shellCapture) {
     // JavaScript shell: lab measurements are real and kept, but the DOM was
     // never rendered, so no defect-derived opportunity or confidence is claimed.
@@ -715,12 +806,14 @@ export async function auditWebsite(website, options = {}) {
     measureProvenance,
     brokenLinks,
     checkedLinks: crawl.links.checked,
+    linkSummary,
     mobileQuality: performance == null ? baseline.mobileQuality : performance >= 75 ? 'Good' : performance >= 50 ? 'Fair' : 'Poor',
     auditStatus,
     auditComponents: componentStatuses,
     crawlPages: crawl.pages,
     crawlErrors: crawl.errors,
-    brokenLinkDetails: crawl.links.results.filter((result) => result.broken).slice(0, 20),
+    brokenLinkDetails: crawl.links.results.filter((result) => result.outcome === LINK_OUTCOMES.CONFIRMED_BROKEN).slice(0, 20),
+    unverifiedLinkDetails: crawl.links.results.filter((result) => !result.verified).slice(0, 20).map((result) => ({ url: result.url, finalUrl: result.finalUrl, status: result.status, outcome: result.outcome, error: result.error, observedAt: result.observedAt })),
     lighthouse: lighthouseSummary,
     auditSummary: {
       ...baseline.auditSummary,

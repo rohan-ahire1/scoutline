@@ -161,3 +161,16 @@ test('malformed and empty model responses yield actionable errors', () => {
   assert.throws(() => validateMuseAnalysis({ summary: 'x', topOpportunities: 'nope', qualificationRecommendation: 'Pursue' }, {}), /malformed opportunities/)
   assert.throws(() => validateMuseAnalysis({ summary: '', topOpportunities: [], qualificationRecommendation: 'Pursue', noSupportedOpportunity: true }, {}), /did not return a summary/)
 })
+
+test('packet carries link denominators and never calls blocked links broken', () => {
+  const packet = buildMuseEvidencePacket({
+    company: 'Acme', checkedLinks: 9, brokenLinks: 2,
+    linkSummary: { attempted: 9, reachable: 1, confirmedBroken: 2, unverified: 6, byOutcome: { blocked: 2 }, truncated: false },
+    unverifiedLinkDetails: [{ url: 'https://acme.example/private', outcome: 'blocked', status: 403, error: null }],
+    brokenLinkDetails: [{ url: 'https://acme.example/gone', outcome: 'confirmed_broken', status: 404, error: null }],
+  })
+  assert.equal(packet.measuredAudit.linkSummary.confirmedBroken, 2)
+  assert.equal(packet.measuredAudit.linkSummary.unverified, 6)
+  assert.equal(packet.measuredAudit.unverifiedLinks[0].outcome, 'blocked')
+  assert.ok(packet.brokenLinkDetails.every((item) => item.outcome === 'confirmed_broken'))
+})

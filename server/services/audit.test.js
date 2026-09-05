@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { analyzeHtml, assertPublicUrl, classifyCapture, composeScoreProvenance, extractInternalLinks, isPrivateAddress, normalizeWebsite } from './audit.js'
+import { analyzeHtml, assertPublicUrl, checkInternalLinks, classifyCapture, classifyLinkOutcome, composeScoreProvenance, extractInternalLinks, fetchPublicStatus, isPrivateAddress, LINK_OUTCOMES, normalizeWebsite } from './audit.js'
 
 test('normalizes public website inputs', () => {
   assert.equal(normalizeWebsite('example.com').href, 'https://example.com/')
@@ -96,4 +96,111 @@ test('confidence follows fired checks, not boilerplate volume', () => {
   const sparse = analyzeHtml('<html><head><title>Acme</title></head><body><h1>Roofing</h1></body></html>', new URL('https://example.com/'))
   assert.ok(sparse.confidence > healthy.confidence, `sparse ${sparse.confidence} vs healthy ${healthy.confidence}`)
   assert.ok(sparse.opportunityScore > healthy.opportunityScore)
+})
+
+test('link outcomes separate broken pages from blocked and failed checks', () => {
+  assert.equal(classifyLinkOutcome({ status: 200 }), LINK_OUTCOMES.REACHABLE)
+  assert.equal(classifyLinkOutcome({ status: 301 }), LINK_OUTCOMES.REACHABLE)
+  assert.equal(classifyLinkOutcome({ status: 404 }), LINK_OUTCOMES.CONFIRMED_BROKEN)
+  assert.equal(classifyLinkOutcome({ status: 410 }), LINK_OUTCOMES.CONFIRMED_BROKEN)
+  assert.equal(classifyLinkOutcome({ status: 401 }), LINK_OUTCOMES.BLOCKED)
+  assert.equal(classifyLinkOutcome({ status: 403 }), LINK_OUTCOMES.BLOCKED)
+  assert.equal(classifyLinkOutcome({ status: 429 }), LINK_OUTCOMES.RATE_LIMITED)
+  assert.equal(classifyLinkOutcome({ status: 500 }), LINK_OUTCOMES.SERVICE_ERROR)
+  assert.equal(classifyLinkOutcome({ status: 503 }), LINK_OUTCOMES.SERVICE_ERROR)
+  assert.equal(classifyLinkOutcome({ error: new Error('The link could not be checked: timeout'), code: 'TIMEOUT' }), LINK_OUTCOMES.TIMEOUT)
+  assert.equal(classifyLinkOutcome({ error: new Error('Could not resolve host'), code: 'DNS_FAILED' }), LINK_OUTCOMES.NETWORK_ERROR)
+  assert.equal(classifyLinkOutcome({ error: new Error('socket hang up'), code: 'FETCH_FAILED' }), LINK_OUTCOMES.NETWORK_ERROR)
+  assert.equal(classifyLinkOutcome({ error: new Error('The link redirected too many times'), code: 'TOO_MANY_REDIRECTS' }), LINK_OUTCOMES.UNCHECKED)
+})
+
+test('a timeout is unverified and adds zero broken-link score', async () => {
+  const timeoutError = new Error('The link could not be checked: operation timed out')
+  timeoutError.name = 'TimeoutError'
+  timeoutError.code = 'TIMEOUT'
+  const checked = await checkInternalLinks([new URL('https://example.com/slow')], {
+    checker: () => { throw timeoutError },
+  })
+  assert.equal(checked.checked, 1)
+  assert.equal(checked.broken, 0)
+  assert.equal(checked.unverified, 1)
+  assert.equal(checked.results[0].outcome, LINK_OUTCOMES.TIMEOUT)
+  assert.equal(checked.results[0].broken, false)
+  assert.equal(checked.results[0].verified, false)
+})
+
+test('mixed link outcomes produce explicit totals and Partial status', async () => {
+  const script = [
+    { status: 200, url: 'https://example.com/ok' },
+    { status: 404, url: 'https://example.com/gone' },
+    { status: 410, url: 'https://example.com/removed' },
+    { status: 401, url: 'https://example.com/private' },
+    { status: 403, url: 'https://example.com/denied' },
+    { status: 429, url: 'https://example.com/limited' },
+    { status: 500, url: 'https://example.com/error' },
+  ]
+  const failures = new Map([
+    ['https://example.com/timeout', Object.assign(new Error('The link could not be checked: TimeoutError'), { code: 'TIMEOUT' })],
+    ['https://example.com/dns', Object.assign(new Error('Could not resolve nowhere.invalid'), { code: 'DNS_FAILED' })],
+  ])
+  const checked = await checkInternalLinks(
+    [...script.map((item) => new URL(item.url)), ...[...failures.keys()].map((href) => new URL(href))],
+    {
+      checker: (url) => {
+        if (failures.has(url.href)) throw failures.get(url.href)
+        const hit = script.find((item) => item.url === url.href)
+        return { url: url.href, status: hit.status, ok: hit.status < 400 }
+      },
+    },
+  )
+  assert.equal(checked.checked, 9)
+  assert.equal(checked.broken, 2)
+  assert.equal(checked.reachable, 1)
+  assert.equal(checked.unverified, 6)
+  assert.deepEqual(checked.byOutcome, {
+    reachable: 1, confirmed_broken: 2, blocked: 2, rate_limited: 1, service_error: 1, timeout: 1, network_error: 1,
+  })
+  assert.equal(checked.status, 'Partial')
+})
+
+test('all-verified links keep a Completed component status', async () => {
+  const checked = await checkInternalLinks([new URL('https://example.com/a'), new URL('https://example.com/b')], {
+    checker: (url) => ({ url: url.href, status: url.href.endsWith('/a') ? 200 : 404, ok: url.href.endsWith('/a') }),
+  })
+  assert.equal(checked.status, 'Completed')
+  assert.equal(checked.broken, 1)
+})
+
+test('HEAD 405 falls back to a bounded ranged GET', async () => {
+  // Public IP literals skip DNS so the transport can be stubbed deterministically.
+  const calls = []
+  const realFetch = globalThis.fetch
+  const response = (status, headers = {}) => ({
+    status,
+    headers: { get: (name) => headers[name.toLowerCase()] || null },
+    body: { cancel: async () => {} },
+  })
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ href: String(url), method: options.method, range: options.headers?.Range })
+    if (String(url).endsWith('/fallback')) {
+      if (options.method === 'HEAD') return response(405)
+      return response(200)
+    }
+    if (String(url).endsWith('/redirect')) {
+      return response(301, { location: 'http://93.184.216.34/fallback' })
+    }
+    return response(200)
+  }
+  try {
+    const direct = await fetchPublicStatus('http://93.184.216.34/fallback', { timeoutMs: 2000 })
+    assert.equal(direct.status, 200)
+    assert.equal(direct.method, 'GET')
+    assert.equal(direct.attempts, 2)
+    const viaRedirect = await fetchPublicStatus('http://93.184.216.34/redirect', { timeoutMs: 2000 })
+    assert.equal(viaRedirect.status, 200)
+    assert.equal(viaRedirect.url, 'http://93.184.216.34/fallback')
+    assert.ok(calls.some((call) => call.range === 'bytes=0-1023'), 'GET fallback must be range-limited')
+  } finally {
+    globalThis.fetch = realFetch
+  }
 })
