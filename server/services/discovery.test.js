@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getDiscoveryLimits, mapDiscoveryRecord } from './discovery.js'
+import { describeGeographyCoverage, downloadDiscovery, filterSavedClientsByLocation, getDiscoveryLimits, mapDiscoveryRecord, reconcileRecords, resolveSearchDefinition, triggerDiscovery } from './discovery.js'
 
 test('caps provider results across category inputs', () => {
   assert.deepEqual(getDiscoveryLimits(5, 3, 25), { total: 5, perInput: 2 })
@@ -28,4 +28,134 @@ test('maps a Bright Data-style place record into a lead', () => {
 
 test('ignores records without a business website', () => {
   assert.equal(mapDiscoveryRecord({ name: 'Map only', url: 'https://google.com/maps/place/x' }), null)
+})
+
+const SLC_SETTINGS = { defaultLocation: 'Salt Lake City, Utah', discoveryLatitude: 40.7608, discoveryLongitude: -111.891, discoveryCountry: 'US', discoveryZoom: 13 }
+
+test('a new place name never silently reuses unrelated coordinates', () => {
+  assert.throws(() => resolveSearchDefinition({ location: 'Miami, Florida', categories: ['Roofing'], settings: SLC_SETTINGS }), /Cannot resolve coordinates for "Miami, Florida"/)
+})
+
+test('explicit coordinates need no paid geocoder', () => {
+  const search = resolveSearchDefinition({ location: 'Miami, Florida', latitude: 25.7617, longitude: -80.1918, categories: ['Roofing'], settings: SLC_SETTINGS })
+  assert.equal(search.displayLocation, 'Miami, Florida')
+  assert.equal(search.latitude, 25.7617)
+  assert.equal(search.longitude, -80.1918)
+  assert.equal(search.coordinateSource, 'manual')
+  assert.equal(search.geocoded, false)
+  assert.match(search.areaLabel, /25.7617, -80.1918/)
+})
+
+test('the configured default location resolves to its saved coordinates', () => {
+  const search = resolveSearchDefinition({ location: 'Salt Lake City, Utah', categories: ['Roofing'], settings: SLC_SETTINGS })
+  assert.equal(search.latitude, 40.7608)
+  assert.equal(search.coordinateSource, 'settings-default')
+})
+
+test('invalid and ambiguous geography is rejected with actionable errors', () => {
+  assert.throws(() => resolveSearchDefinition({ location: 'Miami, Florida', latitude: 25.7, categories: ['Roofing'], settings: SLC_SETTINGS }), /Longitude is required/)
+  assert.throws(() => resolveSearchDefinition({ location: 'Nowhere', latitude: 91, longitude: 0, categories: ['Roofing'], settings: SLC_SETTINGS }), /Latitude must be a number between -90 and 90/)
+  assert.throws(() => resolveSearchDefinition({ location: 'Springfield', categories: ['Roofing'], settings: SLC_SETTINGS }), /GEOGRAPHY_UNRESOLVED|Cannot resolve coordinates/)
+  assert.throws(() => resolveSearchDefinition({ location: 'Miami, Florida', categories: [], settings: SLC_SETTINGS }), /business category/)
+  assert.throws(() => resolveSearchDefinition({ location: 'Miami, Florida', latitude: 25.7, longitude: -80.1, zoom: 5, categories: ['Roofing'], settings: SLC_SETTINGS }), /Zoom must be/)
+})
+
+test('the provider request uses the run snapshot, not live settings', async () => {
+  const realFetch = globalThis.fetch
+  const seen = []
+  globalThis.fetch = async (url, options = {}) => {
+    seen.push({ url: String(url), body: options.body ? JSON.parse(options.body) : null })
+    return { ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ snapshot_id: 'snap-1' }), text: async () => '{"snapshot_id":"snap-1"}' }
+  }
+  const realKey = process.env.BRIGHT_DATA_API_KEY
+  process.env.BRIGHT_DATA_API_KEY = 'test-key'
+  try {
+    const search = resolveSearchDefinition({ location: 'Miami, Florida', latitude: 25.7617, longitude: -80.1918, categories: ['Roofing'], settings: SLC_SETTINGS })
+    SLC_SETTINGS.discoveryLatitude = 0
+    const started = await triggerDiscovery({ search, limit: 5, settings: SLC_SETTINGS })
+    assert.equal(started.snapshotId, 'snap-1')
+    assert.equal(seen[0].body[0].lat, 25.7617)
+    assert.equal(seen[0].body[0].long, -80.1918)
+    assert.ok(seen[0].body[0].keyword.includes('Miami, Florida'))
+    assert.deepEqual(started.submittedGeography.coordinateSource, 'manual')
+  } finally {
+    globalThis.fetch = realFetch
+    SLC_SETTINGS.discoveryLatitude = 40.7608
+    if (realKey == null) delete process.env.BRIGHT_DATA_API_KEY
+    else process.env.BRIGHT_DATA_API_KEY = realKey
+  }
+})
+
+test('malformed provider payloads fail while valid empty results succeed', async () => {
+  const realFetch = globalThis.fetch
+  const realKey = process.env.BRIGHT_DATA_API_KEY
+  process.env.BRIGHT_DATA_API_KEY = 'test-key'
+  const bodies = {
+    error: { error: 'snapshot expired' },
+    malformed: { unexpected: true },
+    empty: [],
+  }
+  let mode = 'error'
+  globalThis.fetch = async () => ({
+    ok: true, status: 200, headers: { get: () => 'application/json' },
+    json: async () => bodies[mode], text: async () => JSON.stringify(bodies[mode]),
+  })
+  try {
+    await assert.rejects(() => downloadDiscovery('snap-1', {}), /Bright Data reported an error/)
+    mode = 'malformed'
+    await assert.rejects(() => downloadDiscovery('snap-1', {}), /malformed snapshot payload/)
+    mode = 'empty'
+    assert.deepEqual(await downloadDiscovery('snap-1', {}), [])
+  } finally {
+    globalThis.fetch = realFetch
+    if (realKey == null) delete process.env.BRIGHT_DATA_API_KEY
+    else process.env.BRIGHT_DATA_API_KEY = realKey
+  }
+})
+
+test('reconciliation totals add up with per-row reasons', () => {
+  const good = { name: 'Acme', website: 'https://acme.example/', category: 'Roofing' }
+  const result = reconcileRecords([
+    good,
+    { name: 'Acme Copy', website: 'https://acme.example/contact' },
+    { name: 'No site' },
+    null,
+    { name: 'Beta', website: 'https://beta.example/' },
+  ], { fallbackCategory: 'Unknown', fallbackLocation: 'Miami, Florida', limit: 10 })
+  assert.equal(result.returned, 5)
+  assert.equal(result.retained.length, 2)
+  assert.equal(result.rejectedCount, 3)
+  assert.equal(result.duplicates, 1)
+  assert.equal(result.unusable, 2)
+  assert.equal(result.returned, result.retained.length + result.rejectedCount)
+  assert.ok(result.rejected.every((row) => row.reason))
+  assert.equal(result.retained[0].categoryProvenance, 'provider')
+  assert.equal(result.retained[1].category, 'Unknown')
+  assert.equal(result.retained[1].categoryProvenance, 'unknown')
+})
+
+test('requested versus actual geography flags out-of-area evidence', () => {
+  const search = resolveSearchDefinition({ location: 'Miami, Florida', latitude: 25.7617, longitude: -80.1918, categories: ['Roofing'], settings: SLC_SETTINGS })
+  const coverage = describeGeographyCoverage(search, [
+    { company: 'Near', website: 'near.example', businessIntelligence: { locations: [{ latitude: 25.77, longitude: -80.19 }] } },
+    { company: 'Far', website: 'far.example', businessIntelligence: { locations: [{ latitude: 40.7, longitude: -111.9 }] } },
+    { company: 'NoPin', website: 'nopin.example', businessIntelligence: { locations: [{}] } },
+  ])
+  assert.equal(coverage.requested.displayLocation, 'Miami, Florida')
+  assert.equal(coverage.recordsWithCoordinates, 2)
+  assert.equal(coverage.outOfArea.length, 1)
+  assert.equal(coverage.outOfArea[0].company, 'Far')
+  assert.match(coverage.coverageNote, /not an exhaustive search/)
+})
+
+test('saved-client mode filters by city text and reports the filter', () => {
+  const leads = [
+    { company: 'A', location: 'Miami, Florida' },
+    { company: 'B', location: 'Salt Lake City, Utah' },
+    { company: 'C', location: 'Miami Beach, Florida' },
+  ]
+  const filtered = filterSavedClientsByLocation(leads, 'Miami, Florida')
+  assert.deepEqual(filtered.matched.map((lead) => lead.company), ['A', 'C'])
+  assert.equal(filtered.scanned, 3)
+  assert.equal(filtered.city, 'miami')
 })
