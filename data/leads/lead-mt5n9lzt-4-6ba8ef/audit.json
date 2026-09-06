@@ -11,6 +11,7 @@
   "performance": null,
   "accessibility": 88,
   "seo": 52,
+  "measureProvenance": null,
   "mobileQuality": "Good",
   "https": true,
   "checkedLinks": 18,
@@ -180,6 +181,8 @@
   ],
   "crawlErrors": [],
   "brokenLinkDetails": [],
+  "linkSummary": null,
+  "unverifiedLinkDetails": [],
   "lighthouse": {
     "status": "Failed",
     "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
@@ -187,6 +190,11 @@
   },
   "auditedUrl": "https://general-contractors-utah.com/",
   "auditedAt": "2026-08-23T10:09:56.147Z",
+  "captureQuality": null,
+  "lastAuditAttempt": null,
+  "lastSuccessfulAudit": null,
+  "currentAuditId": null,
+  "auditVersion": null,
   "researchFailure": null,
   "history": [
     {

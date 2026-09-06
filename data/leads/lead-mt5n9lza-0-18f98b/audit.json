@@ -11,6 +11,7 @@
   "performance": null,
   "accessibility": 98,
   "seo": 100,
+  "measureProvenance": null,
   "mobileQuality": "Good",
   "https": true,
   "checkedLinks": 50,
@@ -181,6 +182,8 @@
       "error": null
     }
   ],
+  "linkSummary": null,
+  "unverifiedLinkDetails": [],
   "lighthouse": {
     "status": "Failed",
     "error": "The CHROME_PATH environment variable must be set to a Chrome/Chromium executable no older than Chrome stable.",
@@ -188,6 +191,11 @@
   },
   "auditedUrl": "https://samedayutah.com/",
   "auditedAt": "2026-08-23T10:08:48.475Z",
+  "captureQuality": null,
+  "lastAuditAttempt": null,
+  "lastSuccessfulAudit": null,
+  "currentAuditId": null,
+  "auditVersion": null,
   "researchFailure": null,
   "history": [
     {
