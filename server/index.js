@@ -9,8 +9,9 @@ import { auditWebsite } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
 import { generateOutreach, getOutreachConfig } from './services/outreach.js'
-import { describeGeographyCoverage, DiscoveryError, downloadDiscovery, filterSavedClientsByLocation, getBrightDataConfig, legacySearchFromSettings, mapDiscoveryRecord, pollDiscovery, reconcileRecords, resolveSearchDefinition, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
+import { businessIdentityFor, describeGeographyCoverage, DiscoveryError, downloadDiscovery, filterSavedClientsByLocation, getBrightDataConfig, legacySearchFromSettings, mapDiscoveryRecord, pollDiscovery, reconcileRecords, resolveSearchDefinition, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
+import { scoreLeadValue } from './services/leadValue.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
 import { canRetryJob, classifyJobError, findTimedOutJobs, isActiveJobStatus, isTerminalJobStatus } from './services/jobControl.js'
 import { acceptOutreachCandidate, buildRefreshPatch, dismissOutreachCandidates, getRev, resolveOutreachCompletion, resolveSynthesisCompletion, updateLeadFields } from './services/revisions.js'
@@ -93,6 +94,7 @@ const defaultSettings = {
   respectRobots: true,
   crawlMaxAttempts: 60,
   crawlTimeLimitMs: 120000,
+  leadValueWeights: { need: 0.35, businessFit: 0.3, reachability: 0.2, timing: 0.15 },
   jobTimeoutMs: 600000,
   discoveryPollTimeoutMs: 1800000,
   runTimeoutMs: 7200000,
@@ -115,7 +117,7 @@ const ALLOWED_OUTREACH_VERSIONS = new Set(['Concise','Balanced','Detailed'])
 const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting','Insufficient evidence'])
 const ALLOWED_MANUAL_ACTIONS = new Set(['refresh','audit','muse','outreach','full'])
 const ALLOWED_SETTINGS_KEYS = new Set(Object.keys(defaultSettings))
-const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale'])
+const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale','website'])
 
 function isNonEmptyString(v, max = 120) {
   return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
@@ -296,8 +298,8 @@ function leadMarkdown(lead) {
   return `# ${lead.company}\n\n` +
     (lead.currentAuditId ? `## Audit version\n\n- Audit ID: ${lead.currentAuditId}${lead.auditVersion != null ? ` (version ${lead.auditVersion})` : ''}\n- Provenance: versioned audit artifacts\n\n` : `## Audit version\n\n- Audit ID: legacy (unversioned)\n- Provenance: unknown — pre-versioning record\n\n`) +
     `## Business profile\n\n` +
-    `- Category: ${lead.category}\n- Location: ${lead.location}\n- Website: https://${lead.website}\n- Phone: ${lead.phone}\n- Public email: ${lead.email}\n- Google rating: ${lead.rating} (${lead.reviews} reviews)\n\n` +
-    `## Opportunity assessment\n\n- Preliminary opportunity: ${lead.prelimScore}/100\n- Opportunity score: ${lead.opportunityScore ?? 'Not analyzed'}\n- Confidence: ${lead.confidence ?? 'Not analyzed'}\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Research status: ${lead.researchStatus}\n- Rebuild feasibility: ${lead.rebuild}${lead.researchFailure ? `\n- Failed stage: ${['Scraped', 'Analyzed', 'Qualified'][lead.researchFailure.stage] || 'Unknown'}\n- Failure reason: ${lead.researchFailure.reason}` : ''}\n\n` +
+    `- Category: ${lead.category}\n- Location: ${lead.location}\n- Website: ${lead.website ? `https://${lead.website}` : `Not supplied (${lead.websiteStatus || 'not_supplied'})`}\n- Phone: ${lead.phone}\n- Public email: ${lead.email}\n- Google rating: ${lead.rating} (${lead.reviews} reviews)\n\n` +
+    `## Opportunity assessment\n\n- Preliminary opportunity: ${lead.prelimScore}/100\n- Opportunity score: ${lead.opportunityScore ?? 'Not analyzed'}\n- Confidence: ${lead.confidence ?? 'Not analyzed'}\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Research status: ${lead.researchStatus}\n- Commercial value: ${lead.leadValue ? `${lead.leadValue.leadValueScore}/100 (${lead.leadValue.band}, coverage ${Math.round((lead.leadValue.coverage || 0) * 100)}%, rubric ${lead.leadValue.version})` : 'Not scored'}\n- Rebuild feasibility: ${lead.rebuild}${lead.researchFailure ? `\n- Failed stage: ${['Scraped', 'Analyzed', 'Qualified'][lead.researchFailure.stage] || 'Unknown'}\n- Failure reason: ${lead.researchFailure.reason}` : ''}\n\n` +
     `## Website audit\n\n- Mobile performance: ${formatProvenanceScore(resolveMetricProvenance(lead, 'performance'))}\n- Accessibility: ${formatProvenanceScore(resolveMetricProvenance(lead, 'accessibility'))}\n- SEO: ${formatProvenanceScore(resolveMetricProvenance(lead, 'seo'))}\n- Best practices: ${formatProvenanceScore(resolveNestedProvenance(lead?.measureProvenance?.bestPractices, lead?.lighthouse?.scores?.bestPractices))}\n- Same-site pages crawled: ${lead.pageCount ?? 'Not measured'}\n- Internal links checked: ${lead.checkedLinks ?? 'Not measured'}\n- Broken internal links: ${lead.brokenLinks ?? 'Not measured'}${lead.linkSummary ? ` (confirmed 404/410 of ${lead.linkSummary.attempted ?? '?'} attempted; ${lead.linkSummary.reachable ?? 0} reachable, ${lead.linkSummary.unverified ?? 0} unverified — blocked/unreachable links are not called broken)` : ''}\n- Mobile quality: ${lead.mobileQuality}\n- HTTPS: ${lead.https == null ? 'Not measured' : lead.https ? 'Yes' : 'No'}\n- Detected stack: ${(lead.stack || []).join(', ') || 'Unknown'}\n\n` +
     `## Business intelligence\n\n- Digital maturity: ${lead.businessIntelligence?.digitalMaturity?.score ?? 'Not calculated'}/100${lead.businessIntelligence?.digitalMaturity?.band ? ` (${lead.businessIntelligence.digitalMaturity.band})` : ''}${lead.businessIntelligence?.digitalMaturity?.version ? ` [formula v${lead.businessIntelligence.digitalMaturity.version}]` : ''}${lead.businessIntelligence?.digitalMaturity?.coverage ? ` — evidence coverage ${lead.businessIntelligence.digitalMaturity.coverage.measuredComponents}/${lead.businessIntelligence.digitalMaturity.coverage.totalComponents} components (${lead.businessIntelligence.digitalMaturity.coverage.share}% of weighted signals measured)` : ''}\n- Employees: ${metric('employeeCount')}\n- Annual revenue: ${metric('annualRevenue')}\n- Annual profit: ${metric('annualProfit')}\n- Founded: ${metric('foundedYear')}\n- Branch count: ${metric('branchCount')}\n- Locations observed in discovery: ${lead.businessIntelligence?.locationsObserved ?? 'Not observed'}\n- Google profile claimed: ${lead.businessIntelligence?.claimed == null ? 'Unknown' : lead.businessIntelligence.claimed ? 'Yes' : 'No'}\n- Online booking: ${lead.businessIntelligence?.onlineBooking ? 'Detected' : 'Not detected'}\n- Four- and five-star review share: ${lead.businessIntelligence?.positiveReviewShare ?? 'Unknown'}${lead.businessIntelligence?.positiveReviewShare != null ? '%' : ''}\n- Latest sampled review: ${lead.businessIntelligence?.latestObservedReviewAt || 'Unknown'}\n\nSource-backed fields remain unknown when no provider supplies them.\n\n` +
     (lead.captureQuality || lead.researchStatus === 'Inconclusive' ? `## Capture quality\n\n- Assessment: ${lead.researchStatus === 'Inconclusive' ? 'Inconclusive — no defect-derived score is claimed' : lead.researchStatus}\n- Capture: ${lead.captureQuality?.quality || 'Not recorded'} via ${lead.captureQuality?.captureMethod || 'unknown method'}\n- Reason: ${lead.captureQuality?.reason || lead.lastAuditAttempt?.reason || 'Not recorded'}\n- Rendered-page fallback: ${lead.captureQuality?.renderedFallback || 'not applicable'}\n- Last successful audit: ${lead.lastSuccessfulAudit ? `${lead.lastSuccessfulAudit.score}/100 on ${lead.lastSuccessfulAudit.at} (${lead.lastSuccessfulAudit.url || 'URL not recorded'})` : 'None recorded'}\n\n` : '') +
@@ -533,15 +535,21 @@ function importedLead(row, index = 0, source = 'CSV import') {
   const rating = Number(row.rating || 0)
   const reviews = Number(row.reviews || row.review_count || 0)
   const score = Math.max(35, Math.min(95, Math.round(42 + rating * 6 + Math.log10(Math.max(reviews, 1)) * 8)))
+  const website = String(row.website || row.domain || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
+  // Website state (ROH-5): omission is unknown, never proof of absence.
+  const websiteStatus = row.websiteStatus === 'audited' ? 'audited' : website ? (row.websiteStatus || 'supplied') : 'not_supplied'
+  const businessId = String(row.businessId || '').trim() || `manual:${randomUUID()}`
   const lead = {
     id: `lead-${Date.now().toString(36)}-${index}-${randomUUID().slice(0, 6)}`,
     company: String(row.company || row.name || row.business || '').trim(),
-    website: String(row.website || row.domain || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, ''),
+    website,
+    websiteStatus,
+    businessId,
     category: row.category || 'Uncategorized', location: row.location || row.address || 'Unknown', address: row.address || row.location || 'Not collected',
     phone: row.phone || 'Not collected', email: row.email || 'Not collected', rating, reviews,
     sourceUrl: row.sourceUrl || null, prelimScore: score, opportunityScore: null, confidence: null,
-    researchStatus: 'Collected', salesStage: null, mainIssue: 'Audit pending',
-    issueDetail: 'Business data was saved; website evidence has not been collected yet.',
+    researchStatus: 'Collected', salesStage: null, mainIssue: website ? 'Audit pending' : 'No website supplied',
+    issueDetail: website ? 'Business data was saved; website evidence has not been collected yet.' : 'Business data was saved without a website; it can be scored, qualified and moved through sales, and audited once a website is added.',
     updated: 'Just now', collectedAt: new Date().toLocaleString('en-US'), pageCount: null, performance: null,
     accessibility: null, seo: null, checkedLinks: null, brokenLinks: null, auditStatus: null, auditComponents: null,
     lighthouse: null, crawlPages: [], crawlErrors: [], brokenLinkDetails: [], mobileQuality: 'Unknown', https: null,
@@ -561,23 +569,84 @@ function importedLead(row, index = 0, source = 'CSV import') {
     },
   }
   const hasCsvIntelligence = Object.values(csvIntelligence.companyMetrics).some((item) => item.value != null)
-  return row.businessIntelligence || hasCsvIntelligence ? enrichLead(lead, row.businessIntelligence || csvIntelligence) : lead
+  const assembled = row.businessIntelligence || hasCsvIntelligence ? enrichLead(lead, row.businessIntelligence || csvIntelligence) : lead
+  // Business-only signals still produce an honest low-coverage value score.
+  assembled.leadValue = scoreLeadValue(assembled, { weights: readSettings().leadValueWeights })
+  return assembled
+}
+
+function normalizeIdentityText(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+  // Placeholder addresses carry no identity evidence.
+  return normalized === 'unknown' || normalized === 'not collected' ? '' : normalized
+}
+
+// Identity-first duplicate detection (ROH-5). Merge order: exact businessId,
+// then shared provider place/cid, then conservative name + (address or
+// contact) evidence. A shared domain or bare company name alone never merges —
+// two franchise locations on one domain stay distinct, and ambiguous rows stay
+// separate for human review instead of being auto-merged.
+function findDuplicateLead(lead) {
+  const existing = readRows('leads')
+  const byBusinessId = lead.businessId && !lead.businessId.startsWith('manual:')
+    ? existing.find((item) => item.businessId === lead.businessId)
+    : null
+  if (byBusinessId) return { lead: byBusinessId, matchBasis: 'business-id' }
+  const placeId = lead.businessIntelligence?.placeId || null
+  const cid = lead.businessIntelligence?.cid || null
+  if (placeId || cid) {
+    const byProvider = existing.find((item) => (placeId && item.businessIntelligence?.placeId === placeId) || (cid && item.businessIntelligence?.cid === cid))
+    if (byProvider) return { lead: byProvider, matchBasis: 'provider-id' }
+  }
+  const name = normalizeIdentityText(lead.company)
+  const address = normalizeIdentityText(lead.address === 'Not collected' ? '' : lead.address)
+  const phone = String(lead.phone || '').replace(/[^0-9]/g, '')
+  const email = String(lead.email || '').trim().toLowerCase()
+  if (name) {
+    const byEvidence = existing.find((item) => {
+      if (normalizeIdentityText(item.company) !== name) return false
+      const itemAddress = normalizeIdentityText(item.address === 'Not collected' ? '' : item.address)
+      const itemPhone = String(item.phone || '').replace(/[^0-9]/g, '')
+      const itemEmail = String(item.email || '').trim().toLowerCase()
+      if (address && itemAddress && address === itemAddress) return true
+      if (phone.length >= 7 && phone === itemPhone) return true
+      if (email && email !== 'not collected' && email === itemEmail) return true
+      return false
+    })
+    if (byEvidence) return { lead: byEvidence, matchBasis: 'name-plus-evidence' }
+  }
+  return null
 }
 
 function insertUniqueLead(row, index, source, { runId = null, at = nowIso() } = {}) {
   const lead = importedLead(row, index, source)
-  if (!lead.company || !lead.website) return null
-  const domain = lead.website.toLowerCase().replace(/\/$/, '')
-  const duplicate = readRows('leads').find((item) => String(item.website || '').toLowerCase().replace(/\/$/, '') === domain)
+  if (!lead.company) return null
+  const duplicate = findDuplicateLead(lead)
   if (duplicate) {
-    const touched = touchLeadRun(duplicate, { runId, source, relationship: 'matched', at })
+    const { lead: existing, matchBasis } = duplicate
+    const touched = touchLeadRun(existing, { runId, source, relationship: 'matched', at })
     const enriched = lead.businessIntelligence ? enrichLead({
       ...touched,
-      phone: duplicate.phone === 'Not collected' && lead.phone !== 'Not collected' ? lead.phone : duplicate.phone,
-      email: duplicate.email === 'Not collected' && lead.email !== 'Not collected' ? lead.email : duplicate.email,
-    }, lead.businessIntelligence) : duplicate
-    const next = runId ? touchLeadRun(enriched, { runId, source, relationship: 'matched', at }) : enriched
-    if (next !== duplicate) saveLead(next)
+      phone: existing.phone === 'Not collected' && lead.phone !== 'Not collected' ? lead.phone : existing.phone,
+      email: existing.email === 'Not collected' && lead.email !== 'Not collected' ? lead.email : existing.email,
+    }, lead.businessIntelligence) : touched
+    // The website attribute follows strong identity: the same Place ID with a
+    // new website moves the website (audit re-enabled, history kept), while a
+    // weak name-plus-evidence match only fills a missing website, never
+    // overwrites one a human may have set.
+    const strongMatch = matchBasis === 'business-id' || matchBasis === 'provider-id'
+    const websiteChanged = strongMatch && lead.website && lead.website.toLowerCase() !== String(existing.website || '').toLowerCase()
+    const websiteAdded = !existing.website && lead.website
+    if (websiteChanged) recordEvent('lead', existing.id, 'website_changed', { from: existing.website || null, to: lead.website, matchBasis })
+    const withWebsite = (websiteAdded || websiteChanged)
+      ? { ...enriched, website: lead.website, websiteStatus: lead.websiteStatus || 'supplied' }
+      : enriched
+    const next = runId ? touchLeadRun(withWebsite, { runId, source, relationship: 'matched', at }) : withWebsite
+    if (next !== existing) {
+      next.leadValue = scoreLeadValue(next, { weights: readSettings().leadValueWeights })
+      saveLead(next)
+    }
+    recordEvent('lead', existing.id, 'duplicate_matched', { source, runId, matchBasis, websiteAdded: Boolean(websiteAdded) })
     Object.defineProperty(next, '_runImport', { value: { created: false, relationship: 'matched' }, enumerable: false })
     return next
   }
@@ -624,7 +693,32 @@ function backfillRunProvenance() {
   changes.forEach((lead) => saveLead(lead))
 }
 
+// One-time identity backfill (ROH-5): existing leads gain a stable businessId
+// and websiteStatus without touching notes, drafts, stages, contracts or
+// suppression. Ambiguous historical rows are left separate, never merged.
+function backfillLeadIdentity() {
+  let migrated = 0
+  for (const lead of readRows('leads')) {
+    let next = lead
+    if (!next.businessId) {
+      const placeId = next.businessIntelligence?.placeId || null
+      const cid = next.businessIntelligence?.cid || null
+      const domain = String(next.website || '').toLowerCase().replace(/\/$/, '')
+      next = { ...next, businessId: placeId ? `brightdata:place:${placeId}` : cid ? `brightdata:cid:${cid}` : domain ? `site:${domain}` : `manual:${randomUUID()}` }
+    }
+    if (!next.websiteStatus) {
+      next = { ...next, websiteStatus: next.opportunityScore != null || next.analysisSource ? 'audited' : next.website ? 'supplied' : 'not_supplied' }
+    }
+    if (next !== lead) {
+      saveLead(next)
+      migrated += 1
+    }
+  }
+  if (migrated) recordEvent('system', 'identity-backfill', 'completed', { migrated })
+}
+
 backfillRunProvenance()
+backfillLeadIdentity()
 
 const manualActionLabels = {
   refresh: 'Refresh business data',
@@ -651,6 +745,12 @@ function manualRunState(lead, action, changes = {}) {
 }
 
 function queueAuditForLead(lead, { workflow = 'audit', manualAction = null, continueRun = false } = {}) {
+  // Website-dependent stages are skipped cleanly when no website exists — with
+  // a reason, never a failed request against an invented defect.
+  if (!lead.website) {
+    recordEvent('lead', lead.id, 'audit_skipped', { workflow, manualAction, reason: 'no-website' })
+    return { lead, job: null, alreadyQueued: false, skipped: true, skipReason: 'This client has no website to audit yet.' }
+  }
   const active = db.prepare("SELECT * FROM jobs WHERE lead_id = ? AND type = 'audit' AND status IN ('Queued', 'Running', 'Waiting') ORDER BY created_at DESC LIMIT 1").get(lead.id)
   if (active) return { lead, job: parseJob(active), alreadyQueued: true }
   const settings = readSettings()
@@ -774,6 +874,8 @@ async function runAuditJob(job) {
     outreachStaleReason: draftsStale ? `A newer audit (${auditId}) completed after these drafts.` : current.outreachStaleReason || null,
     updated: 'Just now',
   })
+  // Commercial value is rescored on every completed audit from saved evidence.
+  pendingBase.leadValue = scoreLeadValue(pendingBase, { weights: readSettings().leadValueWeights })
   // Persist versioned artifacts BEFORE the DB pointer advertises them. A
   // persistence failure records an explicit attempt failure — a crash here
   // leaves versioned files without a manifest or pointer, which synthesis
@@ -980,7 +1082,12 @@ async function runRefreshJob(job) {
   }, fresh.businessIntelligence))
   updateJob(job.id, { status: 'Completed', progress: 100, result: { snapshotId: job.payload.snapshotId, source: fresh.businessIntelligence?.source }, error: null })
   recordEvent('lead', lead.id, 'business_refresh_completed', { jobId: job.id, snapshotId: job.payload.snapshotId })
-  if (manualAction === 'full' && !isRunCancelled(job.runId)) updated = queueAuditForLead(updated, { workflow: 'full', manualAction: 'full', continueRun: true }).lead
+  if (manualAction === 'full' && !isRunCancelled(job.runId)) {
+    const queued = queueAuditForLead(updated, { workflow: 'full', manualAction: 'full', continueRun: true })
+    updated = queued.skipped
+      ? saveLead({ ...queued.lead, manualRun: manualRunState(queued.lead, 'full', { status: 'Completed', progress: 100, phase: 'Business data refreshed — no website to audit yet', jobId: job.id, completedAt: nowIso() }), updated: 'Just now' })
+      : queued.lead
+  }
   return updated
 }
 
@@ -1016,7 +1123,11 @@ async function runDiscoveryJob(job) {
   const uniqueLeads = [...new Map(leads.map((lead) => [lead.id, lead])).values()]
   const newClientIds = [...new Set(uniqueLeads.filter((lead) => lead._runImport?.created).map((lead) => lead.id))]
   const matchedClientIds = [...new Set(uniqueLeads.filter((lead) => !lead._runImport?.created).map((lead) => lead.id))]
-  uniqueLeads.slice(0, Math.max(1, Number(run.deepAuditLimit || 10))).forEach((lead) => queueJob({ type: 'audit', runId: run.id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
+  // Website-less leads are retained but never queued for website audits.
+  const auditable = uniqueLeads.filter((lead) => lead.website)
+  const skippedNoWebsite = uniqueLeads.filter((lead) => !lead.website)
+  skippedNoWebsite.forEach((lead) => recordEvent('lead', lead.id, 'audit_skipped', { runId: run.id, reason: 'no-website' }))
+  auditable.slice(0, Math.max(1, Number(run.deepAuditLimit || 10))).forEach((lead) => queueJob({ type: 'audit', runId: run.id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
   const geography = describeGeographyCoverage(search, reconciled.retained)
   saveRun({ ...readRun(run.id), searchDefinition: search, discovered: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id), newClientIds, matchedClientIds, providerSnapshotId: job.payload.snapshotId, duration: 'Auditing discovered websites',
     reconciliation: {
@@ -1301,6 +1412,14 @@ app.patch('/api/settings', (req, res) => {
   if ('respectRobots' in body && typeof body.respectRobots !== 'boolean') push('respectRobots', 'Must be a boolean')
   if ('crawlMaxAttempts' in body) { const n = clampInt(body.crawlMaxAttempts, 10, 500); if (n == null) push('crawlMaxAttempts', 'Must be an integer 10-500') }
   if ('crawlTimeLimitMs' in body) { const n = clampInt(body.crawlTimeLimitMs, 15000, 600000); if (n == null) push('crawlTimeLimitMs', 'Must be an integer 15000-600000') }
+  if ('leadValueWeights' in body) {
+    const w = body.leadValueWeights
+    if (!w || typeof w !== 'object' || Array.isArray(w)) push('leadValueWeights', 'Must be an object with need/businessFit/reachability/timing weights')
+    else for (const key of ['need', 'businessFit', 'reachability', 'timing']) {
+      const n = Number(w[key])
+      if (!Number.isFinite(n) || n < 0 || n > 1) push(`leadValueWeights.${key}`, 'Each weight must be a number 0-1')
+    }
+  }
   if ('jobTimeoutMs' in body) { const n = clampInt(body.jobTimeoutMs, 60000, 3600000); if (n == null) push('jobTimeoutMs', 'Must be an integer 60000-3600000') }
   if ('discoveryPollTimeoutMs' in body) { const n = clampInt(body.discoveryPollTimeoutMs, 300000, 7200000); if (n == null) push('discoveryPollTimeoutMs', 'Must be an integer 300000-7200000') }
   if ('runTimeoutMs' in body) { const n = clampInt(body.runTimeoutMs, 900000, 43200000); if (n == null) push('runTimeoutMs', 'Must be an integer 900000-43200000') }
@@ -1326,14 +1445,15 @@ app.post('/api/leads', (req, res) => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
   const company = String(body.company || '').trim()
   if (!isStringWithLength(company, 2, 120)) return badRequest(res, 'company', 'Company is required and must be 2-120 characters', [{ field: 'company', message: 'Must be 2-120 characters' }])
+  // Website is optional enrichment (ROH-5): a business without one is a
+  // first-class lead. Omission stays unknown, never an asserted absence.
   const rawWebsite = String(body.website || '').trim()
-  if (!rawWebsite) return badRequest(res, 'website', 'Website is required', [{ field: 'website', message: 'Website is required (3-253 chars, domain-like)' }])
-  const website = normalizeDomainInput(rawWebsite)
-  if (!isStringWithLength(website, 3, 253) || !isValidDomain(website)) return badRequest(res, 'website', 'Website must be a valid domain (e.g. example.com)', [{ field: 'website', message: 'Must be 3-253 chars, domain-like with a TLD' }])
+  const website = rawWebsite ? normalizeDomainInput(rawWebsite) : ''
+  if (rawWebsite && (!isStringWithLength(website, 3, 253) || !isValidDomain(website))) return badRequest(res, 'website', 'Website must be a valid domain (e.g. example.com)', [{ field: 'website', message: 'Must be 3-253 chars, domain-like with a TLD' }])
   if (body.phone != null && String(body.phone).trim() && String(body.phone).trim() !== 'Not collected' && !isPhoneLike(String(body.phone))) return badRequest(res, 'phone', 'Phone number format is invalid', [{ field: 'phone', message: 'Must be 7-30 chars, digits, spaces, +, -, (), .' }])
   if (body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) return badRequest(res, 'email', 'Email format is invalid', [{ field: 'email', message: 'Must be a valid email address' }])
   const websiteLower = website.toLowerCase()
-  if (readRows('leads').some((lead) => String(lead.website || '').toLowerCase() === websiteLower)) {
+  if (website && readRows('leads').some((lead) => String(lead.website || '').toLowerCase() === websiteLower)) {
     return conflict(res, 'A client with this website already exists', 'website', 'DUPLICATE_WEBSITE')
   }
   if (readRows('leads').some((lead) => String(lead.company || '').trim().toLowerCase() === company.toLowerCase())) {
@@ -1357,9 +1477,10 @@ app.post('/api/leads/import', (req, res) => {
   body.rows.forEach((row, idx) => {
     if (!row || typeof row !== 'object' || Array.isArray(row)) { rowErrors.push({ field: `rows[${idx}]`, message: 'Each row must be an object' }); return }
     const c = String(row.company || row.name || row.business || '').trim()
-    const w = normalizeDomainInput(String(row.website || row.domain || ''))
+    const rawW = String(row.website || row.domain || '').trim()
+    const w = rawW ? normalizeDomainInput(rawW) : ''
     if (!isStringWithLength(c, 2, 120)) rowErrors.push({ field: `rows[${idx}].company`, message: 'Company must be 2-120 chars' })
-    if (!isStringWithLength(w, 3, 253) || !isValidDomain(w)) rowErrors.push({ field: `rows[${idx}].website`, message: 'Website must be 3-253 chars domain-like' })
+    if (rawW && (!isStringWithLength(w, 3, 253) || !isValidDomain(w))) rowErrors.push({ field: `rows[${idx}].website`, message: 'Website must be 3-253 chars domain-like' })
     if (row.phone != null && String(row.phone).trim() && String(row.phone).trim() !== 'Not collected' && !isPhoneLike(String(row.phone))) rowErrors.push({ field: `rows[${idx}].phone`, message: 'Invalid phone format' })
     if (row.email != null && String(row.email).trim() && String(row.email).trim() !== 'Not collected' && !isEmail(String(row.email))) rowErrors.push({ field: `rows[${idx}].email`, message: 'Invalid email format' })
   })
@@ -1371,14 +1492,23 @@ app.post('/api/leads/import', (req, res) => {
   const seenInBatch = new Set()
   rows.forEach((row, index) => {
     const company = String(row.company || row.name || row.business || '').trim()
-    const website = normalizeDomainInput(String(row.website || row.domain || ''))
-    if (!isStringWithLength(company, 2, 120) || !isStringWithLength(website, 3, 253) || !isValidDomain(website) || existingDomains.has(website.toLowerCase()) || seenInBatch.has(website.toLowerCase())) { skipped += 1; return }
+    const rawWebsite = String(row.website || row.domain || '').trim()
+    const website = rawWebsite ? normalizeDomainInput(rawWebsite) : ''
+    // Website-less rows survive import consistently. Rows with a strong
+    // provider identity always go through identity matching (a shared domain
+    // never skips them); the domain fast-path only applies to weak rows.
+    const rowBusinessId = row.businessId || businessIdentityFor(row) || null
+    const strongRow = Boolean(rowBusinessId && !String(rowBusinessId).startsWith('manual:'))
+    const batchKey = strongRow ? `id:${rowBusinessId}` : website ? `site:${website.toLowerCase()}` : `row:${normalizeIdentityText(company)}|${normalizeIdentityText(row.address || row.location)}`
+    if (!isStringWithLength(company, 2, 120) || (rawWebsite && (!isStringWithLength(website, 3, 253) || !isValidDomain(website)))) { skipped += 1; return }
+    if (!strongRow && website && (existingDomains.has(website.toLowerCase()) || seenInBatch.has(batchKey))) { skipped += 1; return }
+    if (seenInBatch.has(batchKey)) { skipped += 1; return }
     if (row.phone != null && String(row.phone).trim() && String(row.phone).trim() !== 'Not collected' && !isPhoneLike(String(row.phone))) { skipped += 1; return }
     if (row.email != null && String(row.email).trim() && String(row.email).trim() !== 'Not collected' && !isEmail(String(row.email))) { skipped += 1; return }
-    const lead = insertUniqueLead({ ...row, company, website }, index, 'CSV import')
+    const lead = insertUniqueLead({ ...row, company, website, businessId: row.businessId || businessIdentityFor(row) || undefined }, index, 'CSV import')
     if (!lead) { skipped += 1; return }
-    existingDomains.add(website.toLowerCase())
-    seenInBatch.add(website.toLowerCase())
+    if (website) existingDomains.add(website.toLowerCase())
+    seenInBatch.add(batchKey)
     created.push(lead)
   })
   res.status(201).json({ imported: created.length, skipped, leads: created, ...(rowErrors.length ? { rowErrors: rowErrors.slice(0, 20) } : {}) })
@@ -1454,6 +1584,12 @@ app.patch('/api/leads/:id', (req, res) => {
   if ('phone' in body && body.phone != null && String(body.phone).trim() && String(body.phone).trim() !== 'Not collected' && !isPhoneLike(String(body.phone))) push('phone', 'Invalid phone format')
   if ('email' in body && body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) push('email', 'Invalid email format')
   if ('rev' in body && (!Number.isInteger(body.rev) || body.rev < 0)) push('rev', 'Must be a non-negative integer revision')
+  if ('website' in body) {
+    const raw = String(body.website || '').trim()
+    const normalized = raw ? normalizeDomainInput(raw) : ''
+    if (raw && (!isStringWithLength(normalized, 3, 253) || !isValidDomain(normalized))) push('website', 'Must be a valid domain or empty')
+    else if (normalized && readRows('leads').some((item) => item.id !== req.params.id && String(item.website || '').toLowerCase() === normalized.toLowerCase())) push('website', 'Another client already uses this website')
+  }
   if (details.length) return badRequest(res, null, 'Invalid lead patch values', details)
 
   const { rev: expectedRev, ...changes } = body
@@ -1471,6 +1607,17 @@ app.patch('/api/leads/:id', (req, res) => {
     delete patched.museStale
   }
   if (changes.outreachStale === false) patched.outreachStaleReason = null
+  if ('website' in changes) {
+    // Adding or changing the website later keeps the stable business id and
+    // all history; only the website attribute moves, which re-enables audit.
+    const normalized = String(changes.website || '').trim() ? normalizeDomainInput(String(changes.website)) : ''
+    patched.website = normalized
+    if (normalized !== String(fresh.website || '')) {
+      patched.websiteStatus = 'supplied'
+      patched.leadValue = scoreLeadValue({ ...patched, website: normalized }, { weights: readSettings().leadValueWeights })
+      if (fresh.opportunityScore != null || fresh.analysisSource) recordEvent('lead', lead.id, 'website_changed', { from: fresh.website || null, to: normalized || null })
+    }
+  }
   const draftEdited = ('outreachDraft' in changes && String(changes.outreachDraft || '') !== String(fresh.outreachDraft || '')) ||
     ('outreachDrafts' in changes && JSON.stringify(changes.outreachDrafts || {}) !== JSON.stringify(fresh.outreachDrafts || {})) ||
     ('outreachSubject' in changes && String(changes.outreachSubject || '') !== String(fresh.outreachSubject || ''))
@@ -1538,6 +1685,18 @@ app.post('/api/leads/:id/analyze', (req, res) => {
   res.status(202).json(queueAuditForLead(lead, { workflow: 'audit' }))
 })
 
+app.post('/api/leads/:id/score', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  // Recompute commercial value from saved evidence under current weights.
+  // Stored scores keep their own version, so history stays interpretable.
+  const scored = scoreLeadValue(lead, { weights: readSettings().leadValueWeights })
+  const updated = saveLead({ ...lead, leadValue: scored, updated: 'Just now' })
+  recordEvent('lead', lead.id, 'value_rescored', { version: scored.version, score: scored.leadValueScore, band: scored.band })
+  res.json(updated)
+})
+
 app.post('/api/leads/:id/muse/analyze', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
@@ -1578,13 +1737,24 @@ app.post('/api/leads/:id/actions/:action', async (req, res) => {
       return res.json({ lead: updated, job: null, message: 'Three outreach drafts generated' })
     }
     if (action === 'full') {
+      // No website and no refresh source: complete honestly without queueing —
+      // there is nothing to audit, synthesize or draft from.
+      if (!lead.website && !(getBrightDataConfig(readSettings()).ready && lead.sourceUrl)) {
+        const done = saveLead({ ...lead, manualRun: manualRunState(lead, 'full', { reset: true, status: 'Completed', progress: 100, phase: 'No website to audit — business review continues manually', completedAt: nowIso() }), updated: 'Just now' })
+        return res.json({ lead: done, job: null, skipped: true, message: 'No website to audit — business review continues manually' })
+      }
       // No AI gate: without Muse the workflow finishes the deterministic
       // audit plus template outreach drafts and says so honestly.
       const brightData = getBrightDataConfig(readSettings())
-      const queued = brightData.ready && lead.sourceUrl
-        ? queueRefreshForLead(lead, { manualAction: 'full' })
-        : queueAuditForLead(lead, { workflow: 'full', manualAction: 'full' })
-      return res.status(202).json({ ...queued, message: brightData.ready && lead.sourceUrl ? 'Full workflow queued from business refresh' : 'Full workflow queued from website audit' })
+      if (brightData.ready && lead.sourceUrl) {
+        return res.status(202).json({ ...queueRefreshForLead(lead, { manualAction: 'full' }), message: 'Full workflow queued from business refresh' })
+      }
+      const queued = queueAuditForLead(lead, { workflow: 'full', manualAction: 'full' })
+      if (queued.skipped) {
+        const done = saveLead({ ...queued.lead, manualRun: manualRunState(queued.lead, 'full', { status: 'Completed', progress: 100, phase: 'No website to audit — business review continues manually', completedAt: nowIso() }), updated: 'Just now' })
+        return res.json({ lead: done, job: null, skipped: true, message: 'No website to audit — business review continues manually' })
+      }
+      return res.status(202).json({ ...queued, message: 'Full workflow queued from website audit' })
     }
   } catch (error) {
     const current = readLead(lead.id) || lead

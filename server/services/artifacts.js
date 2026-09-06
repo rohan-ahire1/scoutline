@@ -201,6 +201,8 @@ export function renderLeadReportMarkdown(lead, { manifest = null } = {}) {
     `- Confidence: ${lead.confidence ?? 'Not analyzed'}`,
     `- Source: ${lead.analysisSource || 'Not recorded'}`,
     `- Research status: ${lead.researchStatus}`,
+    `- Commercial value: ${lead.leadValue ? `${lead.leadValue.leadValueScore}/100 (${lead.leadValue.band}, coverage ${Math.round((lead.leadValue.coverage || 0) * 100)}%, rubric ${lead.leadValue.version})` : 'Not scored'}`,
+    `- Website: ${lead.website || 'Not supplied'}${lead.websiteStatus && lead.websiteStatus !== 'supplied' ? ` (${lead.websiteStatus})` : ''}`,
     '',
     `## Website audit`,
     '',

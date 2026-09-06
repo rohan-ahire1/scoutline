@@ -187,6 +187,12 @@ const categoryTone = {
 
 function cn(...values) { return values.filter(Boolean).join(' ') }
 
+// Commercial rank first (ROH-6), then audit evidence: the queue answers who
+// is worth sales effort, not just whose website has the most flaws.
+function leadRankValue(lead = {}) {
+  return Number(lead.leadValue?.leadValueScore ?? lead.opportunityScore ?? lead.prelimScore ?? 0) || 0
+}
+
 function websiteUrl(website) {
   const value = String(website || '').trim()
   if (!value) return null
@@ -434,7 +440,7 @@ function ClientsPage({ leads, runs, onOpen, onImport, onExport }) {
     if (view === 'Pipeline') return isOpenPipelineLead(lead)
     if (view === 'Won') return lead.salesStage === 'Won'
     return true
-  }).sort((a, b) => (b.opportunityScore || b.prelimScore) - (a.opportunityScore || a.prelimScore))
+  }).sort((a, b) => leadRankValue(b) - leadRankValue(a))
   const inPipeline = leads.filter(isOpenPipelineLead)
   const won = leads.filter((lead) => lead.salesStage === 'Won')
   const ready = leads.filter((lead) => researchState(lead).museComplete && !isQualifiedLead(lead))
@@ -469,7 +475,7 @@ function ClientsPage({ leads, runs, onOpen, onImport, onExport }) {
             const { failure, phase } = researchState(lead)
             const origin = leadRunInfo(lead, runs)
             const originLabel = origin.collectionRun ? `Added in ${runLabel(origin.collectionRun)}` : lead.labels?.includes('CSV import') ? 'Manual import' : 'Existing client'
-            return <button className="client-row" key={lead.id} onClick={() => onOpen(lead)}><span className="client-name"><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.category} · {lead.location}</small><small className="client-origin"><Database size={9} />{originLabel}{origin.collectionRun ? ` · ${runTimestamp(origin.collectionRun)}` : ''}</small></span></span><span className="phase-cell"><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : phase === 1 ? 'blue' : 'gray'} dot>{getResearchLabel(lead)}</Badge></span><Score value={lead.opportunityScore} /><span>{lead.salesStage ? <Badge tone={statusTone[lead.salesStage]} dot>{lead.salesStage}</Badge> : <span className="muted-dash">Not in sales</span>}</span><span className="next-action-cell">{getNextAction(lead)}</span><ChevronRight size={13} /></button>
+            return <button className="client-row" key={lead.id} onClick={() => onOpen(lead)}><span className="client-name"><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.category} · {lead.location}{lead.website ? '' : ' · No website'}</small><small className="client-origin"><Database size={9} />{originLabel}{origin.collectionRun ? ` · ${runTimestamp(origin.collectionRun)}` : ''}</small></span></span><span className="phase-cell"><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : phase === 1 ? 'blue' : 'gray'} dot>{getResearchLabel(lead)}</Badge></span><Score value={lead.opportunityScore} /><span>{lead.salesStage ? <Badge tone={statusTone[lead.salesStage]} dot>{lead.salesStage}</Badge> : <span className="muted-dash">Not in sales</span>}</span><span className="next-action-cell">{getNextAction(lead)}</span><ChevronRight size={13} /></button>
           })}
           {!filtered.length && <div className="empty-state"><Search size={20} /><h3>No clients here</h3><p>Try another view or search.</p></div>}
         </div>
@@ -528,8 +534,11 @@ function ResearchPage({ leads, runs, activeRunId, onOpen, onExport, onUpdate, on
     else params.delete('filter')
     window.history.replaceState(window.history.state, '', `${window.location.pathname}?${params.toString()}`)
   }, [tab, filter])
-  const allSorted = [...leads].sort((a, b) => getNextAction(a).localeCompare(getNextAction(b)) || (b.opportunityScore || b.prelimScore) - (a.opportunityScore || a.prelimScore))
+  const allSorted = [...leads].sort((a, b) => getNextAction(a).localeCompare(getNextAction(b)) || leadRankValue(b) - leadRankValue(a))
   const sorted = allSorted.filter((lead) => {
+    // Provider-confirmed closed businesses leave the default queue with a
+    // visible reason; 'All' still shows them.
+    if (lead.leadValue?.excluded && filter !== 'All') return false
     const state = researchState(lead)
     if (filter === 'Needs analysis') return !state.analyzed && !state.processing
     if (filter === 'In progress') return state.processing
@@ -564,7 +573,7 @@ function ResearchPage({ leads, runs, activeRunId, onOpen, onExport, onUpdate, on
             const rowFailed = failedLeadJob(lead)
             const rowResumable = !rowRunning && rowFailed && leadJobRetryable(lead, rowFailed) ? rowFailed : null
             const origin = leadRunInfo(lead, runs)
-            return <article className={cn('research-row', failure && 'has-failure')} key={lead.id}><button className="research-client" onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.category} · {failure?.reason || lead.mainIssue}</small>{origin.collectionRun && <small className="client-origin"><Database size={9} />{`Added in ${runLabel(origin.collectionRun)}`}</small>}</span></button><ResearchProgress lead={lead} /><span className={cn('research-result', failure && 'is-failed')}><small>{failure ? 'Research state' : jobActive ? 'Research state' : 'Muse guidance'}</small><strong>{failure ? `${researchLabels[phase]} failed` : jobActive ? 'In progress' : getMuseGuidance(lead) || getResearchLabel(lead)}</strong>{done[1] && !failure && <em>{lead.opportunityScore}/100 score</em>}</span><div className="research-action">{jobActive ? <><Badge tone={statusTone[lead.researchJob?.status] || 'orange'} dot>{lead.researchJob?.phase || lead.researchJob?.status || lead.researchStatus}</Badge>{rowRunning ? <button className="button button-quiet button-small" title="Cancel this job" onClick={() => onCancelJob(lead, rowRunning.id)}><Ban size={12} /></button> : null}</> : failure ? (rowResumable ? <button className="button button-secondary button-small retry-button" onClick={() => onRetryJob(lead, rowResumable.id)}><RefreshCcw size={12} />Resume job</button> : <button className="button button-secondary button-small retry-button" onClick={() => onAnalyze(lead)}><RefreshCcw size={12} />Retry audit</button>) : !done[1] ? (lead.website ? <button className="button button-primary button-small" onClick={() => onAnalyze(lead)}>{auditReady ? <RefreshCcw size={12} /> : <Play size={12} />}Analyze website</button> : <span className="muted-dash" title="Save a website for this business to enable the audit">No website</span>) : !isQualifiedLead(lead) ? <button className="button button-primary button-small" onClick={() => onUpdate(lead.id, { qualified: true, salesStage: 'Qualified' })}><CheckCircle2 size={12} />Qualify for outreach</button> : <Badge tone="purple" dot>In sales</Badge>}</div></article>
+            return <article className={cn('research-row', failure && 'has-failure')} key={lead.id}><button className="research-client" onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.category} · {failure?.reason || lead.mainIssue}</small>{origin.collectionRun && <small className="client-origin"><Database size={9} />{`Added in ${runLabel(origin.collectionRun)}`}</small>}</span></button><ResearchProgress lead={lead} /><span className={cn('research-result', failure && 'is-failed')}><small>{failure ? 'Research state' : jobActive ? 'Research state' : 'Muse guidance'}</small><strong>{failure ? `${researchLabels[phase]} failed` : jobActive ? 'In progress' : getMuseGuidance(lead) || getResearchLabel(lead)}</strong>{lead.leadValue?.excluded ? <em>{lead.leadValue.excluded.reason}</em> : done[1] && !failure ? <em>{lead.opportunityScore}/100 score</em> : lead.leadValue ? <em>Value {lead.leadValue.leadValueScore}/100 · {lead.leadValue.band}</em> : null}</span><div className="research-action">{jobActive ? <><Badge tone={statusTone[lead.researchJob?.status] || 'orange'} dot>{lead.researchJob?.phase || lead.researchJob?.status || lead.researchStatus}</Badge>{rowRunning ? <button className="button button-quiet button-small" title="Cancel this job" onClick={() => onCancelJob(lead, rowRunning.id)}><Ban size={12} /></button> : null}</> : failure ? (rowResumable ? <button className="button button-secondary button-small retry-button" onClick={() => onRetryJob(lead, rowResumable.id)}><RefreshCcw size={12} />Resume job</button> : <button className="button button-secondary button-small retry-button" onClick={() => onAnalyze(lead)}><RefreshCcw size={12} />Retry audit</button>) : !done[1] ? (lead.website ? <button className="button button-primary button-small" onClick={() => onAnalyze(lead)}>{auditReady ? <RefreshCcw size={12} /> : <Play size={12} />}Analyze website</button> : <span className="muted-dash" title="No website supplied — score and qualify on business evidence; add a website to enable the audit">No website</span>) : !isQualifiedLead(lead) ? <button className="button button-primary button-small" onClick={() => onUpdate(lead.id, { qualified: true, salesStage: 'Qualified' })}><CheckCircle2 size={12} />Qualify for outreach</button> : <Badge tone="purple" dot>In sales</Badge>}</div></article>
           })}
           {!sorted.length && <div className="empty-state"><CheckCircle2 size={20} /><h3>Nothing needs attention here</h3><p>Try another research filter or start a new run.</p></div>}
         </div>
@@ -764,6 +773,22 @@ function MuseSynthesis({ lead, onAnalyze, onUpdate }) {
   </section>
 }
 
+const leadValueBandTone = { 'Top Prospect': 'green', Strong: 'purple', Review: 'amber', 'Low Priority': 'gray' }
+
+// "Why this lead" (ROH-6): every component shows its score, top observed
+// contributions and unknown count. Weights are hypotheses, stated as such.
+function LeadValueCard({ lead }) {
+  const value = lead.leadValue
+  if (!value) return null
+  const parts = [['Need', value.need], ['Business fit', value.businessFit], ['Reachability', value.reachability], ['Timing', value.timing]]
+  return <section className="detail-section">
+    <div className="detail-heading"><span className="detail-label">Why this lead</span><Badge tone={leadValueBandTone[value.band] || 'gray'}>{value.band}</Badge></div>
+    <p className="lead-summary">Commercial value {value.leadValueScore}/100 · {value.bandReason}. Evidence coverage {Math.round((value.coverage || 0) * 100)}% · rubric {value.version} (default weights are uncalibrated hypotheses, not a sales forecast).</p>
+    {value.excluded ? <p className="lead-summary">{value.excluded.reason}</p> : null}
+    <div className="problem-list">{parts.map(([label, part]) => <div key={label}><span>{part?.score ?? 0}</span><p><strong>{label} {part?.score ?? 0}/100.</strong> {(part?.contributions || []).slice(0, 2).map((c) => c.signal).join('; ') || 'No observed signals yet.'}{(part?.unknowns || []).length ? ` · ${(part.unknowns || []).length} unknown${(part.unknowns || []).length === 1 ? '' : 's'} lower confidence, not the score.` : ''}</p></div>)}</div>
+  </section>
+}
+
 function BusinessIntelligence({ lead }) {
   const intelligence = lead.businessIntelligence
   if (!intelligence) return null
@@ -899,7 +924,7 @@ function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAn
         <div className="drawer-status-strip"><span><small>Research</small><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : 'blue'} dot>{getResearchLabel(lead)}</Badge></span><span><small>Muse</small><Badge tone={getMuseGuidance(lead) === 'Pursue' ? 'green' : getMuseGuidance(lead) === 'Pass' ? 'gray' : 'amber'} dot>{getMuseGuidance(lead) || 'Not run'}</Badge></span><span><small>Sales</small><Badge tone={lead.salesStage ? statusTone[lead.salesStage] : 'gray'} dot>{lead.salesStage || 'Not in sales'}</Badge></span></div>
         <div className="drawer-tabs">{['Summary', 'Research', 'Sales'].map((item) => <button key={item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item}</button>)}</div>
         <div className="drawer-body">
-          {tab === 'Summary' && <div className="drawer-two-col"><main><section className="detail-section"><span className="detail-label">Main opportunity</span><h2>{lead.mainIssue}</h2><p className="lead-summary">{lead.issueDetail}</p></section><section className="detail-section"><div className="detail-heading"><span className="detail-label">Findings</span><Badge tone="gray">{lead.problems?.length || 0}</Badge></div><div className="problem-list">{lead.problems?.length ? lead.problems.map((problem, index) => <div key={problem}><span>{index + 1}</span><p>{problem}</p></div>) : <p className="lead-summary">Website analysis has not been completed yet.</p>}</div></section><BusinessIntelligence lead={lead} /></main><aside><div className="business-card"><span className="detail-label">Client profile</span><div><span>Rating</span><strong>{lead.rating} ★ · {lead.reviews} reviews</strong></div><div><span>Phone</span><strong>{lead.phone}</strong></div><div><span>Email</span><strong>{lead.email}</strong></div><div><span>Sales phase</span><strong>{lead.salesStage || 'Not in pipeline'}</strong></div></div><div className="notes-card"><span className="detail-label">Notes</span>{editing ? <><textarea value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} /><div className="note-actions"><button onClick={() => setEditing(false)}>Cancel</button><button onClick={async () => { const saved = await onUpdate(lead.id, { notes: noteDraft.trim() }); if (saved) setEditing(false) }}><Check size={11} />Save</button></div></> : <><p>{lead.notes || 'No notes yet.'}</p><button onClick={() => setEditing(true)}><Plus size={12} />{lead.notes ? 'Edit note' : 'Add note'}</button></>}</div></aside></div>}
+          {tab === 'Summary' && <div className="drawer-two-col"><main><section className="detail-section"><span className="detail-label">Main opportunity</span><h2>{lead.mainIssue}</h2><p className="lead-summary">{lead.issueDetail}</p></section><section className="detail-section"><div className="detail-heading"><span className="detail-label">Findings</span><Badge tone="gray">{lead.problems?.length || 0}</Badge></div><div className="problem-list">{lead.problems?.length ? lead.problems.map((problem, index) => <div key={problem}><span>{index + 1}</span><p>{problem}</p></div>) : <p className="lead-summary">Website analysis has not been completed yet.</p>}</div></section><LeadValueCard lead={lead} /><BusinessIntelligence lead={lead} /></main><aside><div className="business-card"><span className="detail-label">Client profile</span><div><span>Rating</span><strong>{lead.rating} ★ · {lead.reviews} reviews</strong></div><div><span>Phone</span><strong>{lead.phone}</strong></div><div><span>Email</span><strong>{lead.email}</strong></div><div><span>Sales phase</span><strong>{lead.salesStage || 'Not in pipeline'}</strong></div></div><div className="notes-card"><span className="detail-label">Notes</span>{editing ? <><textarea value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} /><div className="note-actions"><button onClick={() => setEditing(false)}>Cancel</button><button onClick={async () => { const saved = await onUpdate(lead.id, { notes: noteDraft.trim() }); if (saved) setEditing(false) }}><Check size={11} />Save</button></div></> : <><p>{lead.notes || 'No notes yet.'}</p><button onClick={() => setEditing(true)}><Plus size={12} />{lead.notes ? 'Edit note' : 'Add note'}</button></>}</div></aside></div>}
           {tab === 'Research' && <div className="research-detail">
             <div className="research-detail-head">
               <div><span className="detail-label">{failure ? 'Failed stage' : 'Research state'}</span><h2 className={failure ? 'failure-title' : ''}>{getResearchLabel(lead)}</h2><p>{failure?.reason || (isQualifiedLead(lead) ? 'Research is complete. Sales progress is tracked separately.' : 'Review the evidence and Muse guidance before deciding whether to qualify this client.')}</p></div>
@@ -912,7 +937,7 @@ function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAn
                 : runningJob ? <><button className="button button-primary" disabled><LoaderCircle className="spin" size={13} />{runningJob.phase || runningJob.status}</button><button className="button button-secondary" onClick={() => onCancelJob(lead, runningJob.id)}><Ban size={13} />Cancel job</button></>
                   : !done[1] ? (lead.website
                     ? <button className="button button-primary" onClick={() => onAnalyze(lead)}><Sparkles size={13} />Analyze website</button>
-                    : <span className="lead-summary">No website saved — the audit needs one. The business can still be reviewed and qualified manually.</span>)
+                    : <span className="lead-summary">No website supplied — the audit needs one. This business can still be scored, qualified and moved through sales; add a website to enable the audit.</span>)
                     : !isQualifiedLead(lead) ? <button className="button button-primary" onClick={() => onUpdate(lead.id, { qualified: true, salesStage: 'Qualified' })}><CheckCircle2 size={13} />Qualify for outreach</button>
                       : <Badge tone="purple" dot>In sales</Badge>}
             </div>
