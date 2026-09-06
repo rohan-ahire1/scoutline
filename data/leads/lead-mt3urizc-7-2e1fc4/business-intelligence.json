@@ -1,150 +1,164 @@
 {
-  "source": "Bright Data Google Maps",
-  "fetchedAt": "2026-08-22T15:32:50.518Z",
-  "placeId": "ChIJcWRJew_1UocRc-y1-dxUhoo",
-  "cid": "9981758932172270707",
-  "claimed": true,
-  "businessStatus": "Active",
-  "openHours": {
-    "Sunday": "8 AM–5 PM",
-    "Saturday": "8 AM–6 PM",
-    "Friday": "8 AM–5 PM",
-    "Thursday": "8 AM–5 PM",
-    "Wednesday": "8 AM–5 PM",
-    "Tuesday": "8 AM–5 PM",
-    "Monday": "8 AM–5 PM"
-  },
-  "open24Hours": false,
-  "services": [
-    "Wheelchair-accessible car park"
-  ],
-  "categories": [
-    "General contractor"
-  ],
-  "onlineBooking": false,
-  "onlineEstimates": false,
-  "reservationLink": null,
-  "photosObserved": 3,
-  "distribution": {
-    "1_star_reviews": 1,
-    "2_star_reviews": 0,
-    "3_star_reviews": 0,
-    "4_star_reviews": 0,
-    "5_star_reviews": 30
-  },
-  "positiveReviewShare": 97,
-  "latestObservedReviewAt": "2024-06-23T17:19:19.468Z",
-  "sampledReviewCount": 8,
-  "locations": [
-    {
-      "placeId": "ChIJcWRJew_1UocRc-y1-dxUhoo",
-      "cid": "9981758932172270707",
-      "address": "32 W 200 S #348b, Salt Lake City, UT 84101, United States",
-      "latitude": 40.765496,
-      "longitude": -111.89218,
-      "rating": 4.9,
-      "reviews": 31
-    }
-  ],
-  "companyMetrics": {
-    "employeeCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
+  "id": "lead-mt3urizc-7-2e1fc4",
+  "company": "Utah Remodel Works",
+  "category": "General contractor",
+  "location": "32 W 200 S #348b, Salt Lake City, UT 84101, United States",
+  "website": "general-contractors-utah.com",
+  "address": null,
+  "phone": "+1 801-893-7755",
+  "email": "Not collected",
+  "rating": 4.9,
+  "reviews": 31,
+  "collectedAt": "8/22/2026, 9:32:49 AM",
+  "sourceUrl": "https://www.google.com/maps/place/Utah%20Remodel%20Works/data=!4m7!3m6!1s0x8752f50f7b496471:0x8a8654dcf9b5ec73!8m2!3d40.7654960!4d-111.8921800!16s%2Fg%2F11cs1w9y4c!19sChIJcWRJew_1UocRc-y1-dxUhoo?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:32:50.518Z",
+    "placeId": "ChIJcWRJew_1UocRc-y1-dxUhoo",
+    "cid": "9981758932172270707",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "8 AM–5 PM",
+      "Saturday": "8 AM–6 PM",
+      "Friday": "8 AM–5 PM",
+      "Thursday": "8 AM–5 PM",
+      "Wednesday": "8 AM–5 PM",
+      "Tuesday": "8 AM–5 PM",
+      "Monday": "8 AM–5 PM"
     },
-    "annualRevenue": {
-      "value": null,
-      "source": null,
-      "confidence": null
+    "open24Hours": false,
+    "services": [
+      "Wheelchair-accessible car park"
+    ],
+    "categories": [
+      "General contractor"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": false,
+    "reservationLink": null,
+    "photosObserved": 3,
+    "distribution": {
+      "1_star_reviews": 1,
+      "2_star_reviews": 0,
+      "3_star_reviews": 0,
+      "4_star_reviews": 0,
+      "5_star_reviews": 30
     },
-    "annualProfit": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "foundedYear": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "branchCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    }
-  },
-  "evidence": [
-    "Google Business Profile: claimed",
-    "Four- and five-star review share: 97%",
-    "Latest sampled Google review: 2024-06-23T17:19:19.468Z"
-  ],
-  "locationsObserved": 1,
-  "digitalMaturity": {
-    "score": 80,
-    "band": "Advanced",
-    "version": 1,
-    "components": [
+    "positiveReviewShare": 97,
+    "latestObservedReviewAt": "2024-06-23T17:19:19.468Z",
+    "sampledReviewCount": 8,
+    "locations": [
       {
-        "label": "Mobile performance",
-        "points": 20,
-        "maximum": 20,
-        "evidence": "Lighthouse 88/100"
-      },
-      {
-        "label": "Accessibility",
-        "points": 10,
-        "maximum": 10,
-        "evidence": "Lighthouse 91/100"
-      },
-      {
-        "label": "Search readiness",
-        "points": 12,
-        "maximum": 12,
-        "evidence": "Lighthouse 92/100"
-      },
-      {
-        "label": "Technical best practices",
-        "points": 8,
-        "maximum": 8,
-        "evidence": "Lighthouse 92/100"
-      },
-      {
-        "label": "Structured data",
-        "points": 0,
-        "maximum": 8,
-        "evidence": "Not detected"
-      },
-      {
-        "label": "Measurement stack",
-        "points": 8,
-        "maximum": 8,
-        "evidence": "GA4"
-      },
-      {
-        "label": "Online customer action",
-        "points": 0,
-        "maximum": 10,
-        "evidence": "No booking or online-estimate signal"
-      },
-      {
-        "label": "Business profile ownership",
-        "points": 4,
-        "maximum": 4,
-        "evidence": "Google profile claimed"
-      },
-      {
-        "label": "Mobile foundation",
-        "points": 6,
-        "maximum": 6,
-        "evidence": "Responsive viewport detected"
-      },
-      {
-        "label": "Site maintenance",
-        "points": 4,
-        "maximum": 4,
-        "evidence": "0 broken of 18 checked"
+        "placeId": "ChIJcWRJew_1UocRc-y1-dxUhoo",
+        "cid": "9981758932172270707",
+        "address": "32 W 200 S #348b, Salt Lake City, UT 84101, United States",
+        "latitude": 40.765496,
+        "longitude": -111.89218,
+        "rating": 4.9,
+        "reviews": 31
       }
     ],
-    "calculatedAt": "2026-08-22T15:37:09.347Z"
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Four- and five-star review share: 97%",
+      "Latest sampled Google review: 2024-06-23T17:19:19.468Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 80,
+      "band": "Advanced",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 20,
+          "maximum": 20,
+          "evidence": "Lighthouse 88/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Lighthouse 91/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 12,
+          "maximum": 12,
+          "evidence": "Lighthouse 92/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Lighthouse 92/100"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 0,
+          "maximum": 10,
+          "evidence": "No booking or online-estimate signal"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "0 broken of 18 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.347Z"
+    }
   }
 }

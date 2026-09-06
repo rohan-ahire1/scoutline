@@ -1,13 +1,21 @@
 {
+  "measureProvenance": null,
   "auditSummary": null,
   "auditStatus": null,
   "auditComponents": null,
   "crawlPages": [],
   "crawlErrors": [],
   "brokenLinkDetails": [],
+  "linkSummary": null,
+  "unverifiedLinkDetails": [],
   "lighthouse": null,
   "auditedUrl": null,
   "auditedAt": null,
+  "captureQuality": null,
+  "lastAuditAttempt": null,
+  "lastSuccessfulAudit": null,
+  "currentAuditId": null,
+  "auditVersion": null,
   "researchFailure": null,
   "history": []
 }

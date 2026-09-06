@@ -1,155 +1,169 @@
 {
-  "source": "Bright Data Google Maps",
-  "fetchedAt": "2026-08-22T15:32:29.340Z",
-  "placeId": "ChIJKUoaRpr2UocRHayvPgCov3M",
-  "cid": "8340569753918614557",
-  "claimed": true,
-  "businessStatus": "Active",
-  "openHours": {
-    "Sunday": "Closed",
-    "Saturday": "8 AM–2 PM",
-    "Friday": "8 AM–5 PM",
-    "Thursday": "8 AM–5 PM",
-    "Wednesday": "8 AM–5 PM",
-    "Tuesday": "8 AM–5 PM",
-    "Monday": "8 AM–5 PM"
-  },
-  "open24Hours": false,
-  "services": [
-    "On-site services",
-    "Wheelchair-accessible car park",
-    "Wheelchair-accessible entrance"
-  ],
-  "categories": [
-    "Landscaper",
-    "Contractor",
-    "Landscaping supply store",
-    "Retaining wall supplier"
-  ],
-  "onlineBooking": false,
-  "onlineEstimates": false,
-  "reservationLink": null,
-  "photosObserved": 4,
-  "distribution": {
-    "1_star_reviews": 19,
-    "2_star_reviews": 3,
-    "3_star_reviews": 4,
-    "4_star_reviews": 14,
-    "5_star_reviews": 192
-  },
-  "positiveReviewShare": 89,
-  "latestObservedReviewAt": "2026-06-20T04:48:29.496Z",
-  "sampledReviewCount": 8,
-  "locations": [
-    {
-      "placeId": "ChIJKUoaRpr2UocRHayvPgCov3M",
-      "cid": "8340569753918614557",
-      "address": "1935 Warm Springs Rd, Salt Lake City, UT 84116, United States",
-      "latitude": 40.808747,
-      "longitude": -111.9222978,
-      "rating": 4.5,
-      "reviews": 232
-    }
-  ],
-  "companyMetrics": {
-    "employeeCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
+  "id": "lead-mt4jkg5p-8-5edf20",
+  "company": "Rockscapes",
+  "category": "Landscaper",
+  "location": "1935 Warm Springs Rd, Salt Lake City, UT 84116, United States",
+  "website": "www.rockscapesutah.com",
+  "address": "1935 Warm Springs Rd, Salt Lake City, UT 84116, United States",
+  "phone": "+1 801-295-7625",
+  "email": "Not collected",
+  "rating": 4.5,
+  "reviews": 232,
+  "collectedAt": "8/22/2026, 9:07:09 PM",
+  "sourceUrl": "https://www.google.com/maps/place/Rockscapes/data=!4m7!3m6!1s0x8752f69a461a4a29:0x73bfa8003eafac1d!8m2!3d40.8087470!4d-111.9222978!16s%2Fg%2F1hc180yn8!19sChIJKUoaRpr2UocRHayvPgCov3M?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:32:29.340Z",
+    "placeId": "ChIJKUoaRpr2UocRHayvPgCov3M",
+    "cid": "8340569753918614557",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "8 AM–2 PM",
+      "Friday": "8 AM–5 PM",
+      "Thursday": "8 AM–5 PM",
+      "Wednesday": "8 AM–5 PM",
+      "Tuesday": "8 AM–5 PM",
+      "Monday": "8 AM–5 PM"
     },
-    "annualRevenue": {
-      "value": null,
-      "source": null,
-      "confidence": null
+    "open24Hours": false,
+    "services": [
+      "On-site services",
+      "Wheelchair-accessible car park",
+      "Wheelchair-accessible entrance"
+    ],
+    "categories": [
+      "Landscaper",
+      "Contractor",
+      "Landscaping supply store",
+      "Retaining wall supplier"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": false,
+    "reservationLink": null,
+    "photosObserved": 4,
+    "distribution": {
+      "1_star_reviews": 19,
+      "2_star_reviews": 3,
+      "3_star_reviews": 4,
+      "4_star_reviews": 14,
+      "5_star_reviews": 192
     },
-    "annualProfit": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "foundedYear": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "branchCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    }
-  },
-  "evidence": [
-    "Google Business Profile: claimed",
-    "Four- and five-star review share: 89%",
-    "Latest sampled Google review: 2026-06-20T04:48:29.496Z"
-  ],
-  "locationsObserved": 1,
-  "digitalMaturity": {
-    "score": 13,
-    "band": "Foundational",
-    "version": 1,
-    "components": [
+    "positiveReviewShare": 89,
+    "latestObservedReviewAt": "2026-06-20T04:48:29.496Z",
+    "sampledReviewCount": 8,
+    "locations": [
       {
-        "label": "Mobile performance",
-        "points": 4,
-        "maximum": 20,
-        "evidence": "Lighthouse 0/100"
-      },
-      {
-        "label": "Accessibility",
-        "points": 2,
-        "maximum": 10,
-        "evidence": "Lighthouse 0/100"
-      },
-      {
-        "label": "Search readiness",
-        "points": 2,
-        "maximum": 12,
-        "evidence": "Lighthouse 0/100"
-      },
-      {
-        "label": "Technical best practices",
-        "points": 0,
-        "maximum": 8,
-        "evidence": "Not measured"
-      },
-      {
-        "label": "Structured data",
-        "points": 0,
-        "maximum": 8,
-        "evidence": "Not detected"
-      },
-      {
-        "label": "Measurement stack",
-        "points": 0,
-        "maximum": 8,
-        "evidence": "No analytics signal detected"
-      },
-      {
-        "label": "Online customer action",
-        "points": 0,
-        "maximum": 10,
-        "evidence": "No booking or online-estimate signal"
-      },
-      {
-        "label": "Business profile ownership",
-        "points": 4,
-        "maximum": 4,
-        "evidence": "Google profile claimed"
-      },
-      {
-        "label": "Mobile foundation",
-        "points": 0,
-        "maximum": 6,
-        "evidence": "Not detected"
-      },
-      {
-        "label": "Site maintenance",
-        "points": 0,
-        "maximum": 4,
-        "evidence": "Links not checked"
+        "placeId": "ChIJKUoaRpr2UocRHayvPgCov3M",
+        "cid": "8340569753918614557",
+        "address": "1935 Warm Springs Rd, Salt Lake City, UT 84116, United States",
+        "latitude": 40.808747,
+        "longitude": -111.9222978,
+        "rating": 4.5,
+        "reviews": 232
       }
     ],
-    "calculatedAt": "2026-08-22T15:37:09.325Z"
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Four- and five-star review share: 89%",
+      "Latest sampled Google review: 2026-06-20T04:48:29.496Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 13,
+      "band": "Foundational",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 2,
+          "maximum": 10,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 2,
+          "maximum": 12,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "No analytics signal detected"
+        },
+        {
+          "label": "Online customer action",
+          "points": 0,
+          "maximum": 10,
+          "evidence": "No booking or online-estimate signal"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 0,
+          "maximum": 6,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 0,
+          "maximum": 4,
+          "evidence": "Links not checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.325Z"
+    }
   }
 }
