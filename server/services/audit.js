@@ -58,7 +58,7 @@ export function isPrivateAddress(address) {
   return false
 }
 
-export async function assertPublicUrl(input) {
+export async function assertPublicUrl(input, { lookup: lookupFn = lookup } = {}) {
   const url = input instanceof URL ? input : normalizeWebsite(input)
   const hostname = url.hostname.toLowerCase().replace(/\.$/, '')
   if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local')) {
@@ -68,7 +68,7 @@ export async function assertPublicUrl(input) {
   let addresses
   try {
     addresses = await Promise.race([
-      lookup(hostname, { all: true, verbatim: true }),
+      lookupFn(hostname, { all: true, verbatim: true }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('DNS timeout')), 3_000)),
     ])
   } catch {
@@ -122,7 +122,7 @@ export async function fetchPublicText(input, options = {}) {
   let redirects = 0
   for (let redirect = 0; redirect <= maxRedirects; redirect += 1) {
     throwIfCancelled(options.signal)
-    await assertPublicUrl(url)
+    await assertPublicUrl(url, { lookup: options.dnsLookup })
     let response
     try {
       response = await fetch(url, {
@@ -157,7 +157,7 @@ export async function fetchPublicStatus(input, options = {}) {
   let method = 'HEAD'
   for (let redirect = 0; redirect <= maxRedirects; redirect += 1) {
     throwIfCancelled(options.signal)
-    await assertPublicUrl(url)
+    await assertPublicUrl(url, { lookup: options.dnsLookup })
     let response
     try {
       attempts += 1
