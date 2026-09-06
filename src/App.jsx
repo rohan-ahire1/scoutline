@@ -39,6 +39,7 @@ import {
   Sparkles,
   Star,
   Sun,
+  Trash2,
   Trophy,
   Upload,
   WandSparkles,
@@ -790,6 +791,102 @@ function ContractsPage({ leads, onOpen, onContract, goTo }) {
   )
 }
 
+function BackupPanel() {
+  const [health, setHealth] = useState(null)
+  const [backups, setBackups] = useState([])
+  const [busy, setBusy] = useState(null)
+  const [notice, setNotice] = useState(null)
+  const [plan, setPlan] = useState(null)
+  const [pendingFile, setPendingFile] = useState(null)
+  const fileInput = useRef(null)
+  const load = async () => {
+    try {
+      const [healthData, listData] = await Promise.all([apiRequest('/api/storage/health'), apiRequest('/api/backups')])
+      setHealth(healthData); setBackups(listData.backups || [])
+    } catch (caught) { setNotice({ tone: 'error', text: caught?.message || 'Could not load backup status' }) }
+  }
+  useEffect(() => { load() }, [])
+  const fail = (caught, fallback) => setNotice({ tone: 'error', text: caught?.message || fallback })
+  const createSnapshot = async () => {
+    setBusy('create'); setNotice(null)
+    try {
+      const created = await apiRequest('/api/backups', { method: 'POST', timeoutMs: 300_000 })
+      setNotice({ tone: 'ok', text: `Snapshot ${created.name} verified — ${created.counts?.leads ?? 0} clients, ${created.files ?? 0} files.` })
+      await load()
+    } catch (caught) { fail(caught, 'Could not create a backup snapshot') } finally { setBusy(null) }
+  }
+  const restoreSnapshot = async (name, counts) => {
+    if (!window.confirm(`Restore snapshot ${name}? This replaces all current clients, runs and settings with the snapshot (${counts?.leads ?? '?'} clients).`)) return
+    setBusy(`restore:${name}`); setNotice(null)
+    try {
+      const result = await apiRequest(`/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true }), timeoutMs: 300_000 })
+      setNotice({ tone: 'ok', text: `Restored ${result.restored?.tables?.leads ?? 0} clients and ${result.restored?.files ?? 0} files. Reloading…` })
+      window.setTimeout(() => window.location.reload(), 1200)
+    } catch (caught) { fail(caught, 'Could not restore the snapshot') } finally { setBusy(null) }
+  }
+  const deleteSnapshot = async (name) => {
+    if (!window.confirm(`Delete snapshot ${name}? This cannot be undone.`)) return
+    setBusy(`delete:${name}`); setNotice(null)
+    try { await apiRequest(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' }); await load() }
+    catch (caught) { fail(caught, 'Could not delete the snapshot') } finally { setBusy(null) }
+  }
+  const exportBackup = async () => {
+    setBusy('export'); setNotice(null)
+    try {
+      const response = await fetch('/api/backup/export')
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || `Export failed with HTTP ${response.status}`)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = response.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] || 'scoutline-backup.json'
+      document.body.appendChild(link); link.click(); link.remove()
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 5000)
+      setNotice({ tone: 'ok', text: 'Backup file downloaded — keep it somewhere safe.' })
+    } catch (caught) { fail(caught, 'Could not download the backup file') } finally { setBusy(null) }
+  }
+  const inspectFile = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setBusy('inspect'); setNotice(null); setPlan(null); setPendingFile(null)
+    try {
+      const backup = JSON.parse(await file.text())
+      const preview = await apiRequest('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ backup }), timeoutMs: 300_000 })
+      setPlan(preview); setPendingFile({ name: file.name, backup })
+    } catch (caught) { fail(caught, 'That file is not a usable Scoutline backup') } finally { setBusy(null) }
+  }
+  const confirmImport = async () => {
+    if (!pendingFile) return
+    if (!window.confirm(`Replace ALL current data with ${pendingFile.name}? This cannot be undone.`)) return
+    setBusy('import'); setNotice(null)
+    try {
+      const result = await apiRequest('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ backup: pendingFile.backup, confirm: true }), timeoutMs: 300_000 })
+      setNotice({ tone: 'ok', text: `Restored ${result.restored?.tables?.leads ?? 0} clients and ${result.restored?.files ?? 0} files. Reloading…` })
+      window.setTimeout(() => window.location.reload(), 1200)
+    } catch (caught) { fail(caught, 'Could not restore the backup file') } finally { setBusy(null) }
+  }
+  const failures = health?.artifactFailures || []
+  return (
+    <section className="panel minimal-settings">
+      <div><h2>Backup &amp; restore</h2><p>Everything stays on this machine. Snapshots are verified on creation; restores are verified before anything is replaced.</p></div>
+      <div className="minimal-form">
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button className="button button-secondary button-small" onClick={createSnapshot} disabled={busy === 'create'}>{busy === 'create' ? <LoaderCircle size={12} className="spin" /> : <Database size={12} />}{busy === 'create' ? 'Saving…' : 'Save snapshot now'}</button>
+          <button className="button button-secondary button-small" onClick={exportBackup} disabled={busy === 'export'}>{busy === 'export' ? <LoaderCircle size={12} className="spin" /> : <Download size={12} />}{busy === 'export' ? 'Preparing…' : 'Download backup file'}</button>
+          <button className="button button-secondary button-small" onClick={() => fileInput.current?.click()} disabled={busy === 'inspect'}>{busy === 'inspect' ? <LoaderCircle size={12} className="spin" /> : <Upload size={12} />}{busy === 'inspect' ? 'Checking…' : 'Restore from file'}</button>
+          <input ref={fileInput} className="visually-hidden" type="file" accept=".json,application/json" onChange={inspectFile} />
+        </div>
+        {health && <small style={{ color: health.writable ? '#666' : '#c00', fontSize: '12px' }}>{health.writable ? `Storage is writable · ${health.backups.count} snapshot(s)` : 'Storage is NOT writable — backups cannot be written. Fix disk permissions.'}{failures.length > 0 && ` · ${failures.length} report file(s) need repair (restore a backup to fix).`}</small>}
+        {failures.length > 0 && <div className="preview-banner"><CircleAlert size={16} /><div><strong>Some report files failed to save</strong><p>{failures.map((item) => item.leadId).slice(0, 5).join(', ')}{failures.length > 5 ? ` and ${failures.length - 5} more` : ''} — the database is intact. Restoring a backup rewrites the files.</p></div></div>}
+        {plan && pendingFile && <div className="preview-banner"><ShieldCheck size={16} /><div><strong>{pendingFile.name} looks good</strong><p>Would restore {plan.tables?.leads ?? 0} clients, {plan.tables?.runs ?? 0} runs, {plan.files ?? 0} files{plan.createdAt ? ` · backed up ${new Date(plan.createdAt).toLocaleString()}` : ''}.</p></div><div><button className="button button-primary button-small" onClick={confirmImport} disabled={busy === 'import'}>{busy === 'import' ? 'Restoring…' : 'Replace my data'}</button><button className="button button-quiet button-small" onClick={() => { setPlan(null); setPendingFile(null) }}>Cancel</button></div></div>}
+        {notice && <div className="field-error" style={{ color: notice.tone === 'ok' ? '#1a7f37' : '#c00', fontSize: '12px' }}>{notice.text}</div>}
+        {backups.length > 0 && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{backups.map((item) => <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}><span style={{ flex: 1 }}><strong>{item.name}</strong><br /><small style={{ color: '#666' }}>{item.counts ? `${item.counts.leads ?? 0} clients · ${item.files} files` : 'unreadable snapshot'}</small></span><button className="button button-quiet button-small" onClick={() => restoreSnapshot(item.name, item.counts)} disabled={busy === `restore:${item.name}`}>{busy === `restore:${item.name}` ? 'Restoring…' : 'Restore'}</button><button className="button button-quiet button-small" aria-label={`Delete snapshot ${item.name}`} onClick={() => deleteSnapshot(item.name)} disabled={busy === `delete:${item.name}`}><Trash2 size={12} /></button></div>)}</div>}
+      </div>
+    </section>
+  )
+}
+
 function SettingsPage({ apiStatus, settings, onSave }) {
   const [draft, setDraft] = useState(settings)
   const [saving, setSaving] = useState(false)
@@ -832,6 +929,7 @@ function SettingsPage({ apiStatus, settings, onSave }) {
         <div><h2>Research defaults</h2><p>Used when a new collection run starts.</p></div>
         <div className="minimal-form"><label><span>Default location *</span><input value={draft.defaultLocation || ''} onChange={handleField('defaultLocation')} onBlur={handleBlur('defaultLocation')} style={show('defaultLocation') ? errStyle : undefined} className={show('defaultLocation') ? 'input-error' : undefined} aria-invalid={Boolean(show('defaultLocation'))} />{show('defaultLocation') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.defaultLocation}</span>}</label><div><label><span>Clients per run (1-50)</span><input type="number" min="1" max="50" value={draft.resultLimit || 25} onChange={handleField('resultLimit', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('resultLimit')} style={show('resultLimit') ? errStyle : undefined} className={show('resultLimit') ? 'input-error' : undefined} aria-invalid={Boolean(show('resultLimit'))} />{show('resultLimit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.resultLimit}</span>}</label><label><span>Website audits (1-25)</span><input type="number" min="1" max="25" value={draft.deepAuditLimit || 10} onChange={handleField('deepAuditLimit', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('deepAuditLimit')} style={show('deepAuditLimit') ? errStyle : undefined} className={show('deepAuditLimit') ? 'input-error' : undefined} aria-invalid={Boolean(show('deepAuditLimit'))} />{show('deepAuditLimit') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.deepAuditLimit}</span>}</label></div><div><label><span>Discovery latitude (-90 to 90)</span><input type="number" step="any" value={draft.discoveryLatitude ?? ''} onChange={handleField('discoveryLatitude', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('discoveryLatitude')} style={show('discoveryLatitude') ? errStyle : undefined} className={show('discoveryLatitude') ? 'input-error' : undefined} aria-invalid={Boolean(show('discoveryLatitude'))} />{show('discoveryLatitude') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.discoveryLatitude}</span>}</label><label><span>Discovery longitude (-180 to 180)</span><input type="number" step="any" value={draft.discoveryLongitude ?? ''} onChange={handleField('discoveryLongitude', (v) => v === '' ? '' : Number(v))} onBlur={handleBlur('discoveryLongitude')} style={show('discoveryLongitude') ? errStyle : undefined} className={show('discoveryLongitude') ? 'input-error' : undefined} aria-invalid={Boolean(show('discoveryLongitude'))} />{show('discoveryLongitude') && <span className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{merged.discoveryLongitude}</span>}</label></div>{fieldErrors._general && <div className="field-error" style={{ color: '#c00', fontSize: '12px' }}>{fieldErrors._general}</div>}<button className="button button-primary" onClick={save} disabled={saving}>{saving ? <LoaderCircle size={12} className="spin" /> : <Check size={12} />}{saving ? 'Saving…' : 'Save settings'}</button></div>
       </section>
+      <BackupPanel />
       <section className="panel connection-status"><Database size={18} /><div><strong>Local SQLite storage</strong><span>{apiStatus?.databasePath || 'data/scoutline.db'}</span></div><Badge tone="green">Healthy</Badge></section>
       <section className="panel connection-status"><WandSparkles size={18} /><div><strong>Live discovery</strong><span>{apiStatus?.brightDataAdapterReady ? `Bright Data Google Maps is ready · provider requests capped at ${apiStatus.brightDataMaxRecords || 25} records.` : 'Add BRIGHT_DATA_API_KEY to use live discovery; runs currently audit saved clients.'}</span></div><Badge tone={apiStatus?.brightDataAdapterReady ? 'green' : 'amber'}>{apiStatus?.brightDataAdapterReady ? 'Ready' : 'Local'}</Badge></section>
       <section className="panel connection-status"><Bot size={18} /><div><strong>Outreach generation</strong><span>{apiStatus?.outreachConfigured ? `${apiStatus.outreachProviderLabel} · ${apiStatus.outreachModel} will generate all three evidence-based email versions.` : 'No model API key found; the same endpoint uses deterministic evidence templates.'}</span></div><Badge tone={apiStatus?.outreachConfigured ? 'green' : 'gray'}>{apiStatus?.outreachConfigured ? 'Ready' : 'Fallback'}</Badge></section>
