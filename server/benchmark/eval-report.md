@@ -1,7 +1,7 @@
 # Scoutline offline quality benchmark
 
 - Fixtures: v1 (22 cases, 29 checks)
-- Commit: dc26e97 · generated 2026-09-06T14:13:53.591Z · 93ms
+- Commit: c5469d8 · generated 2026-09-06T19:57:22.978Z · 90ms
 - Passed: **29/29** · fake provider calls: 5
 
 ## By area (explicit denominators)

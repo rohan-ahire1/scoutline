@@ -1,153 +1,167 @@
 {
-  "source": "Bright Data Google Maps",
-  "fetchedAt": "2026-08-23T10:03:55.479Z",
-  "placeId": "ChIJB8CjwEb1UocR0xuJTYO8eu0",
-  "cid": "17112197006275189715",
-  "claimed": true,
-  "businessStatus": "Active",
-  "openHours": {
-    "Sunday": "Closed",
-    "Saturday": "Closed",
-    "Friday": "7 AM–7 PM",
-    "Thursday": "7 AM–7 PM",
-    "Wednesday": "7 AM–7 PM",
-    "Tuesday": "7 AM–7 PM",
-    "Monday": "7 AM–7 PM"
-  },
-  "open24Hours": false,
-  "services": [],
-  "categories": [
-    "Contractor",
-    "Bathroom remodeler",
-    "Construction company",
-    "Service establishment",
-    "Kitchen remodeler",
-    "Remodeler"
-  ],
-  "onlineBooking": false,
-  "onlineEstimates": false,
-  "reservationLink": null,
-  "photosObserved": 3,
-  "distribution": {
-    "1_star_reviews": 2,
-    "2_star_reviews": 0,
-    "3_star_reviews": 0,
-    "4_star_reviews": 0,
-    "5_star_reviews": 44
-  },
-  "positiveReviewShare": 96,
-  "latestObservedReviewAt": "2026-06-16T22:40:25.115Z",
-  "sampledReviewCount": 8,
-  "locations": [
-    {
-      "placeId": "ChIJB8CjwEb1UocR0xuJTYO8eu0",
-      "cid": "17112197006275189715",
-      "address": "Salt Lake City, Utah",
-      "latitude": 40.7769195,
-      "longitude": -111.9209344,
-      "rating": 4.8,
-      "reviews": 46
-    }
-  ],
-  "companyMetrics": {
-    "employeeCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
+  "id": "lead-mt5n9lzm-1-d7d1fe",
+  "company": "Salt Lake City Remodels",
+  "category": "Contractor",
+  "location": "Salt Lake City, Utah",
+  "website": "slcremodels.com",
+  "address": "Salt Lake City, Utah",
+  "phone": "+1 801-839-4361",
+  "email": "Not collected",
+  "rating": 4.8,
+  "reviews": 46,
+  "collectedAt": "8/23/2026, 10:08:28 AM",
+  "sourceUrl": "https://www.google.com/maps/place/Salt%20Lake%20City%20Remodels/data=!4m7!3m6!1s0x8752f546c0a3c007:0xed7abc834d891bd3!8m2!3d40.7769195!4d-111.9209344!16s%2Fg%2F11c61f_6df!19sChIJB8CjwEb1UocR0xuJTYO8eu0?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-23T10:03:55.479Z",
+    "placeId": "ChIJB8CjwEb1UocR0xuJTYO8eu0",
+    "cid": "17112197006275189715",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "Closed",
+      "Friday": "7 AM–7 PM",
+      "Thursday": "7 AM–7 PM",
+      "Wednesday": "7 AM–7 PM",
+      "Tuesday": "7 AM–7 PM",
+      "Monday": "7 AM–7 PM"
     },
-    "annualRevenue": {
-      "value": null,
-      "source": null,
-      "confidence": null
+    "open24Hours": false,
+    "services": [],
+    "categories": [
+      "Contractor",
+      "Bathroom remodeler",
+      "Construction company",
+      "Service establishment",
+      "Kitchen remodeler",
+      "Remodeler"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": false,
+    "reservationLink": null,
+    "photosObserved": 3,
+    "distribution": {
+      "1_star_reviews": 2,
+      "2_star_reviews": 0,
+      "3_star_reviews": 0,
+      "4_star_reviews": 0,
+      "5_star_reviews": 44
     },
-    "annualProfit": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "foundedYear": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "branchCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    }
-  },
-  "evidence": [
-    "Google Business Profile: claimed",
-    "Four- and five-star review share: 96%",
-    "Latest sampled Google review: 2026-06-16T22:40:25.115Z"
-  ],
-  "locationsObserved": 1,
-  "digitalMaturity": {
-    "score": 50,
-    "band": "Developing",
-    "version": 1,
-    "components": [
+    "positiveReviewShare": 96,
+    "latestObservedReviewAt": "2026-06-16T22:40:25.115Z",
+    "sampledReviewCount": 8,
+    "locations": [
       {
-        "label": "Mobile performance",
-        "points": 4,
-        "maximum": 20,
-        "evidence": "Lighthouse 0/100"
-      },
-      {
-        "label": "Accessibility",
-        "points": 6,
-        "maximum": 10,
-        "evidence": "Lighthouse 89/100"
-      },
-      {
-        "label": "Search readiness",
-        "points": 7,
-        "maximum": 12,
-        "evidence": "Lighthouse 82/100"
-      },
-      {
-        "label": "Technical best practices",
-        "points": 0,
-        "maximum": 8,
-        "evidence": "Not measured"
-      },
-      {
-        "label": "Structured data",
-        "points": 8,
-        "maximum": 8,
-        "evidence": "Detected"
-      },
-      {
-        "label": "Measurement stack",
-        "points": 8,
-        "maximum": 8,
-        "evidence": "GA4"
-      },
-      {
-        "label": "Online customer action",
-        "points": 0,
-        "maximum": 10,
-        "evidence": "No booking or online-estimate signal"
-      },
-      {
-        "label": "Business profile ownership",
-        "points": 4,
-        "maximum": 4,
-        "evidence": "Google profile claimed"
-      },
-      {
-        "label": "Mobile foundation",
-        "points": 6,
-        "maximum": 6,
-        "evidence": "Responsive viewport detected"
-      },
-      {
-        "label": "Site maintenance",
-        "points": 2,
-        "maximum": 4,
-        "evidence": "1 broken of 5 checked"
+        "placeId": "ChIJB8CjwEb1UocR0xuJTYO8eu0",
+        "cid": "17112197006275189715",
+        "address": "Salt Lake City, Utah",
+        "latitude": 40.7769195,
+        "longitude": -111.9209344,
+        "rating": 4.8,
+        "reviews": 46
       }
     ],
-    "calculatedAt": "2026-08-23T10:08:55.345Z"
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Four- and five-star review share: 96%",
+      "Latest sampled Google review: 2026-06-16T22:40:25.115Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 50,
+      "band": "Developing",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 6,
+          "maximum": 10,
+          "evidence": "Lighthouse 89/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 7,
+          "maximum": 12,
+          "evidence": "Lighthouse 82/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 0,
+          "maximum": 10,
+          "evidence": "No booking or online-estimate signal"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 2,
+          "maximum": 4,
+          "evidence": "1 broken of 5 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-23T10:08:55.345Z"
+    }
   }
 }

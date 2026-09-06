@@ -559,6 +559,29 @@ function detectStack(html) {
 
 function cap(value, min = 0, max = 100) { return Math.max(min, Math.min(max, Math.round(value))) }
 
+// Rule version for homepage heuristics (ROH-24). Stored with every audit so
+// score changes across versions stay explainable from recorded inputs.
+export const AUDIT_RULE_VERSION = 2
+export const FORM_FRICTION_THRESHOLD = 8
+export const ALT_MISSING_SHARE_THRESHOLD = 0.3
+
+// Heuristic business-type signal over declared @type names — recorded alongside
+// the raw types, never a substitute for them.
+const LOCAL_BUSINESS_SCHEMA_TYPES = /(LocalBusiness|Business|Establishment|Store|Service|Contractor|Plumber|Electrician|Locksmith|Painter|Roofer|Mover|Cleaner|Agency|Office|Center|Clinic|Shop|Restaurant|Cafe|Hotel|Garage|Salon|Gym|Studio)$/i
+
+function schemaTypes(node) {
+  const found = []
+  const visit = (value) => {
+    if (Array.isArray(value)) return value.forEach(visit)
+    if (!value || typeof value !== 'object') return
+    const types = Array.isArray(value['@type']) ? value['@type'] : value['@type'] ? [value['@type']] : []
+    types.filter((type) => typeof type === 'string' && type.trim()).forEach((type) => found.push(type.trim()))
+    if (value['@graph']) visit(value['@graph'])
+  }
+  visit(node)
+  return [...new Set(found)]
+}
+
 export function inconclusiveAssessment({ capture, finalUrl, sitemapPageCount = null }) {
   const checkedAt = new Date().toISOString()
   return {
@@ -595,12 +618,69 @@ export function analyzeHtml(html, finalUrl, sitemapPageCount = null, options = {
   const viewport = cleanText($('meta[name="viewport" i]').attr('content'))
   const canonical = cleanText($('link[rel="canonical" i]').attr('href'))
   const h1Count = $('h1').length
-  const forms = $('form').length
-  const inputCount = $('form input, form textarea, form select').length
+  // Per-form analysis (ROH-24): every form is assessed independently with a
+  // stable locator. Visible actionable fields count toward user effort;
+  // hidden and disabled fields never do.
+  const EXCLUDED_INPUT_TYPES = new Set(['hidden', 'submit', 'button', 'image', 'reset'])
+  const formDetails = []
+  $('form').each((formIndex, formElement) => {
+    const form = $(formElement)
+    const id = cleanText(form.attr('id'))
+    const name = cleanText(form.attr('name'))
+    const locator = id ? `form#${id}` : name ? `form[name="${name}"]` : `form #${formIndex + 1}`
+    let visibleFields = 0
+    let requiredFields = 0
+    let hiddenFields = 0
+    form.find('input, textarea, select').each((_, field) => {
+      const tag = String(field.tagName || field.name || '').toLowerCase()
+      const type = String($(field).attr('type') || (tag === 'select' ? 'select' : tag === 'textarea' ? 'textarea' : 'text')).toLowerCase()
+      if (type === 'hidden' || $(field).is('[disabled]')) {
+        hiddenFields += 1
+        return
+      }
+      if (tag === 'input' && EXCLUDED_INPUT_TYPES.has(type)) return
+      visibleFields += 1
+      if ($(field).is('[required]') || String($(field).attr('aria-required') || '').toLowerCase() === 'true') requiredFields += 1
+    })
+    formDetails.push({
+      locator,
+      action: cleanText(form.attr('action')) || null,
+      sourceUrl: finalUrl.href,
+      visibleFields,
+      requiredFields,
+      optionalFields: Math.max(0, visibleFields - requiredFields),
+      hiddenFields,
+    })
+  })
+  const forms = formDetails.length
+  const inputCount = formDetails.reduce((sum, item) => sum + item.visibleFields + item.hiddenFields, 0)
   const images = $('img').length
-  const imagesWithAlt = $('img[alt]').filter((_, element) => cleanText($(element).attr('alt')).length > 0).length
-  const altCoverage = images ? Math.round((imagesWithAlt / images) * 100) : 100
-  const hasSchema = $('script[type="application/ld+json"]').length > 0
+  // Decorative images (alt="") are intentionally labelled and reported
+  // separately; only images with no alt attribute at all count as missing.
+  let imagesDescriptive = 0
+  let imagesDecorative = 0
+  let imagesMissing = 0
+  $('img').each((_, element) => {
+    const alt = $(element).attr('alt')
+    if (alt == null) imagesMissing += 1
+    else if (cleanText(alt).length > 0) imagesDescriptive += 1
+    else imagesDecorative += 1
+  })
+  const altCoverage = images ? Math.round(((imagesDescriptive + imagesDecorative) / images) * 100) : 100
+  // JSON-LD is parsed, not presumed: validity and @type are recorded, and
+  // only a valid block counts as detected structured data.
+  const schemaBlocks = []
+  $('script[type="application/ld+json"]').each((_, element) => {
+    try {
+      schemaBlocks.push({ valid: true, types: schemaTypes(JSON.parse($(element).text())) })
+    } catch {
+      schemaBlocks.push({ valid: false, types: [] })
+    }
+  })
+  const validSchemaBlocks = schemaBlocks.filter((block) => block.valid)
+  const schemaTypesSeen = [...new Set(validSchemaBlocks.flatMap((block) => block.types))]
+  const hasSchema = validSchemaBlocks.length > 0
+  const hasLocalBusinessSchema = schemaTypesSeen.some((type) => LOCAL_BUSINESS_SCHEMA_TYPES.test(type))
   const hasPhone = $('a[href^="tel:"]').length > 0
   const hasEmail = $('a[href^="mailto:"]').length > 0
   const bodyText = cleanText($('body').text()).toLowerCase()
@@ -617,25 +697,35 @@ export function analyzeHtml(html, finalUrl, sitemapPageCount = null, options = {
 
   const findings = []
   const evidence = []
-  const add = (titleText, detail, evidenceText, weight) => findings.push({ title: titleText, detail, evidence: evidenceText, weight })
+  const add = (rule, titleText, detail, evidenceText, weight) => findings.push({ rule, title: titleText, detail, evidence: evidenceText, weight })
   evidence.push(`Homepage returned HTTP 200 at ${finalUrl.href}`)
   evidence.push(`Page title: ${title || 'not found'}`)
   evidence.push(`Internal links observed on homepage: ${internalLinks.size}`)
-  if (!viewport) add('Mobile setup', 'The homepage does not declare a responsive viewport.', 'Responsive viewport meta tag: not found', 18)
-  if (!title || title.length < 20 || title.length > 65) add('Search clarity', 'The homepage title is missing or outside a useful descriptive range.', `Homepage title length: ${title.length} characters`, 10)
-  if (!description || description.length < 70) add('Search messaging', 'The homepage description is missing or too brief to explain the offer clearly.', `Meta description length: ${description.length} characters`, 8)
-  if (h1Count !== 1) add('Content hierarchy', 'The homepage does not use one clear primary heading.', `Homepage H1 count: ${h1Count}`, 10)
-  if (inputCount > 8) add('Enquiry friction', 'The first website form asks for many details at once.', `Form field count on homepage: ${inputCount}`, 16)
-  if (!ctaCount) add('Next step', 'No clear quote, contact, booking, or call action was detected.', 'Primary action phrases detected: 0', 18)
-  if (!hasPhone && !hasEmail && forms === 0) add('Contact path', 'No obvious phone, email, or enquiry form was detected.', 'Direct contact methods detected: 0', 18)
-  if (altCoverage < 70) add('Image accessibility', 'Many homepage images do not have useful alternative text.', `Image alt-text coverage: ${altCoverage}%`, 9)
-  if (!hasSchema) add('Local search context', 'No structured data was detected on the homepage.', 'JSON-LD structured data blocks: 0', 7)
-  if (!hasTrustLanguage) add('Trust signals', 'Common reassurance such as licensing, warranties, reviews, or guarantees is not prominent.', 'Trust-language signals detected: 0', 6)
-  if (robotsNoIndex) add('Search visibility', 'The homepage asks search engines not to index it.', 'Robots meta contains noindex', 20)
+  if (!viewport) add('mobile/viewport-v2', 'Mobile setup', 'The homepage does not declare a responsive viewport.', 'Responsive viewport meta tag: not found', 18)
+  if (!title || title.length < 20 || title.length > 65) add('seo/title-v2', 'Search clarity', 'The homepage title is missing or outside a useful descriptive range.', `Homepage title length: ${title.length} characters`, 10)
+  if (!description || description.length < 70) add('seo/description-v2', 'Search messaging', 'The homepage description is missing or too brief to explain the offer clearly.', `Meta description length: ${description.length} characters`, 8)
+  if (h1Count !== 1) add('content/h1-v2', 'Content hierarchy', 'The homepage does not use one clear primary heading.', `Homepage H1 count: ${h1Count}`, 10)
+  // One finding per genuinely long form — never a summed cross-form total.
+  for (const form of formDetails) {
+    evidence.push(`Form ${form.locator} field count: ${form.visibleFields} visible fields (${form.requiredFields} required, ${form.optionalFields} optional), ${form.hiddenFields} hidden/disabled excluded`)
+    if (form.visibleFields > FORM_FRICTION_THRESHOLD) {
+      add('forms/field-count-v2', 'Enquiry friction', `One observed form (${form.locator}) asks for ${form.visibleFields} details at once.`, `Form ${form.locator} field count: ${form.visibleFields} visible fields (${form.requiredFields} required)`, 16)
+    }
+  }
+  if (!ctaCount) add('cta/presence-v2', 'Next step', 'No clear quote, contact, booking, or call action was detected in homepage text.', 'Primary action phrases detected in text: 0', 18)
+  if (!hasPhone && !hasEmail && forms === 0) add('contact/path-v2', 'Contact path', 'No phone link, email link, or enquiry form was detected in homepage markup.', 'Direct contact methods detected: 0', 18)
+  evidence.push(`Image alt text: ${imagesDescriptive} descriptive, ${imagesDecorative} decorative (alt=""), ${imagesMissing} missing of ${images} images`)
+  if (images > 0 && imagesMissing > 0 && imagesMissing / images > ALT_MISSING_SHARE_THRESHOLD) {
+    add('images/alt-v2', 'Image accessibility', `${imagesMissing} homepage images have no alternative text${imagesDecorative ? ` (${imagesDecorative} decorative images are intentionally labelled and excluded)` : ''}.`, `Images missing alt attribute: ${imagesMissing} of ${images}`, 9)
+  }
+  evidence.push(`JSON-LD blocks: ${schemaBlocks.length} (${validSchemaBlocks.length} valid${schemaTypesSeen.length ? `; types: ${schemaTypesSeen.join(', ')}` : ''})`)
+  if (schemaBlocks.length === 0) add('schema/presence-v2', 'Local search context', 'No structured data was detected on the homepage.', 'JSON-LD structured data blocks: 0', 7)
+  else if (validSchemaBlocks.length === 0) add('schema/validity-v2', 'Local search context', 'Homepage structured data blocks could not be parsed as valid JSON-LD.', `JSON-LD blocks: ${schemaBlocks.length} (0 valid)`, 7)
+  if (!hasTrustLanguage) add('trust/language-v2', 'Trust signals', 'Common reassurance such as licensing, warranties, reviews, or guarantees was not detected in homepage text.', 'Trust-language signals detected in text: 0', 6)
+  if (robotsNoIndex) add('seo/noindex-v2', 'Search visibility', 'The homepage asks search engines not to index it.', 'Robots meta contains noindex', 20)
   if (!canonical) evidence.push('Canonical URL: not found')
-  evidence.push(`Homepage CTA phrases detected: ${ctaCount}`)
+  evidence.push(`Homepage CTA phrases detected in text: ${ctaCount}`)
   evidence.push(`Image alt-text coverage: ${altCoverage}%`)
-  evidence.push(`Structured data: ${hasSchema ? 'found' : 'not found'}`)
 
   findings.sort((a, b) => b.weight - a.weight)
   const top = findings.slice(0, 5)
@@ -667,7 +757,17 @@ export function analyzeHtml(html, finalUrl, sitemapPageCount = null, options = {
     https: finalUrl.protocol === 'https:',
     rebuild: stack.some((item) => ['WordPress', 'Wix', 'Squarespace', 'Webflow'].includes(item)) ? 'Easy' : 'Moderate',
     stack,
-    auditSummary: { title, description, viewport: Boolean(viewport), canonical: Boolean(canonical), h1Count, forms, inputCount, images, altCoverage, ctaCount, hasSchema, hasPhone, hasEmail, internalLinks: internalLinks.size },
+    auditSummary: {
+      title, description, viewport: Boolean(viewport), canonical: Boolean(canonical), h1Count, forms, inputCount, images, altCoverage, ctaCount,
+      hasSchema, hasLocalBusinessSchema, hasPhone, hasEmail, hasTrustLanguage, internalLinks: internalLinks.size,
+      formDetails, imageAlt: { descriptive: imagesDescriptive, decorative: imagesDecorative, missing: imagesMissing },
+      schemaBlocks: { total: schemaBlocks.length, valid: validSchemaBlocks.length, types: schemaTypesSeen },
+    },
+    auditRules: {
+      version: AUDIT_RULE_VERSION,
+      inputs: { formFrictionThreshold: FORM_FRICTION_THRESHOLD, altMissingShareThreshold: ALT_MISSING_SHARE_THRESHOLD },
+      checkedAt: new Date().toISOString(),
+    },
   }
 }
 

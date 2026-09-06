@@ -122,12 +122,13 @@
       "appliesTo": ["discoveryDedupe"],
       "input": {
         "records": [
-          { "name": "Dupe Roofing", "website": "https://dupe.example", "full_address": "1 A St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
-          { "name": "Dupe Roofing LLC", "website": "https://dupe.example/", "full_address": "1 A St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
-          { "name": "Other Solar", "website": "https://other.example", "full_address": "2 B St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" }
+          { "name": "Dupe Roofing", "website": "https://dupe.example", "place_id": "ChIJdupe1", "full_address": "1 A St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
+          { "name": "Dupe Roofing LLC", "website": "https://dupe.example/", "place_id": "ChIJdupe1", "full_address": "1 A St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
+          { "name": "Other Solar", "website": "https://other.example", "place_id": "ChIJother1", "full_address": "2 B St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
+          { "name": "Dupe Sister Co", "website": "https://dupe.example", "place_id": "ChIJdupe2", "full_address": "3 C St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" }
         ]
       },
-      "expect": { "returned": 3, "retained": 2, "rejectedDuplicates": 1, "rejectedUnusable": 0 }
+      "expect": { "returned": 4, "retained": 3, "rejectedDuplicates": 1, "rejectedUnusable": 0 }
     },
     {
       "id": "discovery-geo-mix",

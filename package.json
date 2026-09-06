@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -n web,api -c blue,magenta \"vite --host 127.0.0.1\" \"node --watch server/index.js\"",
     "build": "vite build",
-    "test": "node --test server/*.test.js server/**/*.test.js",
+    "test": "node --test server/*.test.js server/**/*.test.js src/**/*.test.js",
     "eval": "node server/benchmark/run.js",
     "preview": "vite preview",
     "start": "node server/index.js"
