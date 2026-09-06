@@ -1,0 +1,245 @@
+{
+  "format": "scoutline-eval-report",
+  "fixtureVersion": 1,
+  "fixtureCases": 22,
+  "commit": "dc26e97",
+  "generatedAt": "2026-09-06T14:13:53.591Z",
+  "latencyMs": 93,
+  "totals": {
+    "ran": 29,
+    "passed": 29
+  },
+  "byRunner": {
+    "classifyCapture": {
+      "ran": 6,
+      "passed": 6
+    },
+    "analyzeHtml": {
+      "ran": 6,
+      "passed": 6
+    },
+    "fetchBehavior": {
+      "ran": 4,
+      "passed": 4
+    },
+    "discoveryMapping": {
+      "ran": 3,
+      "passed": 3
+    },
+    "discoveryDedupe": {
+      "ran": 3,
+      "passed": 3
+    },
+    "museGrounding": {
+      "ran": 5,
+      "passed": 5
+    },
+    "outreachGrounding": {
+      "ran": 2,
+      "passed": 2
+    }
+  },
+  "providerCalls": 5,
+  "cases": [
+    {
+      "id": "capture-static-good",
+      "runner": "classifyCapture",
+      "pass": true,
+      "detail": "quality=usable-html"
+    },
+    {
+      "id": "capture-static-good",
+      "runner": "analyzeHtml",
+      "pass": true,
+      "detail": "status=Analyzed problems=1"
+    },
+    {
+      "id": "capture-static-no-contact",
+      "runner": "classifyCapture",
+      "pass": true,
+      "detail": "quality=usable-html"
+    },
+    {
+      "id": "capture-static-no-contact",
+      "runner": "analyzeHtml",
+      "pass": true,
+      "detail": "status=Analyzed problems=5"
+    },
+    {
+      "id": "capture-js-shell",
+      "runner": "classifyCapture",
+      "pass": true,
+      "detail": "quality=js-shell"
+    },
+    {
+      "id": "capture-js-shell",
+      "runner": "analyzeHtml",
+      "pass": true,
+      "detail": "status=Inconclusive problems=0"
+    },
+    {
+      "id": "capture-challenge",
+      "runner": "classifyCapture",
+      "pass": true,
+      "detail": "quality=challenge"
+    },
+    {
+      "id": "capture-challenge",
+      "runner": "analyzeHtml",
+      "pass": true,
+      "detail": "status=Inconclusive problems=0"
+    },
+    {
+      "id": "capture-empty-body",
+      "runner": "classifyCapture",
+      "pass": true,
+      "detail": "quality=empty-response"
+    },
+    {
+      "id": "capture-empty-body",
+      "runner": "analyzeHtml",
+      "pass": true,
+      "detail": "status=Inconclusive problems=0"
+    },
+    {
+      "id": "capture-multi-form",
+      "runner": "classifyCapture",
+      "pass": true,
+      "detail": "quality=usable-html"
+    },
+    {
+      "id": "capture-multi-form",
+      "runner": "analyzeHtml",
+      "pass": true,
+      "detail": "status=Analyzed problems=2"
+    },
+    {
+      "id": "fetch-redirect-chain",
+      "runner": "fetchBehavior",
+      "pass": true,
+      "detail": "final=https://new.example/ redirects=2"
+    },
+    {
+      "id": "fetch-slow-timeout",
+      "runner": "fetchBehavior",
+      "pass": true,
+      "detail": "code=TIMEOUT"
+    },
+    {
+      "id": "fetch-http-500",
+      "runner": "fetchBehavior",
+      "pass": true,
+      "detail": "code=HTTP_ERROR"
+    },
+    {
+      "id": "fetch-dns-fail",
+      "runner": "fetchBehavior",
+      "pass": true,
+      "detail": "code=DNS_FAILED"
+    },
+    {
+      "id": "discovery-wellformed",
+      "runner": "discoveryMapping",
+      "pass": true,
+      "detail": "mapping matches"
+    },
+    {
+      "id": "discovery-malformed",
+      "runner": "discoveryMapping",
+      "pass": true,
+      "detail": "mapping matches"
+    },
+    {
+      "id": "discovery-duplicates",
+      "runner": "discoveryDedupe",
+      "pass": true,
+      "detail": "returned=3 retained=2 duplicates=1"
+    },
+    {
+      "id": "discovery-geo-mix",
+      "runner": "discoveryMapping",
+      "pass": true,
+      "detail": "mapping matches"
+    },
+    {
+      "id": "discovery-geo-mix",
+      "runner": "discoveryDedupe",
+      "pass": true,
+      "detail": "returned=2 retained=2 duplicates=0"
+    },
+    {
+      "id": "discovery-branches",
+      "runner": "discoveryDedupe",
+      "pass": true,
+      "detail": "returned=2 retained=2 duplicates=0"
+    },
+    {
+      "id": "muse-grounded",
+      "runner": "museGrounding",
+      "pass": true,
+      "detail": "grounded analysis accepted"
+    },
+    {
+      "id": "muse-uncited-id",
+      "runner": "museGrounding",
+      "pass": true,
+      "detail": "rejected as expected: Muse opportunity 1 references unknown or stale evidence IDs (obs-ghost); validation failed instead of saving ungrounded "
+    },
+    {
+      "id": "muse-stale-ids",
+      "runner": "museGrounding",
+      "pass": true,
+      "detail": "rejected as expected: Muse opportunity 1 references unknown or stale evidence IDs (obs-contact); validation failed instead of saving ungrounde"
+    },
+    {
+      "id": "muse-empty-evidence",
+      "runner": "museGrounding",
+      "pass": true,
+      "detail": "grounded analysis accepted"
+    },
+    {
+      "id": "muse-filler-opportunity",
+      "runner": "museGrounding",
+      "pass": true,
+      "detail": "rejected as expected: Muse opportunity 1 cites no evidence IDs; every opportunity must reference the observations it is built from"
+    },
+    {
+      "id": "outreach-invented-traffic",
+      "runner": "outreachGrounding",
+      "pass": true,
+      "detail": "rejected as expected: Unverified a percentage outcome in eval-fixture: claims must cite measured audit evidence, not invented outcomes"
+    },
+    {
+      "id": "outreach-grounded",
+      "runner": "outreachGrounding",
+      "pass": true,
+      "detail": "grounded copy accepted"
+    }
+  ],
+  "gates": [
+    {
+      "id": "no-unsupported-attribution",
+      "description": "Zero unsupported measurement attribution: every reported problem must cite measured evidence",
+      "pass": true,
+      "detail": "all analyzed/grounded checks cite measured evidence"
+    },
+    {
+      "id": "no-timeout-as-broken",
+      "description": "Zero timeout-as-broken assertions: timeouts and HTTP errors are reported as unreachable, never as broken sites",
+      "pass": true,
+      "detail": "all fetch failures carry precise codes without broken-site framing"
+    },
+    {
+      "id": "no-invented-filler",
+      "description": "Zero invented filler findings: empty evidence yields the explicit no-opportunity outcome, never a generic opportunity",
+      "pass": true,
+      "detail": "grounding checks reject invented claims and accept the explicit empty outcome"
+    },
+    {
+      "id": "critical-paths-green",
+      "description": "All critical persistence/cancellation-adjacent paths pass: capture classification, dedupe accounting, mapping",
+      "pass": true,
+      "detail": "capture, mapping, and dedupe checks all pass"
+    }
+  ]
+}
