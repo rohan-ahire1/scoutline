@@ -667,7 +667,7 @@ export function analyzeHtml(html, finalUrl, sitemapPageCount = null, options = {
     https: finalUrl.protocol === 'https:',
     rebuild: stack.some((item) => ['WordPress', 'Wix', 'Squarespace', 'Webflow'].includes(item)) ? 'Easy' : 'Moderate',
     stack,
-    auditSummary: { title, description, viewport: Boolean(viewport), canonical: Boolean(canonical), h1Count, forms, inputCount, images, altCoverage, ctaCount, hasSchema, hasPhone, hasEmail, internalLinks: internalLinks.size },
+    auditSummary: { title, description, viewport: Boolean(viewport), canonical: Boolean(canonical), h1Count, forms, inputCount, images, altCoverage, ctaCount, hasSchema, hasPhone, hasEmail, hasTrustLanguage, internalLinks: internalLinks.size },
   }
 }
 

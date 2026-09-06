@@ -160,9 +160,8 @@ export function validateImportRows(rows) {
   }
   const headers = Object.keys(rows[0] || {}).map((h) => String(h).toLowerCase())
   const hasCompany = headers.some((h) => ['company', 'name', 'business'].includes(h))
-  const hasWebsite = headers.some((h) => ['website', 'domain'].includes(h))
-  if (!hasCompany || !hasWebsite) {
-    headerError = 'CSV header must include company (company/name/business) and website (website/domain)'
+  if (!hasCompany) {
+    headerError = 'CSV header must include company (company/name/business); website (website/domain) is optional'
     return { isValid: false, headerError, rowErrors, message: headerError }
   }
   rows.forEach((row, idx) => {
@@ -172,9 +171,9 @@ export function validateImportRows(rows) {
     if (!company) reasons.push('missing company')
     else if (company.length < 2) reasons.push('company too short')
     else if (company.length > 120) reasons.push('company too long')
-    if (!website) reasons.push('missing website')
-    else if (website.length < 3 || website.length > 253) reasons.push('website length 3-253')
-    else if (!isValidDomain(website)) reasons.push('invalid website domain')
+    // Website-less rows import consistently; omission stays unknown.
+    if (website && (website.length < 3 || website.length > 253)) reasons.push('website length 3-253')
+    else if (website && !isValidDomain(website)) reasons.push('invalid website domain')
     if (reasons.length) rowErrors.push({ row: idx + 2, reasons, company: company || '(blank)', website: website || '(blank)' })
   })
   const isValid = rowErrors.length === 0 && !headerError
