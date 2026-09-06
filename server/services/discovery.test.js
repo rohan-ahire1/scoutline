@@ -26,8 +26,45 @@ test('maps a Bright Data-style place record into a lead', () => {
   assert.equal(lead.businessIntelligence.companyMetrics.employeeCount.value, null)
 })
 
-test('ignores records without a business website', () => {
-  assert.equal(mapDiscoveryRecord({ name: 'Map only', url: 'https://google.com/maps/place/x' }), null)
+test('retains businesses without a website as first-class records (ROH-5)', () => {
+  const lead = mapDiscoveryRecord({ name: 'Map only', url: 'https://google.com/maps/place/x', place_id: 'place-9', rating: 4.9, reviews_count: 300 })
+  assert.equal(lead.company, 'Map only')
+  assert.equal(lead.website, '')
+  assert.equal(lead.websiteStatus, 'not_supplied')
+  assert.equal(lead.businessId, 'brightdata:place:place-9')
+  assert.equal(lead.businessIntelligence.locations[0].placeId, 'place-9')
+})
+
+test('provider omission never asserts a business status (ROH-5/ROH-6)', () => {
+  const unknown = mapDiscoveryRecord({ name: 'Quiet Shop', place_id: 'place-10' })
+  assert.equal(unknown.businessIntelligence.businessStatus, 'Unknown')
+  const closed = mapDiscoveryRecord({ name: 'Shut Doors', place_id: 'place-11', permanently_closed: true })
+  assert.equal(closed.businessIntelligence.businessStatus, 'Permanently closed')
+  const claimed = mapDiscoveryRecord({ name: 'Claimed Co', place_id: 'place-12', is_claimed: true })
+  assert.equal(claimed.businessIntelligence.businessStatus, 'Active')
+})
+
+test('same placeId reuses identity; shared domains stay distinct (ROH-5)', () => {
+  const reconciled = reconcileRecords([
+    { name: 'North Branch', place_id: 'place-20', website: 'https://chain.example/north' },
+    { name: 'South Branch', place_id: 'place-21', website: 'https://chain.example/south' },
+    { name: 'North Branch', place_id: 'place-20', website: 'https://new.example' },
+    { name: 'North Branch', website: 'https://chain.example/north' },
+  ], { limit: 10 })
+  assert.equal(reconciled.retained.length, 3)
+  assert.equal(reconciled.duplicates, 1)
+  assert.deepEqual(reconciled.retained.map((item) => item.businessId), ['brightdata:place:place-20', 'brightdata:place:place-21', null])
+})
+
+test('records without a website survive reconciliation (ROH-5)', () => {
+  const reconciled = reconcileRecords([
+    { name: 'No Site Plumbing', place_id: 'place-30', rating: 4.8, reviews_count: 210 },
+    { name: '', website: 'https://noname.example' },
+  ], { limit: 10 })
+  assert.equal(reconciled.retained.length, 1)
+  assert.equal(reconciled.retained[0].websiteStatus, 'not_supplied')
+  assert.equal(reconciled.rejectedCount, 1)
+  assert.equal(reconciled.rejected[0].reason, 'missing business name')
 })
 
 const SLC_SETTINGS = { defaultLocation: 'Salt Lake City, Utah', discoveryLatitude: 40.7608, discoveryLongitude: -111.891, discoveryCountry: 'US', discoveryZoom: 13 }
@@ -113,7 +150,7 @@ test('malformed provider payloads fail while valid empty results succeed', async
   }
 })
 
-test('reconciliation totals add up with per-row reasons', () => {
+test('reconciliation totals add up with per-row reasons (ROH-5 identity)', () => {
   const good = { name: 'Acme', website: 'https://acme.example/', category: 'Roofing' }
   const result = reconcileRecords([
     good,
@@ -122,16 +159,19 @@ test('reconciliation totals add up with per-row reasons', () => {
     null,
     { name: 'Beta', website: 'https://beta.example/' },
   ], { fallbackCategory: 'Unknown', fallbackLocation: 'Miami, Florida', limit: 10 })
+  // Identity-first: same domain without a shared provider id stays distinct,
+  // and the website-less business is retained instead of rejected.
   assert.equal(result.returned, 5)
-  assert.equal(result.retained.length, 2)
-  assert.equal(result.rejectedCount, 3)
-  assert.equal(result.duplicates, 1)
-  assert.equal(result.unusable, 2)
+  assert.equal(result.retained.length, 4)
+  assert.equal(result.rejectedCount, 1)
+  assert.equal(result.duplicates, 0)
+  assert.equal(result.unusable, 1)
   assert.equal(result.returned, result.retained.length + result.rejectedCount)
   assert.ok(result.rejected.every((row) => row.reason))
   assert.equal(result.retained[0].categoryProvenance, 'provider')
-  assert.equal(result.retained[1].category, 'Unknown')
-  assert.equal(result.retained[1].categoryProvenance, 'unknown')
+  assert.equal(result.retained[3].category, 'Unknown')
+  assert.equal(result.retained[3].categoryProvenance, 'unknown')
+  assert.equal(result.retained[2].websiteStatus, 'not_supplied')
 })
 
 test('requested versus actual geography flags out-of-area evidence', () => {

@@ -1,163 +1,177 @@
 {
-  "source": "Bright Data Google Maps",
-  "fetchedAt": "2026-08-22T15:32:53.770Z",
-  "placeId": "ChIJAX6JrOWKUocR7gvDQpxHC8g",
-  "cid": "14414693768789953518",
-  "claimed": true,
-  "businessStatus": "Active",
-  "openHours": {
-    "Sunday": "Open 24 hours",
-    "Saturday": "Open 24 hours",
-    "Friday": "Open 24 hours",
-    "Thursday": "Open 24 hours",
-    "Wednesday": "Open 24 hours",
-    "Tuesday": "Open 24 hours",
-    "Monday": "Open 24 hours"
-  },
-  "open24Hours": true,
-  "services": [
-    "Online estimates",
-    "On-site services",
-    "Wheelchair-accessible entrance",
-    "Installation services",
-    "Repair services"
-  ],
-  "categories": [
-    "HVAC contractor",
-    "Air conditioning repair service",
-    "Air conditioning system supplier",
-    "Electrician",
-    "Furnace repair service",
-    "Heating contractor",
-    "Plumber"
-  ],
-  "onlineBooking": true,
-  "onlineEstimates": true,
-  "reservationLink": "https://book.servicetitan.com/tcq73r0rpd0whcyk64c9bh61?rwg_token=AE37R_hdte_R8p_AEnDDVLggejYmlX_EjYDldpEDsrdAMQPVfkfBPz4bqbOhbEQJjwd3YQMabf8SXhd0eidUWWE607CKbR0k4Q%3D%3D",
-  "photosObserved": 5,
-  "distribution": {
-    "1_star_reviews": 381,
-    "2_star_reviews": 67,
-    "3_star_reviews": 52,
-    "4_star_reviews": 220,
-    "5_star_reviews": 9473
-  },
-  "positiveReviewShare": 95,
-  "latestObservedReviewAt": "2026-08-06T18:03:43.733Z",
-  "sampledReviewCount": 8,
-  "locations": [
-    {
-      "placeId": "ChIJAX6JrOWKUocR7gvDQpxHC8g",
-      "cid": "14414693768789953518",
-      "address": "3020 S W Temple St, Salt Lake City, UT 84115, United States",
-      "latitude": 40.7055081,
-      "longitude": -111.8945476,
-      "rating": 4.8,
-      "reviews": 10193
-    }
-  ],
-  "companyMetrics": {
-    "employeeCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
+  "id": "lead-msv17or3-2-b1717a",
+  "company": "SameDay Heating & Air, Plumbing, and Electrical",
+  "category": "HVAC contractor",
+  "location": "3020 S W Temple St, Salt Lake City, UT 84115, United States",
+  "website": "samedayutah.com",
+  "address": null,
+  "phone": "+1 801-297-1654",
+  "email": "Not collected",
+  "rating": 4.8,
+  "reviews": 10157,
+  "collectedAt": "8/16/2026, 5:23:25 AM",
+  "sourceUrl": "https://www.google.com/maps/place/SameDay%20Heating%20%26%20Air%2C%20Plumbing%2C%20and%20Electrical/data=!4m7!3m6!1s0x87528ae5ac897e01:0xc80b479c42c30bee!8m2!3d40.7055081!4d-111.8945476!16s%2Fg%2F1tdrfvlq!19sChIJAX6JrOWKUocR7gvDQpxHC8g?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:32:53.770Z",
+    "placeId": "ChIJAX6JrOWKUocR7gvDQpxHC8g",
+    "cid": "14414693768789953518",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Open 24 hours",
+      "Saturday": "Open 24 hours",
+      "Friday": "Open 24 hours",
+      "Thursday": "Open 24 hours",
+      "Wednesday": "Open 24 hours",
+      "Tuesday": "Open 24 hours",
+      "Monday": "Open 24 hours"
     },
-    "annualRevenue": {
-      "value": null,
-      "source": null,
-      "confidence": null
+    "open24Hours": true,
+    "services": [
+      "Online estimates",
+      "On-site services",
+      "Wheelchair-accessible entrance",
+      "Installation services",
+      "Repair services"
+    ],
+    "categories": [
+      "HVAC contractor",
+      "Air conditioning repair service",
+      "Air conditioning system supplier",
+      "Electrician",
+      "Furnace repair service",
+      "Heating contractor",
+      "Plumber"
+    ],
+    "onlineBooking": true,
+    "onlineEstimates": true,
+    "reservationLink": "https://book.servicetitan.com/tcq73r0rpd0whcyk64c9bh61?rwg_token=AE37R_hdte_R8p_AEnDDVLggejYmlX_EjYDldpEDsrdAMQPVfkfBPz4bqbOhbEQJjwd3YQMabf8SXhd0eidUWWE607CKbR0k4Q%3D%3D",
+    "photosObserved": 5,
+    "distribution": {
+      "1_star_reviews": 381,
+      "2_star_reviews": 67,
+      "3_star_reviews": 52,
+      "4_star_reviews": 220,
+      "5_star_reviews": 9473
     },
-    "annualProfit": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "foundedYear": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "branchCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    }
-  },
-  "evidence": [
-    "Google Business Profile: claimed",
-    "Online booking or request link: detected",
-    "Online estimates: offered",
-    "Four- and five-star review share: 95%",
-    "Latest sampled Google review: 2026-08-05T17:59:00.614Z",
-    "Latest sampled Google review: 2026-08-06T18:03:43.733Z"
-  ],
-  "locationsObserved": 1,
-  "digitalMaturity": {
-    "score": 77,
-    "band": "Established",
-    "version": 1,
-    "components": [
+    "positiveReviewShare": 95,
+    "latestObservedReviewAt": "2026-08-06T18:03:43.733Z",
+    "sampledReviewCount": 8,
+    "locations": [
       {
-        "label": "Mobile performance",
-        "points": 4,
-        "maximum": 20,
-        "evidence": "Lighthouse 35/100"
-      },
-      {
-        "label": "Accessibility",
-        "points": 10,
-        "maximum": 10,
-        "evidence": "Lighthouse 95/100"
-      },
-      {
-        "label": "Search readiness",
-        "points": 12,
-        "maximum": 12,
-        "evidence": "Lighthouse 92/100"
-      },
-      {
-        "label": "Technical best practices",
-        "points": 5,
-        "maximum": 8,
-        "evidence": "Lighthouse 81/100"
-      },
-      {
-        "label": "Structured data",
-        "points": 8,
-        "maximum": 8,
-        "evidence": "Detected"
-      },
-      {
-        "label": "Measurement stack",
-        "points": 8,
-        "maximum": 8,
-        "evidence": "GA4"
-      },
-      {
-        "label": "Online customer action",
-        "points": 10,
-        "maximum": 10,
-        "evidence": "Booking link detected"
-      },
-      {
-        "label": "Business profile ownership",
-        "points": 4,
-        "maximum": 4,
-        "evidence": "Google profile claimed"
-      },
-      {
-        "label": "Mobile foundation",
-        "points": 6,
-        "maximum": 6,
-        "evidence": "Responsive viewport detected"
-      },
-      {
-        "label": "Site maintenance",
-        "points": 2,
-        "maximum": 4,
-        "evidence": "1 broken of 50 checked"
+        "placeId": "ChIJAX6JrOWKUocR7gvDQpxHC8g",
+        "cid": "14414693768789953518",
+        "address": "3020 S W Temple St, Salt Lake City, UT 84115, United States",
+        "latitude": 40.7055081,
+        "longitude": -111.8945476,
+        "rating": 4.8,
+        "reviews": 10193
       }
     ],
-    "calculatedAt": "2026-08-22T15:37:09.350Z"
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Online booking or request link: detected",
+      "Online estimates: offered",
+      "Four- and five-star review share: 95%",
+      "Latest sampled Google review: 2026-08-05T17:59:00.614Z",
+      "Latest sampled Google review: 2026-08-06T18:03:43.733Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 77,
+      "band": "Established",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 35/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Lighthouse 95/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 12,
+          "maximum": 12,
+          "evidence": "Lighthouse 92/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 5,
+          "maximum": 8,
+          "evidence": "Lighthouse 81/100"
+        },
+        {
+          "label": "Structured data",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "Detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 8,
+          "maximum": 8,
+          "evidence": "GA4"
+        },
+        {
+          "label": "Online customer action",
+          "points": 10,
+          "maximum": 10,
+          "evidence": "Booking link detected"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 6,
+          "maximum": 6,
+          "evidence": "Responsive viewport detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 2,
+          "maximum": 4,
+          "evidence": "1 broken of 50 checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.350Z"
+    }
   }
 }

@@ -22,8 +22,8 @@ test('turns observable homepage markup into evidence and a score', () => {
   const result = analyzeHtml('<html><head><title>Acme</title></head><body><h1>Roofing</h1><form><input><input><input><input><input><input><input><input><input></form><img src="hero.jpg"></body></html>', new URL('https://example.com/'))
   assert.equal(result.analysisSource, 'Deterministic website audit')
   assert.ok(result.opportunityScore >= 60)
-  assert.ok(result.problems.some((problem) => /form asks for many details/i.test(problem)))
-  assert.ok(result.evidence.some((item) => /Form field count/i.test(item)))
+  assert.ok(result.problems.some((problem) => /form #1.*asks for 9 details at once/i.test(problem)))
+  assert.ok(result.evidence.some((item) => /Form .*field count: 9 visible fields/i.test(item)))
 })
 
 test('extracts safe same-site crawl candidates without action routes', () => {
@@ -437,6 +437,54 @@ test('total byte budget stops collection across many small pages', async () => {
   } finally {
     mocked.restore()
   }
+})
+
+test('two five-field forms do not trigger a single-form friction rule (ROH-24)', () => {
+  const form = (id) => `<form id="${id}"><input name="a"><input name="b"><input name="c"><input name="d"><input name="e"></form>`
+  const result = analyzeHtml(`<html><head><title>Acme Plumbing Services Company</title></head><body><h1>Plumbing</h1>${form('quote')}${form('contact')}<img src="a.jpg" alt="Technician fixing a sink"></body></html>`, new URL('https://example.com/'))
+  assert.equal(result.auditSummary.forms, 2)
+  assert.ok(!result.problems.some((problem) => /asks for .* details at once/i.test(problem)))
+  assert.deepEqual(result.auditSummary.formDetails.map((item) => item.visibleFields), [5, 5])
+  assert.deepEqual(result.auditSummary.formDetails.map((item) => item.locator), ['form#quote', 'form#contact'])
+})
+
+test('hidden and disabled inputs never count as user effort (ROH-24)', () => {
+  const result = analyzeHtml(`<html><head><title>Acme Plumbing Services Company</title></head><body><h1>Plumbing</h1><form id="q"><input type="hidden" name="csrf" value="x"><input type="text" name="a"><input type="text" name="b" disabled><input type="submit" value="Go"></form><img src="a.jpg" alt="Van"></body></html>`, new URL('https://example.com/'))
+  assert.equal(result.auditSummary.formDetails[0].visibleFields, 1)
+  assert.equal(result.auditSummary.formDetails[0].hiddenFields, 2)
+  assert.ok(!result.problems.some((problem) => /asks for .* details at once/i.test(problem)))
+})
+
+test('one genuinely long form is identified with its own locator (ROH-24)', () => {
+  const fields = Array.from({ length: 9 }, (_, index) => `<input name="f${index}"${index < 3 ? ' required' : ''}>`).join('')
+  const result = analyzeHtml(`<html><head><title>Acme Plumbing Services Company</title></head><body><h1>Plumbing</h1><form id="estimate">${fields}</form><img src="a.jpg" alt="Crew"></body></html>`, new URL('https://example.com/'))
+  assert.ok(result.problems.some((problem) => /form#estimate.*asks for 9 details at once/i.test(problem)))
+  assert.equal(result.auditSummary.formDetails[0].requiredFields, 3)
+  assert.equal(result.auditSummary.formDetails[0].optionalFields, 6)
+  assert.equal(result.auditRules.version, 2)
+})
+
+test('decorative, missing and descriptive alt produce distinct observations (ROH-24)', () => {
+  const result = analyzeHtml('<html><head><title>Acme Plumbing Services Company</title></head><body><h1>Plumbing</h1><img src="a.jpg" alt="Technician on a roof"><img src="b.jpg" alt=""><img src="c.jpg"><img src="d.jpg"></body></html>', new URL('https://example.com/'))
+  assert.deepEqual(result.auditSummary.imageAlt, { descriptive: 1, decorative: 1, missing: 2 })
+  assert.ok(result.evidence.some((item) => /1 descriptive, 1 decorative \(alt=""\), 2 missing/.test(item)))
+  assert.ok(result.problems.some((problem) => /2 homepage images have no alternative text/i.test(problem)))
+  const clean = analyzeHtml('<html><head><title>Acme Plumbing Services Company</title></head><body><h1>Plumbing</h1><img src="a.jpg" alt="Crew"><img src="b.jpg" alt=""></body></html>', new URL('https://example.com/'))
+  assert.ok(!clean.problems.some((problem) => /alternative text/i.test(problem)))
+})
+
+test('malformed and unrelated schema never assert valid LocalBusiness markup (ROH-24)', () => {
+  const malformed = analyzeHtml('<html><head><title>Acme Plumbing Services Company</title><script type="application/ld+json">{not json</script></head><body><h1>Plumbing</h1></body></html>', new URL('https://example.com/'))
+  assert.deepEqual(malformed.auditSummary.schemaBlocks, { total: 1, valid: 0, types: [] })
+  assert.ok(malformed.problems.some((problem) => /could not be parsed as valid JSON-LD/i.test(problem)))
+  const unrelated = analyzeHtml('<html><head><title>Acme Plumbing Services Company</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Hi"}</script></head><body><h1>Plumbing</h1></body></html>', new URL('https://example.com/'))
+  assert.equal(unrelated.auditSummary.hasLocalBusinessSchema, false)
+  assert.deepEqual(unrelated.auditSummary.schemaBlocks.types, ['Article'])
+  assert.ok(!unrelated.problems.some((problem) => /LocalBusiness/i.test(problem)))
+  const local = analyzeHtml('<html><head><title>Acme Plumbing Services Company</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"Plumber","name":"Acme"}</script></head><body><h1>Plumbing</h1></body></html>', new URL('https://example.com/'))
+  assert.equal(local.auditSummary.hasSchema, true)
+  assert.equal(local.auditSummary.hasLocalBusinessSchema, true)
+  assert.ok(local.evidence.some((item) => /types: Plumber/.test(item)))
 })
 
 test('a healthy small crawl still completes without a stop reason', async () => {

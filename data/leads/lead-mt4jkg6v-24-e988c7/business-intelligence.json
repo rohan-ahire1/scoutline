@@ -1,154 +1,168 @@
 {
-  "source": "Bright Data Google Maps",
-  "fetchedAt": "2026-08-22T15:33:40.577Z",
-  "placeId": "ChIJN8pz7GuLUocREeKWu66necY",
-  "cid": "14301646460605096465",
-  "claimed": true,
-  "businessStatus": "Active",
-  "openHours": {
-    "Sunday": "Closed",
-    "Saturday": "Closed",
-    "Friday": "8 AM–4 PM",
-    "Thursday": "8 AM–4 PM",
-    "Wednesday": "8 AM–4 PM",
-    "Tuesday": "8 AM–4 PM",
-    "Monday": "8 AM–4 PM"
-  },
-  "open24Hours": false,
-  "services": [
-    "Wheelchair-accessible car park"
-  ],
-  "categories": [
-    "Roofing contractor",
-    "Custom home builder",
-    "Gutter cleaning service",
-    "Home builder",
-    "Siding contractor"
-  ],
-  "onlineBooking": false,
-  "onlineEstimates": false,
-  "reservationLink": null,
-  "photosObserved": 6,
-  "distribution": {
-    "1_star_reviews": 2,
-    "2_star_reviews": 0,
-    "3_star_reviews": 0,
-    "4_star_reviews": 1,
-    "5_star_reviews": 47
-  },
-  "positiveReviewShare": 96,
-  "latestObservedReviewAt": "2025-07-23T23:17:14.571Z",
-  "sampledReviewCount": 8,
-  "locations": [
-    {
-      "placeId": "ChIJN8pz7GuLUocREeKWu66necY",
-      "cid": "14301646460605096465",
-      "address": "357 S 200 E #205, Salt Lake City, UT 84111, United States",
-      "latitude": 40.7612171,
-      "longitude": -111.8847587,
-      "rating": 4.8,
-      "reviews": 50
-    }
-  ],
-  "companyMetrics": {
-    "employeeCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
+  "id": "lead-mt4jkg6v-24-e988c7",
+  "company": "EZ Roofing Utah",
+  "category": "Roofing contractor",
+  "location": "357 S 200 E #205, Salt Lake City, UT 84111, United States",
+  "website": "www.ezroofingnow.com",
+  "address": "357 S 200 E #205, Salt Lake City, UT 84111, United States",
+  "phone": "+1 888-575-3025",
+  "email": "Not collected",
+  "rating": 4.8,
+  "reviews": 50,
+  "collectedAt": "8/22/2026, 9:07:09 PM",
+  "sourceUrl": "https://www.google.com/maps/place/EZ%20Roofing%20Utah/data=!4m7!3m6!1s0x87528b6bec73ca37:0xc679a7aebb96e211!8m2!3d40.7612171!4d-111.8847587!16s%2Fg%2F11qm0bdh0b!19sChIJN8pz7GuLUocREeKWu66necY?authuser=0&hl=en&rclk=1",
+  "businessIntelligence": {
+    "source": "Bright Data Google Maps",
+    "fetchedAt": "2026-08-22T15:33:40.577Z",
+    "placeId": "ChIJN8pz7GuLUocREeKWu66necY",
+    "cid": "14301646460605096465",
+    "claimed": true,
+    "businessStatus": "Active",
+    "openHours": {
+      "Sunday": "Closed",
+      "Saturday": "Closed",
+      "Friday": "8 AM–4 PM",
+      "Thursday": "8 AM–4 PM",
+      "Wednesday": "8 AM–4 PM",
+      "Tuesday": "8 AM–4 PM",
+      "Monday": "8 AM–4 PM"
     },
-    "annualRevenue": {
-      "value": null,
-      "source": null,
-      "confidence": null
+    "open24Hours": false,
+    "services": [
+      "Wheelchair-accessible car park"
+    ],
+    "categories": [
+      "Roofing contractor",
+      "Custom home builder",
+      "Gutter cleaning service",
+      "Home builder",
+      "Siding contractor"
+    ],
+    "onlineBooking": false,
+    "onlineEstimates": false,
+    "reservationLink": null,
+    "photosObserved": 6,
+    "distribution": {
+      "1_star_reviews": 2,
+      "2_star_reviews": 0,
+      "3_star_reviews": 0,
+      "4_star_reviews": 1,
+      "5_star_reviews": 47
     },
-    "annualProfit": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "foundedYear": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    },
-    "branchCount": {
-      "value": null,
-      "source": null,
-      "confidence": null
-    }
-  },
-  "evidence": [
-    "Google Business Profile: claimed",
-    "Four- and five-star review share: 96%",
-    "Latest sampled Google review: 2025-07-23T23:17:14.571Z"
-  ],
-  "locationsObserved": 1,
-  "digitalMaturity": {
-    "score": 13,
-    "band": "Foundational",
-    "version": 1,
-    "components": [
+    "positiveReviewShare": 96,
+    "latestObservedReviewAt": "2025-07-23T23:17:14.571Z",
+    "sampledReviewCount": 8,
+    "locations": [
       {
-        "label": "Mobile performance",
-        "points": 4,
-        "maximum": 20,
-        "evidence": "Lighthouse 0/100"
-      },
-      {
-        "label": "Accessibility",
-        "points": 2,
-        "maximum": 10,
-        "evidence": "Lighthouse 0/100"
-      },
-      {
-        "label": "Search readiness",
-        "points": 2,
-        "maximum": 12,
-        "evidence": "Lighthouse 0/100"
-      },
-      {
-        "label": "Technical best practices",
-        "points": 0,
-        "maximum": 8,
-        "evidence": "Not measured"
-      },
-      {
-        "label": "Structured data",
-        "points": 0,
-        "maximum": 8,
-        "evidence": "Not detected"
-      },
-      {
-        "label": "Measurement stack",
-        "points": 0,
-        "maximum": 8,
-        "evidence": "No analytics signal detected"
-      },
-      {
-        "label": "Online customer action",
-        "points": 0,
-        "maximum": 10,
-        "evidence": "No booking or online-estimate signal"
-      },
-      {
-        "label": "Business profile ownership",
-        "points": 4,
-        "maximum": 4,
-        "evidence": "Google profile claimed"
-      },
-      {
-        "label": "Mobile foundation",
-        "points": 0,
-        "maximum": 6,
-        "evidence": "Not detected"
-      },
-      {
-        "label": "Site maintenance",
-        "points": 0,
-        "maximum": 4,
-        "evidence": "Links not checked"
+        "placeId": "ChIJN8pz7GuLUocREeKWu66necY",
+        "cid": "14301646460605096465",
+        "address": "357 S 200 E #205, Salt Lake City, UT 84111, United States",
+        "latitude": 40.7612171,
+        "longitude": -111.8847587,
+        "rating": 4.8,
+        "reviews": 50
       }
     ],
-    "calculatedAt": "2026-08-22T15:37:09.367Z"
+    "companyMetrics": {
+      "employeeCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "annualProfit": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "foundedYear": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      },
+      "branchCount": {
+        "value": null,
+        "source": null,
+        "confidence": null
+      }
+    },
+    "evidence": [
+      "Google Business Profile: claimed",
+      "Four- and five-star review share: 96%",
+      "Latest sampled Google review: 2025-07-23T23:17:14.571Z"
+    ],
+    "locationsObserved": 1,
+    "digitalMaturity": {
+      "score": 13,
+      "band": "Foundational",
+      "version": 1,
+      "components": [
+        {
+          "label": "Mobile performance",
+          "points": 4,
+          "maximum": 20,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Accessibility",
+          "points": 2,
+          "maximum": 10,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Search readiness",
+          "points": 2,
+          "maximum": 12,
+          "evidence": "Lighthouse 0/100"
+        },
+        {
+          "label": "Technical best practices",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not measured"
+        },
+        {
+          "label": "Structured data",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Measurement stack",
+          "points": 0,
+          "maximum": 8,
+          "evidence": "No analytics signal detected"
+        },
+        {
+          "label": "Online customer action",
+          "points": 0,
+          "maximum": 10,
+          "evidence": "No booking or online-estimate signal"
+        },
+        {
+          "label": "Business profile ownership",
+          "points": 4,
+          "maximum": 4,
+          "evidence": "Google profile claimed"
+        },
+        {
+          "label": "Mobile foundation",
+          "points": 0,
+          "maximum": 6,
+          "evidence": "Not detected"
+        },
+        {
+          "label": "Site maintenance",
+          "points": 0,
+          "maximum": 4,
+          "evidence": "Links not checked"
+        }
+      ],
+      "calculatedAt": "2026-08-22T15:37:09.367Z"
+    }
   }
 }
