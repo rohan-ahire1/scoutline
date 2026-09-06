@@ -2,9 +2,9 @@
   "format": "scoutline-eval-report",
   "fixtureVersion": 1,
   "fixtureCases": 22,
-  "commit": "dc26e97",
-  "generatedAt": "2026-09-06T14:13:53.591Z",
-  "latencyMs": 93,
+  "commit": "c5469d8",
+  "generatedAt": "2026-09-06T19:57:22.978Z",
+  "latencyMs": 90,
   "totals": {
     "ran": 29,
     "passed": 29
@@ -153,7 +153,7 @@
       "id": "discovery-duplicates",
       "runner": "discoveryDedupe",
       "pass": true,
-      "detail": "returned=3 retained=2 duplicates=1"
+      "detail": "returned=4 retained=3 duplicates=1"
     },
     {
       "id": "discovery-geo-mix",

@@ -1,7 +1,7 @@
 import express from 'express'
 import Database from 'better-sqlite3'
 import 'dotenv/config'
-import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
@@ -9,16 +9,44 @@ import { auditWebsite } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
 import { generateOutreach, getOutreachConfig } from './services/outreach.js'
-import { describeGeographyCoverage, downloadDiscovery, filterSavedClientsByLocation, getBrightDataConfig, legacySearchFromSettings, mapDiscoveryRecord, pollDiscovery, reconcileRecords, resolveSearchDefinition, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
+import { businessIdentityFor, describeGeographyCoverage, DiscoveryError, downloadDiscovery, filterSavedClientsByLocation, getBrightDataConfig, legacySearchFromSettings, mapDiscoveryRecord, pollDiscovery, reconcileRecords, resolveSearchDefinition, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
+import { ATTEMPT_OUTCOMES, CONTACT_OUTCOMES, NEXT_TASK_TYPES, TASK_OWNERS, TASK_STATUSES, briefFindings, briefReadiness, buildBriefMarkdown, isValidDayString, reviewStatus } from './services/brief.js'
+import { scoreLeadValue } from './services/leadValue.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
+import { canRetryJob, classifyJobError, findTimedOutJobs, isActiveJobStatus, isTerminalJobStatus } from './services/jobControl.js'
 import { acceptOutreachCandidate, buildRefreshPatch, dismissOutreachCandidates, getRev, resolveOutreachCompletion, resolveSynthesisCompletion, updateLeadFields } from './services/revisions.js'
 import { auditIdForJob, buildLeadReport, listAuditManifests, loadAuditForSynthesis, readManifest, renderLeadReportMarkdown, saveAuditArtifacts } from './services/artifacts.js'
+import { applyJsonRestore, BACKUP_RESTORE_COLUMNS, BACKUP_TABLES, buildJsonBackup, collectJsonBackupFiles, createBackup, listBackups, planJsonRestore, pruneBackups, storageWritable, validateJsonBackup, verifyBackup } from './services/backup.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
 const dataDir = process.env.SCOUTLINE_DATA_DIR ? resolve(process.env.SCOUTLINE_DATA_DIR) : join(rootDir, 'data')
 mkdirSync(dataDir, { recursive: true })
+const backupsDir = join(dataDir, 'backups')
+
+// Active background work blocks a live restore (it would wipe the jobs table
+// out from under the worker). Shared by both restore endpoints.
+function activeJobCount() {
+  try {
+    return db.prepare("SELECT COUNT(*) AS count FROM jobs WHERE status IN ('Queued', 'Running', 'Waiting')").get().count
+  } catch {
+    return 0
+  }
+}
+
+function readBackupTables(database) {
+  const tables = {}
+  for (const table of BACKUP_TABLES) {
+    const columns = BACKUP_RESTORE_COLUMNS[table]
+    try {
+      tables[table] = database.prepare(`SELECT ${columns.join(', ')} FROM ${table}`).all()
+    } catch {
+      tables[table] = []
+    }
+  }
+  return tables
+}
 
 const db = new Database(join(dataDir, 'scoutline.db'))
 db.pragma('journal_mode = WAL')
@@ -52,8 +80,16 @@ db.exec(`
     error TEXT,
     next_attempt_at TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    triggered_by TEXT NOT NULL DEFAULT 'system'
   );
+`)
+try {
+  db.exec("ALTER TABLE jobs ADD COLUMN triggered_by TEXT NOT NULL DEFAULT 'system'")
+} catch {
+  // Column already exists on databases created before job provenance.
+}
+db.exec(`
   CREATE INDEX IF NOT EXISTS jobs_status_index ON jobs(status, next_attempt_at, created_at);
   CREATE INDEX IF NOT EXISTS jobs_run_index ON jobs(run_id, status);
   CREATE INDEX IF NOT EXISTS jobs_lead_index ON jobs(lead_id, status);
@@ -67,7 +103,12 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS events_entity_index ON events(entity_type, entity_id, created_at);
 `)
-db.prepare("UPDATE jobs SET status = 'Queued', error = NULL, updated_at = ? WHERE status = 'Running'").run(new Date().toISOString())
+for (const row of db.prepare("SELECT * FROM jobs WHERE status = 'Running'").all()) {
+  const running = parseJob(row)
+  const { startedAt: _dropped, cancelRequested: _cancel, ...payload } = running.payload || {}
+  db.prepare('UPDATE jobs SET status = ?, error = NULL, payload = ?, updated_at = ? WHERE id = ?')
+    .run('Queued', JSON.stringify(payload), new Date().toISOString(), running.id)
+}
 
 const defaultSettings = {
   defaultLocation: 'Salt Lake City, Utah',
@@ -79,6 +120,10 @@ const defaultSettings = {
   respectRobots: true,
   crawlMaxAttempts: 60,
   crawlTimeLimitMs: 120000,
+  leadValueWeights: { need: 0.35, businessFit: 0.3, reachability: 0.2, timing: 0.15 },
+  jobTimeoutMs: 600000,
+  discoveryPollTimeoutMs: 1800000,
+  runTimeoutMs: 7200000,
   blockPrivateNetworks: true,
   discoveryCountry: 'US',
   discoveryLatitude: 40.7608,
@@ -89,6 +134,28 @@ const settingInsert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VA
 Object.entries(defaultSettings).forEach(([key, value]) => settingInsert.run(key, JSON.stringify(value)))
 
 const app = express()
+// Portable-backup uploads can legitimately exceed the 1mb API default, so
+// this route is registered before the global parser with its own limit.
+app.post('/api/backup/restore', express.json({ limit: '160mb' }), (req, res) => {
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object with a backup payload')
+  const parsed = validateJsonBackup(body.backup ?? body)
+  if (!parsed.ok) return res.status(422).json({ error: `Backup is not usable: ${parsed.errors.join('; ')}`, code: 'INVALID_BACKUP', details: parsed.errors.map((message) => ({ message })) })
+  if (body.confirm === true) {
+    const active = activeJobCount()
+    if (active > 0) return conflict(res, `Restore blocked — ${active} background job(s) still active. Cancel or wait for them first.`, null, 'RESTORE_BLOCKED_ACTIVE_JOBS')
+    let result
+    try {
+      result = applyJsonRestore(db, dataDir, parsed.backup, { regenerateLead: (lead) => writeLeadArtifacts(lead) })
+    } catch (error) {
+      return res.status(422).json({ error: `Restore refused — ${error.message}`, code: 'INVALID_BACKUP' })
+    }
+    if (!result.ok) return res.status(500).json({ error: `Restore incomplete — ${result.failed.length} file(s) could not be written`, code: 'BACKUP_RESTORE_PARTIAL', restored: result.restored, failed: result.failed })
+    recordEvent('system', 'backup', 'restored', { tables: result.restored.tables, files: result.restored.files })
+    return res.json({ ok: true, restored: result.restored, failed: [] })
+  }
+  return res.json({ ok: true, ...planJsonRestore(parsed.backup) })
+})
 app.use(express.json({ limit: '1mb' }))
 
 // ── Shared validation helpers (structured errors) ─────────────────────────────────
@@ -98,7 +165,7 @@ const ALLOWED_OUTREACH_VERSIONS = new Set(['Concise','Balanced','Detailed'])
 const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting','Insufficient evidence'])
 const ALLOWED_MANUAL_ACTIONS = new Set(['refresh','audit','muse','outreach','full'])
 const ALLOWED_SETTINGS_KEYS = new Set(Object.keys(defaultSettings))
-const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale'])
+const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','nextTask','doNotContact','briefRationale','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale','website'])
 
 function isNonEmptyString(v, max = 120) {
   return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
@@ -181,7 +248,7 @@ const readRun = (id) => {
 const saveLead = (lead) => {
   const next = { ...lead, rev: getRev(lead) + 1 }
   db.prepare('UPDATE leads SET payload = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(JSON.stringify(next), lead.id)
-  writeLeadArtifacts(next)
+  persistLeadArtifacts(next)
   return next
 }
 
@@ -190,7 +257,7 @@ const saveLead = (lead) => {
 // the revision. Exported for tests via the revisions module contract.
 const scopedLeadUpdate = (id, patch, { expectedRev = null } = {}) => {
   const next = updateLeadFields(db, id, patch, { expectedRev })
-  writeLeadArtifacts(next)
+  persistLeadArtifacts(next)
   return next
 }
 
@@ -279,8 +346,8 @@ function leadMarkdown(lead) {
   return `# ${lead.company}\n\n` +
     (lead.currentAuditId ? `## Audit version\n\n- Audit ID: ${lead.currentAuditId}${lead.auditVersion != null ? ` (version ${lead.auditVersion})` : ''}\n- Provenance: versioned audit artifacts\n\n` : `## Audit version\n\n- Audit ID: legacy (unversioned)\n- Provenance: unknown — pre-versioning record\n\n`) +
     `## Business profile\n\n` +
-    `- Category: ${lead.category}\n- Location: ${lead.location}\n- Website: https://${lead.website}\n- Phone: ${lead.phone}\n- Public email: ${lead.email}\n- Google rating: ${lead.rating} (${lead.reviews} reviews)\n\n` +
-    `## Opportunity assessment\n\n- Preliminary opportunity: ${lead.prelimScore}/100\n- Opportunity score: ${lead.opportunityScore ?? 'Not analyzed'}\n- Confidence: ${lead.confidence ?? 'Not analyzed'}\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Research status: ${lead.researchStatus}\n- Rebuild feasibility: ${lead.rebuild}${lead.researchFailure ? `\n- Failed stage: ${['Scraped', 'Analyzed', 'Qualified'][lead.researchFailure.stage] || 'Unknown'}\n- Failure reason: ${lead.researchFailure.reason}` : ''}\n\n` +
+    `- Category: ${lead.category}\n- Location: ${lead.location}\n- Website: ${lead.website ? `https://${lead.website}` : `Not supplied (${lead.websiteStatus || 'not_supplied'})`}\n- Phone: ${lead.phone}\n- Public email: ${lead.email}\n- Google rating: ${lead.rating} (${lead.reviews} reviews)\n\n` +
+    `## Opportunity assessment\n\n- Preliminary opportunity: ${lead.prelimScore}/100\n- Opportunity score: ${lead.opportunityScore ?? 'Not analyzed'}\n- Confidence: ${lead.confidence ?? 'Not analyzed'}\n- Source: ${lead.analysisSource || 'Not recorded'}\n- Research status: ${lead.researchStatus}\n- Commercial value: ${lead.leadValue ? `${lead.leadValue.leadValueScore}/100 (${lead.leadValue.band}, coverage ${Math.round((lead.leadValue.coverage || 0) * 100)}%, rubric ${lead.leadValue.version})` : 'Not scored'}\n- Rebuild feasibility: ${lead.rebuild}${lead.researchFailure ? `\n- Failed stage: ${['Scraped', 'Analyzed', 'Qualified'][lead.researchFailure.stage] || 'Unknown'}\n- Failure reason: ${lead.researchFailure.reason}` : ''}\n\n` +
     `## Website audit\n\n- Mobile performance: ${formatProvenanceScore(resolveMetricProvenance(lead, 'performance'))}\n- Accessibility: ${formatProvenanceScore(resolveMetricProvenance(lead, 'accessibility'))}\n- SEO: ${formatProvenanceScore(resolveMetricProvenance(lead, 'seo'))}\n- Best practices: ${formatProvenanceScore(resolveNestedProvenance(lead?.measureProvenance?.bestPractices, lead?.lighthouse?.scores?.bestPractices))}\n- Same-site pages crawled: ${lead.pageCount ?? 'Not measured'}\n- Internal links checked: ${lead.checkedLinks ?? 'Not measured'}\n- Broken internal links: ${lead.brokenLinks ?? 'Not measured'}${lead.linkSummary ? ` (confirmed 404/410 of ${lead.linkSummary.attempted ?? '?'} attempted; ${lead.linkSummary.reachable ?? 0} reachable, ${lead.linkSummary.unverified ?? 0} unverified — blocked/unreachable links are not called broken)` : ''}\n- Mobile quality: ${lead.mobileQuality}\n- HTTPS: ${lead.https == null ? 'Not measured' : lead.https ? 'Yes' : 'No'}\n- Detected stack: ${(lead.stack || []).join(', ') || 'Unknown'}\n\n` +
     `## Business intelligence\n\n- Digital maturity: ${lead.businessIntelligence?.digitalMaturity?.score ?? 'Not calculated'}/100${lead.businessIntelligence?.digitalMaturity?.band ? ` (${lead.businessIntelligence.digitalMaturity.band})` : ''}${lead.businessIntelligence?.digitalMaturity?.version ? ` [formula v${lead.businessIntelligence.digitalMaturity.version}]` : ''}${lead.businessIntelligence?.digitalMaturity?.coverage ? ` — evidence coverage ${lead.businessIntelligence.digitalMaturity.coverage.measuredComponents}/${lead.businessIntelligence.digitalMaturity.coverage.totalComponents} components (${lead.businessIntelligence.digitalMaturity.coverage.share}% of weighted signals measured)` : ''}\n- Employees: ${metric('employeeCount')}\n- Annual revenue: ${metric('annualRevenue')}\n- Annual profit: ${metric('annualProfit')}\n- Founded: ${metric('foundedYear')}\n- Branch count: ${metric('branchCount')}\n- Locations observed in discovery: ${lead.businessIntelligence?.locationsObserved ?? 'Not observed'}\n- Google profile claimed: ${lead.businessIntelligence?.claimed == null ? 'Unknown' : lead.businessIntelligence.claimed ? 'Yes' : 'No'}\n- Online booking: ${lead.businessIntelligence?.onlineBooking ? 'Detected' : 'Not detected'}\n- Four- and five-star review share: ${lead.businessIntelligence?.positiveReviewShare ?? 'Unknown'}${lead.businessIntelligence?.positiveReviewShare != null ? '%' : ''}\n- Latest sampled review: ${lead.businessIntelligence?.latestObservedReviewAt || 'Unknown'}\n\nSource-backed fields remain unknown when no provider supplies them.\n\n` +
     (lead.captureQuality || lead.researchStatus === 'Inconclusive' ? `## Capture quality\n\n- Assessment: ${lead.researchStatus === 'Inconclusive' ? 'Inconclusive — no defect-derived score is claimed' : lead.researchStatus}\n- Capture: ${lead.captureQuality?.quality || 'Not recorded'} via ${lead.captureQuality?.captureMethod || 'unknown method'}\n- Reason: ${lead.captureQuality?.reason || lead.lastAuditAttempt?.reason || 'Not recorded'}\n- Rendered-page fallback: ${lead.captureQuality?.renderedFallback || 'not applicable'}\n- Last successful audit: ${lead.lastSuccessfulAudit ? `${lead.lastSuccessfulAudit.score}/100 on ${lead.lastSuccessfulAudit.at} (${lead.lastSuccessfulAudit.url || 'URL not recorded'})` : 'None recorded'}\n\n` : '') +
@@ -313,8 +380,8 @@ function buildAuditData(lead) {
   }
 }
 
-function writeLeadArtifacts(lead, includeProfile = false) {
-  const folder = join(dataDir, 'leads', lead.id)
+function writeLeadArtifacts(lead, includeProfile = false, rootDir = dataDir) {
+  const folder = join(rootDir, 'leads', lead.id)
   mkdirSync(folder, { recursive: true })
   const businessData = {
     id: lead.id, company: lead.company, category: lead.category, location: lead.location,
@@ -327,7 +394,7 @@ function writeLeadArtifacts(lead, includeProfile = false) {
   if (lead.businessIntelligence) writeFileSync(join(folder, 'business-intelligence.json'), JSON.stringify(businessData, null, 2), 'utf8')
   writeFileSync(join(folder, 'audit.json'), JSON.stringify(auditData, null, 2), 'utf8')
   if (lead.opportunityScore != null) {
-    const manifest = lead.currentAuditId ? readManifest(dataDir, lead.id, lead.currentAuditId) : null
+    const manifest = lead.currentAuditId ? readManifest(rootDir, lead.id, lead.currentAuditId) : null
     writeFileSync(join(folder, 'analysis-v1.md'), renderLeadReportMarkdown(lead, { manifest }), 'utf8')
   }
   if (lead.outreachDraft || Object.keys(lead.outreachDrafts || {}).length) {
@@ -351,6 +418,49 @@ function writeLeadArtifacts(lead, includeProfile = false) {
   return folder
 }
 
+// DB-versus-artifact failures (ROH-29) are never silent: the DB write stands
+// (it succeeded), the artifact error is recorded with status, and repair
+// rewrites the files from the database row (covered by API-level tests).
+function tryWriteLeadArtifacts(lead, rootDir = dataDir) {
+  try {
+    writeLeadArtifacts(lead, false, rootDir)
+    return { ok: true, error: null }
+  } catch (error) {
+    return { ok: false, error: error.message }
+  }
+}
+
+function readArtifactFailures() {
+  try {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('storage_artifact_failures')
+    const list = row ? JSON.parse(row.value) : []
+    return Array.isArray(list) ? list : []
+  } catch {
+    return []
+  }
+}
+
+function noteArtifactFailure(leadId, error) {
+  const failures = [{ leadId, error: String(error || 'unknown write error'), at: nowIso() }, ...readArtifactFailures().filter((item) => item.leadId !== leadId)].slice(0, 20)
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('storage_artifact_failures', JSON.stringify(failures))
+}
+
+function clearArtifactFailure(leadId) {
+  const remaining = readArtifactFailures().filter((item) => item.leadId !== leadId)
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('storage_artifact_failures', JSON.stringify(remaining))
+}
+
+function persistLeadArtifacts(lead) {
+  const written = tryWriteLeadArtifacts(lead)
+  if (!written.ok) {
+    recordEvent('lead', lead.id, 'artifact_write_failed', { error: written.error, rev: lead.rev })
+    noteArtifactFailure(lead.id, written.error)
+  } else if (readArtifactFailures().some((item) => item.leadId === lead.id)) {
+    clearArtifactFailure(lead.id)
+  }
+  return written
+}
+
 readRows('leads').forEach((lead) => {
   const normalized = normalizeLeadWorkflow(lead)
   if (JSON.stringify(normalized) !== JSON.stringify(lead)) saveLead(normalized)
@@ -363,23 +473,104 @@ function readSettings() {
 
 function parseJob(row) {
   if (!row) return null
+  const createdMs = Date.parse(row.created_at || '')
+  const updatedMs = Date.parse(row.updated_at || '')
   return {
     id: row.id, runId: row.run_id, leadId: row.lead_id, type: row.type, status: row.status,
     progress: row.progress, attempts: row.attempts, maxAttempts: row.max_attempts,
+    triggeredBy: row.triggered_by || 'system',
     payload: JSON.parse(row.payload || '{}'), result: row.result ? JSON.parse(row.result) : null,
     error: row.error, nextAttemptAt: row.next_attempt_at, createdAt: row.created_at, updatedAt: row.updated_at,
+    durationMs: Number.isFinite(createdMs) && Number.isFinite(updatedMs) ? Math.max(0, updatedMs - createdMs) : null,
   }
 }
 
 function readJob(id) { return parseJob(db.prepare('SELECT * FROM jobs WHERE id = ?').get(id)) }
 
-function queueJob({ type, runId = null, leadId = null, payload = {}, maxAttempts = 1 }) {
+function queueJob({ type, runId = null, leadId = null, payload = {}, maxAttempts = 1, triggeredBy = 'system' }) {
   const id = `job-${randomUUID()}`
   const createdAt = nowIso()
-  db.prepare('INSERT INTO jobs (id, run_id, lead_id, type, status, progress, attempts, max_attempts, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)')
-    .run(id, runId, leadId, type, 'Queued', maxAttempts, JSON.stringify(payload), createdAt, createdAt)
-  recordEvent('job', id, 'queued', { type, runId, leadId })
+  db.prepare("INSERT INTO jobs (id, run_id, lead_id, type, status, progress, attempts, max_attempts, payload, created_at, updated_at, triggered_by) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)")
+    .run(id, runId, leadId, type, 'Queued', maxAttempts, JSON.stringify(payload), createdAt, createdAt, triggeredBy)
+  recordEvent('job', id, 'queued', { type, runId, leadId, triggeredBy })
   return readJob(id)
+}
+
+// Live cancellation handles for Running jobs. The AbortController aborts
+// in-flight fetches (audit path); the payload.cancelRequested flag covers
+// phase-based runners (synthesis/refresh/discovery) between awaits.
+const jobSignals = new Map()
+
+function requestJobCancel(id) {
+  jobSignals.get(id)?.abort()
+  const job = readJob(id)
+  if (job && !job.payload?.cancelRequested) updateJob(id, { payload: { ...job.payload, cancelRequested: true } })
+}
+
+function releaseJobCancel(id) {
+  jobSignals.delete(id)
+}
+
+function throwIfJobCancelled(id) {
+  const job = readJob(id)
+  if (job?.payload?.cancelRequested) {
+    const error = new Error('Job cancelled; partial work is preserved')
+    error.code = 'CANCELLED'
+    throw error
+  }
+}
+
+function codedProviderError(message, code) {
+  const error = new Error(message)
+  error.code = code
+  return error
+}
+
+// Provider polling total deadline (ROH-23): a snapshot that never becomes
+// ready fails with an actionable error instead of polling forever. The
+// snapshot id stays in the payload, so a manual retry resumes polling the
+// same snapshot instead of triggering (and paying for) a new one.
+function assertPollDeadline(job, settings) {
+  const startedMs = Date.parse(job.payload?.pollStartedAt || '')
+  if (!Number.isFinite(startedMs)) return
+  const timeoutMs = Number(settings.discoveryPollTimeoutMs) || 1800000
+  if (Date.now() - startedMs <= timeoutMs) return
+  throw codedProviderError(
+    `Bright Data has not produced a result within ${Math.round(timeoutMs / 60000)} minutes; the snapshot is kept so a retry resumes it instead of starting a new paid request`,
+    'PROVIDER_TIMEOUT',
+  )
+}
+
+function isRunCancelled(runId) {
+  if (!runId) return false
+  const run = readRun(runId)
+  return Boolean(run) && run.status === 'Cancelled'
+}
+
+// Run watchdog (ROH-23): every run persists a deadlineAt; a run still active
+// past its deadline is marked Timed out with its queued work cancelled, so a
+// stuck provider can never leave a run Running forever.
+function runRunWatchdog() {
+  const timeoutMs = Number(readSettings().runTimeoutMs) || 7200000
+  const now = Date.now()
+  for (const run of readRows('runs')) {
+    if (!['Running', 'Waiting'].includes(run.status)) continue
+    const persisted = Date.parse(run.deadlineAt || '')
+    const started = Date.parse(run.startedAt || run.createdAt || '')
+    const deadlineMs = Number.isFinite(persisted) ? persisted : Number.isFinite(started) ? started + timeoutMs : NaN
+    if (!Number.isFinite(deadlineMs) || now <= deadlineMs) continue
+    db.prepare("UPDATE jobs SET status = 'Cancelled', progress = 100, error = 'Run exceeded its time budget', updated_at = ? WHERE run_id = ? AND status IN ('Queued', 'Waiting', 'Running')").run(nowIso(), run.id)
+    saveRun({ ...run, status: 'Timed out', progress: 100, duration: 'Timed out', completedAt: run.completedAt || nowIso() })
+    recordEvent('run', run.id, 'timed_out', { deadlineAt: run.deadlineAt || null })
+  }
+}
+
+// Completion claim: run functions save terminal results only while their job
+// is still Running. A late finish after cancel/timeout is dropped silently so
+// it can neither overwrite state, advance the pipeline, nor notify twice.
+function claimJobCompletion(id) {
+  const job = readJob(id)
+  return Boolean(job) && job.status === 'Running'
 }
 
 function updateJob(id, changes) {
@@ -406,15 +597,20 @@ function syncRun(runId) {
   const jobs = db.prepare('SELECT type, status, progress FROM jobs WHERE run_id = ?').all(runId)
   if (!jobs.length) return run
   const audits = jobs.filter((job) => job.type === 'audit')
-  const terminal = jobs.filter((job) => ['Completed', 'Failed', 'Cancelled'].includes(job.status)).length
+  const terminal = jobs.filter((job) => ['Completed', 'Failed', 'Error', 'Timed out', 'Cancelled'].includes(job.status)).length
   const averageProgress = jobs.length ? Math.round(jobs.reduce((sum, job) => sum + Number(job.progress || 0), 0) / jobs.length) : 100
   const completed = jobs.length > 0 && terminal === jobs.length
-  const status = run.status === 'Cancelled' ? 'Cancelled' : run.status === 'Paused' ? 'Paused' : completed ? 'Completed' : 'Running'
+  const succeeded = jobs.filter((job) => job.status === 'Completed').length
+  const failed = jobs.filter((job) => ['Failed', 'Error', 'Timed out'].includes(job.status)).length
+  // Terminal run outcomes are honest: an all-failed run is Failed, a mixed
+  // run is Completed with errors, and only a clean run is Completed.
+  const terminalOutcome = failed > 0 && succeeded === 0 ? 'Failed' : failed > 0 ? 'Completed with errors' : 'Completed'
+  const status = run.status === 'Cancelled' ? 'Cancelled' : run.status === 'Paused' ? 'Paused' : run.status === 'Timed out' ? 'Timed out' : completed ? terminalOutcome : 'Running'
   const updated = {
     ...run,
     status,
     progress: completed ? 100 : averageProgress,
-    crawled: audits.filter((job) => ['Completed', 'Failed'].includes(job.status)).length,
+    crawled: audits.filter((job) => ['Completed', 'Failed', 'Error', 'Timed out'].includes(job.status)).length,
     audited: audits.filter((job) => job.status === 'Completed').length,
     failed: jobs.filter((job) => job.status === 'Failed').length,
     datasets: audits.filter((job) => job.status === 'Completed').length,
@@ -422,7 +618,7 @@ function syncRun(runId) {
     completedAt: completed ? (run.completedAt || nowIso()) : null,
   }
   saveRun(updated)
-  if (completed && run.status !== 'Completed') recordEvent('run', runId, 'completed', { audited: updated.audited, failed: updated.failed })
+  if (completed && !['Completed', 'Completed with errors', 'Failed', 'Timed out'].includes(run.status)) recordEvent('run', runId, 'completed', { outcome: status, audited: updated.audited, failed: updated.failed })
   return updated
 }
 
@@ -430,15 +626,21 @@ function importedLead(row, index = 0, source = 'CSV import') {
   const rating = Number(row.rating || 0)
   const reviews = Number(row.reviews || row.review_count || 0)
   const score = Math.max(35, Math.min(95, Math.round(42 + rating * 6 + Math.log10(Math.max(reviews, 1)) * 8)))
+  const website = String(row.website || row.domain || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
+  // Website state (ROH-5): omission is unknown, never proof of absence.
+  const websiteStatus = row.websiteStatus === 'audited' ? 'audited' : website ? (row.websiteStatus || 'supplied') : 'not_supplied'
+  const businessId = String(row.businessId || '').trim() || `manual:${randomUUID()}`
   const lead = {
     id: `lead-${Date.now().toString(36)}-${index}-${randomUUID().slice(0, 6)}`,
     company: String(row.company || row.name || row.business || '').trim(),
-    website: String(row.website || row.domain || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, ''),
+    website,
+    websiteStatus,
+    businessId,
     category: row.category || 'Uncategorized', location: row.location || row.address || 'Unknown', address: row.address || row.location || 'Not collected',
     phone: row.phone || 'Not collected', email: row.email || 'Not collected', rating, reviews,
     sourceUrl: row.sourceUrl || null, prelimScore: score, opportunityScore: null, confidence: null,
-    researchStatus: 'Collected', salesStage: null, mainIssue: 'Audit pending',
-    issueDetail: 'Business data was saved; website evidence has not been collected yet.',
+    researchStatus: 'Collected', salesStage: null, mainIssue: website ? 'Audit pending' : 'No website supplied',
+    issueDetail: website ? 'Business data was saved; website evidence has not been collected yet.' : 'Business data was saved without a website; it can be scored, qualified and moved through sales, and audited once a website is added.',
     updated: 'Just now', collectedAt: new Date().toLocaleString('en-US'), pageCount: null, performance: null,
     accessibility: null, seo: null, checkedLinks: null, brokenLinks: null, auditStatus: null, auditComponents: null,
     lighthouse: null, crawlPages: [], crawlErrors: [], brokenLinkDetails: [], mobileQuality: 'Unknown', https: null,
@@ -458,29 +660,90 @@ function importedLead(row, index = 0, source = 'CSV import') {
     },
   }
   const hasCsvIntelligence = Object.values(csvIntelligence.companyMetrics).some((item) => item.value != null)
-  return row.businessIntelligence || hasCsvIntelligence ? enrichLead(lead, row.businessIntelligence || csvIntelligence) : lead
+  const assembled = row.businessIntelligence || hasCsvIntelligence ? enrichLead(lead, row.businessIntelligence || csvIntelligence) : lead
+  // Business-only signals still produce an honest low-coverage value score.
+  assembled.leadValue = scoreLeadValue(assembled, { weights: readSettings().leadValueWeights })
+  return assembled
+}
+
+function normalizeIdentityText(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+  // Placeholder addresses carry no identity evidence.
+  return normalized === 'unknown' || normalized === 'not collected' ? '' : normalized
+}
+
+// Identity-first duplicate detection (ROH-5). Merge order: exact businessId,
+// then shared provider place/cid, then conservative name + (address or
+// contact) evidence. A shared domain or bare company name alone never merges —
+// two franchise locations on one domain stay distinct, and ambiguous rows stay
+// separate for human review instead of being auto-merged.
+function findDuplicateLead(lead) {
+  const existing = readRows('leads')
+  const byBusinessId = lead.businessId && !lead.businessId.startsWith('manual:')
+    ? existing.find((item) => item.businessId === lead.businessId)
+    : null
+  if (byBusinessId) return { lead: byBusinessId, matchBasis: 'business-id' }
+  const placeId = lead.businessIntelligence?.placeId || null
+  const cid = lead.businessIntelligence?.cid || null
+  if (placeId || cid) {
+    const byProvider = existing.find((item) => (placeId && item.businessIntelligence?.placeId === placeId) || (cid && item.businessIntelligence?.cid === cid))
+    if (byProvider) return { lead: byProvider, matchBasis: 'provider-id' }
+  }
+  const name = normalizeIdentityText(lead.company)
+  const address = normalizeIdentityText(lead.address === 'Not collected' ? '' : lead.address)
+  const phone = String(lead.phone || '').replace(/[^0-9]/g, '')
+  const email = String(lead.email || '').trim().toLowerCase()
+  if (name) {
+    const byEvidence = existing.find((item) => {
+      if (normalizeIdentityText(item.company) !== name) return false
+      const itemAddress = normalizeIdentityText(item.address === 'Not collected' ? '' : item.address)
+      const itemPhone = String(item.phone || '').replace(/[^0-9]/g, '')
+      const itemEmail = String(item.email || '').trim().toLowerCase()
+      if (address && itemAddress && address === itemAddress) return true
+      if (phone.length >= 7 && phone === itemPhone) return true
+      if (email && email !== 'not collected' && email === itemEmail) return true
+      return false
+    })
+    if (byEvidence) return { lead: byEvidence, matchBasis: 'name-plus-evidence' }
+  }
+  return null
 }
 
 function insertUniqueLead(row, index, source, { runId = null, at = nowIso() } = {}) {
   const lead = importedLead(row, index, source)
-  if (!lead.company || !lead.website) return null
-  const domain = lead.website.toLowerCase().replace(/\/$/, '')
-  const duplicate = readRows('leads').find((item) => String(item.website || '').toLowerCase().replace(/\/$/, '') === domain)
+  if (!lead.company) return null
+  const duplicate = findDuplicateLead(lead)
   if (duplicate) {
-    const touched = touchLeadRun(duplicate, { runId, source, relationship: 'matched', at })
+    const { lead: existing, matchBasis } = duplicate
+    const touched = touchLeadRun(existing, { runId, source, relationship: 'matched', at })
     const enriched = lead.businessIntelligence ? enrichLead({
       ...touched,
-      phone: duplicate.phone === 'Not collected' && lead.phone !== 'Not collected' ? lead.phone : duplicate.phone,
-      email: duplicate.email === 'Not collected' && lead.email !== 'Not collected' ? lead.email : duplicate.email,
-    }, lead.businessIntelligence) : duplicate
-    const next = runId ? touchLeadRun(enriched, { runId, source, relationship: 'matched', at }) : enriched
-    if (next !== duplicate) saveLead(next)
+      phone: existing.phone === 'Not collected' && lead.phone !== 'Not collected' ? lead.phone : existing.phone,
+      email: existing.email === 'Not collected' && lead.email !== 'Not collected' ? lead.email : existing.email,
+    }, lead.businessIntelligence) : touched
+    // The website attribute follows strong identity: the same Place ID with a
+    // new website moves the website (audit re-enabled, history kept), while a
+    // weak name-plus-evidence match only fills a missing website, never
+    // overwrites one a human may have set.
+    const strongMatch = matchBasis === 'business-id' || matchBasis === 'provider-id'
+    const websiteChanged = strongMatch && lead.website && lead.website.toLowerCase() !== String(existing.website || '').toLowerCase()
+    const websiteAdded = !existing.website && lead.website
+    if (websiteChanged) recordEvent('lead', existing.id, 'website_changed', { from: existing.website || null, to: lead.website, matchBasis })
+    const withWebsite = (websiteAdded || websiteChanged)
+      ? { ...enriched, website: lead.website, websiteStatus: lead.websiteStatus || 'supplied' }
+      : enriched
+    const next = runId ? touchLeadRun(withWebsite, { runId, source, relationship: 'matched', at }) : withWebsite
+    if (next !== existing) {
+      next.leadValue = scoreLeadValue(next, { weights: readSettings().leadValueWeights })
+      saveLead(next)
+    }
+    recordEvent('lead', existing.id, 'duplicate_matched', { source, runId, matchBasis, websiteAdded: Boolean(websiteAdded) })
     Object.defineProperty(next, '_runImport', { value: { created: false, relationship: 'matched' }, enumerable: false })
     return next
   }
   const created = touchLeadRun(lead, { runId, source, relationship: 'new', at })
   db.prepare('INSERT INTO leads (id, payload) VALUES (?, ?)').run(created.id, JSON.stringify(created))
-  writeLeadArtifacts(created)
+  persistLeadArtifacts(created)
   recordEvent('lead', created.id, 'created', { source, runId, relationship: 'new' })
   Object.defineProperty(created, '_runImport', { value: { created: true, relationship: 'new' }, enumerable: false })
   return created
@@ -521,7 +784,32 @@ function backfillRunProvenance() {
   changes.forEach((lead) => saveLead(lead))
 }
 
+// One-time identity backfill (ROH-5): existing leads gain a stable businessId
+// and websiteStatus without touching notes, drafts, stages, contracts or
+// suppression. Ambiguous historical rows are left separate, never merged.
+function backfillLeadIdentity() {
+  let migrated = 0
+  for (const lead of readRows('leads')) {
+    let next = lead
+    if (!next.businessId) {
+      const placeId = next.businessIntelligence?.placeId || null
+      const cid = next.businessIntelligence?.cid || null
+      const domain = String(next.website || '').toLowerCase().replace(/\/$/, '')
+      next = { ...next, businessId: placeId ? `brightdata:place:${placeId}` : cid ? `brightdata:cid:${cid}` : domain ? `site:${domain}` : `manual:${randomUUID()}` }
+    }
+    if (!next.websiteStatus) {
+      next = { ...next, websiteStatus: next.opportunityScore != null || next.analysisSource ? 'audited' : next.website ? 'supplied' : 'not_supplied' }
+    }
+    if (next !== lead) {
+      saveLead(next)
+      migrated += 1
+    }
+  }
+  if (migrated) recordEvent('system', 'identity-backfill', 'completed', { migrated })
+}
+
 backfillRunProvenance()
+backfillLeadIdentity()
 
 const manualActionLabels = {
   refresh: 'Refresh business data',
@@ -548,6 +836,12 @@ function manualRunState(lead, action, changes = {}) {
 }
 
 function queueAuditForLead(lead, { workflow = 'audit', manualAction = null, continueRun = false } = {}) {
+  // Website-dependent stages are skipped cleanly when no website exists — with
+  // a reason, never a failed request against an invented defect.
+  if (!lead.website) {
+    recordEvent('lead', lead.id, 'audit_skipped', { workflow, manualAction, reason: 'no-website' })
+    return { lead, job: null, alreadyQueued: false, skipped: true, skipReason: 'This client has no website to audit yet.' }
+  }
   const active = db.prepare("SELECT * FROM jobs WHERE lead_id = ? AND type = 'audit' AND status IN ('Queued', 'Running', 'Waiting') ORDER BY created_at DESC LIMIT 1").get(lead.id)
   if (active) return { lead, job: parseJob(active), alreadyQueued: true }
   const settings = readSettings()
@@ -617,7 +911,9 @@ async function runAuditJob(job) {
     maxLinks: 50,
     maxAttempts: settings.crawlMaxAttempts || 60,
     timeLimitMs: settings.crawlTimeLimitMs || 120000,
+    signal: jobSignals.get(job.id)?.signal || null,
     onProgress: ({ progress, phase }) => {
+      if (!claimJobCompletion(job.id)) return
       updateJob(job.id, { progress })
       const activeLead = readLead(job.leadId)
       if (activeLead) saveLead({
@@ -629,6 +925,9 @@ async function runAuditJob(job) {
     },
   })
   const { _lighthouseReport, ...result } = rawResult
+  // A cancel or watchdog timeout that landed mid-audit wins: the stale
+  // completion is dropped instead of overwriting it.
+  if (!claimJobCompletion(job.id)) return readLead(job.leadId) || lead
   const current = readLead(job.leadId)
   const auditId = auditIdForJob(job.id)
   const auditVersion = (current.auditHistory || []).length + 1
@@ -666,6 +965,8 @@ async function runAuditJob(job) {
     outreachStaleReason: draftsStale ? `A newer audit (${auditId}) completed after these drafts.` : current.outreachStaleReason || null,
     updated: 'Just now',
   })
+  // Commercial value is rescored on every completed audit from saved evidence.
+  pendingBase.leadValue = scoreLeadValue(pendingBase, { weights: readSettings().leadValueWeights })
   // Persist versioned artifacts BEFORE the DB pointer advertises them. A
   // persistence failure records an explicit attempt failure — a crash here
   // leaves versioned files without a manifest or pointer, which synthesis
@@ -678,8 +979,9 @@ async function runAuditJob(job) {
       lighthouseReport: _lighthouseReport || null,
     }))
   } catch (error) {
-    saveLead({ ...pendingBase, researchStatus: 'Failed', researchFailure: { stage: 1, reason: `Audit artifacts could not be persisted: ${error.message}`, code: 'ARTIFACT_WRITE_FAILED', at: nowIso(), jobId: job.id }, updated: 'Just now' })
-    updateJob(job.id, { status: 'Failed', progress: 100, error: `Audit artifacts could not be persisted: ${error.message}` })
+    if (!claimJobCompletion(job.id)) throw new Error(`Audit artifacts could not be persisted: ${error.message}`)
+    saveLead({ ...pendingBase, researchStatus: 'Failed', researchFailure: { stage: 1, reason: `Audit artifacts could not be persisted: ${error.message}`, code: 'ARTIFACT_WRITE_FAILED', retryable: true, at: nowIso(), jobId: job.id }, updated: 'Just now' })
+    updateJob(job.id, { status: 'Error', progress: 100, error: `Audit artifacts could not be persisted: ${error.message}`, payload: { ...readJob(job.id)?.payload, jobOutcome: { code: 'ARTIFACT_WRITE_FAILED', retryable: true } } })
     recordEvent('lead', lead.id, 'audit_artifact_failed', { jobId: job.id, auditId, reason: error.message })
     throw new Error(`Audit artifacts could not be persisted: ${error.message}`)
   }
@@ -691,8 +993,22 @@ async function runAuditJob(job) {
   }
   updateJob(job.id, { status: 'Completed', progress: 100, result: { opportunityScore: result.opportunityScore, confidence: result.confidence, auditedUrl: result.auditedUrl }, error: null })
   recordEvent('lead', lead.id, 'audit_completed', { jobId: job.id, score: result.opportunityScore, source: result.analysisSource })
-  if (['analysis', 'full'].includes(job.payload.workflow) && getOutreachConfig().configured && result.opportunityScore != null) return queueMuseSynthesis(updated, { auditJobId: job.id, researchRunId: job.runId || null, workflow: job.payload.workflow, manualAction, continueRun: Boolean(manualAction) }).lead
-  if (manualAction === 'full') return saveLead({ ...updated, manualRun: manualRunState(updated, 'full', { status: 'Failed', progress: 70, phase: 'Muse is not configured', error: 'Muse is not configured', completedAt: nowIso() }) })
+  if (['analysis', 'full'].includes(job.payload.workflow) && result.opportunityScore != null && !isRunCancelled(job.runId)) {
+    if (getOutreachConfig().configured) return queueMuseSynthesis(updated, { auditJobId: job.id, researchRunId: job.runId || null, workflow: job.payload.workflow, manualAction, continueRun: Boolean(manualAction) }).lead
+    // No AI configured: the deterministic audit stands on its own. The full
+    // workflow finishes honestly with supported fallback outreach drafts
+    // instead of failing the run for a missing optional key.
+    if (job.payload.workflow === 'full') {
+      const finished = await generateAndSaveOutreach(updated, { manualAction: manualAction || 'full' })
+      const current = readLead(job.leadId) || finished
+      return saveLead({
+        ...current,
+        manualRun: manualRunState(current, manualAction || 'full', { status: 'Completed', progress: 100, phase: 'Audit complete with template drafts — Muse is not configured', completedAt: nowIso() }),
+        updated: 'Just now',
+      })
+    }
+  }
+  if (manualAction === 'full') return saveLead({ ...updated, manualRun: manualRunState(updated, 'full', { status: 'Completed', progress: 100, phase: 'Website audit complete — Muse is not configured', completedAt: nowIso() }) })
   return updated
 }
 
@@ -729,6 +1045,31 @@ async function runSynthesisJob(job) {
   if (!lead) throw new Error('Lead not found')
   if (lead.opportunityScore == null) throw new Error('A completed website audit is required before Muse synthesis')
   const manualAction = job.payload.manualAction || null
+  if (!getOutreachConfig().configured) {
+    // Synthesis is optional: without AI the deterministic review stands on
+    // its own. The job completes as Skipped — never Failed — so the audit is
+    // preserved and a later retry (or a newly added key) needs no re-audit.
+    // A full workflow still finishes with supported fallback outreach.
+    const skipped = saveLead({
+      ...lead,
+      museAnalysis: { ...(lead.museAnalysis || {}), status: 'Skipped', skipped: true, skipReason: 'Muse is not configured; deterministic audit stands', error: null },
+      museJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Skipped — Muse is not configured' },
+      ...(manualAction && job.payload.workflow !== 'full' ? { manualRun: manualRunState(lead, manualAction, { status: 'Completed', progress: 100, phase: 'Muse is not configured — audit stands', completedAt: nowIso() }) } : {}),
+      updated: 'Just now',
+    })
+    updateJob(job.id, { status: 'Completed', progress: 100, result: { skipped: true, reason: 'Muse is not configured' }, error: null })
+    recordEvent('lead', lead.id, 'muse_synthesis_skipped', { jobId: job.id, reason: 'Muse is not configured' })
+    if (job.payload.workflow === 'full' && !isRunCancelled(job.runId)) {
+      const finished = await generateAndSaveOutreach(skipped, { manualAction: manualAction || 'full' })
+      const current = readLead(job.leadId) || finished
+      return saveLead({
+        ...current,
+        manualRun: manualRunState(current, manualAction || 'full', { status: 'Completed', progress: 100, phase: 'Audit complete with template drafts — Muse is not configured', completedAt: nowIso() }),
+        updated: 'Just now',
+      })
+    }
+    return skipped
+  }
   saveLead({
     ...lead,
     museAnalysis: { ...(lead.museAnalysis || {}), status: 'Running', error: null },
@@ -757,8 +1098,10 @@ async function runSynthesisJob(job) {
     updated: 'Muse is synthesizing findings',
   })
   const synthesisStartedAt = nowIso()
+  throwIfJobCancelled(job.id)
   const result = await generateMuseAnalysis(readLead(job.leadId), { lighthouseReport })
   result.generatedAt = synthesisStartedAt
+  if (!claimJobCompletion(job.id)) return readLead(job.leadId) || lead
   const synthesisDecision = resolveSynthesisCompletion({ current: readLead(job.leadId) || {}, result })
   const updated = synthesisDecision.type === 'stale'
     ? readLead(job.leadId)
@@ -780,7 +1123,7 @@ async function runSynthesisJob(job) {
     result: { recommendation: result.qualificationRecommendation, opportunities: result.topOpportunities.length, model: result.generation.model, stale: synthesisDecision.type === 'stale' },
   })
   recordEvent('lead', lead.id, synthesisDecision.type === 'stale' ? 'muse_synthesis_stale' : 'muse_synthesis_completed', { jobId: job.id, recommendation: result.qualificationRecommendation, model: result.generation.model })
-  if (job.payload.workflow === 'full') return generateAndSaveOutreach(updated, { manualAction: 'full' })
+  if (job.payload.workflow === 'full' && !isRunCancelled(job.runId)) return generateAndSaveOutreach(updated, { manualAction: 'full' })
   return updated
 }
 
@@ -791,7 +1134,7 @@ async function runRefreshJob(job) {
   const settings = readSettings()
   if (!job.payload.snapshotId) {
     const started = await triggerRecordRefresh({ url: lead.sourceUrl, settings })
-    updateJob(job.id, { status: 'Waiting', progress: 8, payload: { ...job.payload, ...started }, nextAttemptAt: new Date(Date.now() + 10_000).toISOString() })
+    updateJob(job.id, { status: 'Waiting', progress: 8, payload: { ...job.payload, ...started, pollStartedAt: nowIso() }, nextAttemptAt: new Date(Date.now() + 10_000).toISOString() })
     const waiting = readLead(job.leadId) || lead
     saveLead({
       ...waiting,
@@ -801,8 +1144,10 @@ async function runRefreshJob(job) {
     })
     return
   }
+  throwIfJobCancelled(job.id)
+  assertPollDeadline(job, settings)
   const progress = await pollDiscovery(job.payload.snapshotId, settings)
-  if (progress.status === 'failed') throw new Error('Bright Data business refresh failed')
+  if (progress.status === 'failed') throw codedProviderError('Bright Data business refresh failed', 'PROVIDER_FAILED')
   if (!['ready', 'completed'].includes(progress.status)) {
     updateJob(job.id, { status: 'Waiting', progress: Math.max(10, job.progress), nextAttemptAt: new Date(Date.now() + 10_000).toISOString() })
     const current = readLead(job.leadId)
@@ -810,8 +1155,10 @@ async function runRefreshJob(job) {
     return
   }
   const records = await downloadDiscovery(job.payload.snapshotId, settings)
+  throwIfJobCancelled(job.id)
   const fresh = records.map((record) => mapDiscoveryRecord(record, lead.category, lead.location)).find(Boolean)
   if (!fresh) throw new Error('Bright Data returned no usable business record for this client')
+  if (!claimJobCompletion(job.id)) return readLead(job.leadId) || lead
   // Merge into the latest row: provider fills only empty contact slots, so
   // concurrent user edits (notes, chosen contacts, stage, contract, drafts)
   // survive the refresh.
@@ -826,7 +1173,12 @@ async function runRefreshJob(job) {
   }, fresh.businessIntelligence))
   updateJob(job.id, { status: 'Completed', progress: 100, result: { snapshotId: job.payload.snapshotId, source: fresh.businessIntelligence?.source }, error: null })
   recordEvent('lead', lead.id, 'business_refresh_completed', { jobId: job.id, snapshotId: job.payload.snapshotId })
-  if (manualAction === 'full') updated = queueAuditForLead(updated, { workflow: 'full', manualAction: 'full', continueRun: true }).lead
+  if (manualAction === 'full' && !isRunCancelled(job.runId)) {
+    const queued = queueAuditForLead(updated, { workflow: 'full', manualAction: 'full', continueRun: true })
+    updated = queued.skipped
+      ? saveLead({ ...queued.lead, manualRun: manualRunState(queued.lead, 'full', { status: 'Completed', progress: 100, phase: 'Business data refreshed — no website to audit yet', jobId: job.id, completedAt: nowIso() }), updated: 'Just now' })
+      : queued.lead
+  }
   return updated
 }
 
@@ -838,25 +1190,35 @@ async function runDiscoveryJob(job) {
   const search = run.searchDefinition || legacySearchFromSettings(run, settings)
   if (!job.payload.snapshotId) {
     const started = await triggerDiscovery({ search, limit: run.limit, settings })
-    updateJob(job.id, { status: 'Waiting', progress: 10, payload: { ...job.payload, ...started }, nextAttemptAt: new Date(Date.now() + 10_000).toISOString() })
+    updateJob(job.id, { status: 'Waiting', progress: 10, payload: { ...job.payload, ...started, pollStartedAt: nowIso() }, nextAttemptAt: new Date(Date.now() + 10_000).toISOString() })
     saveRun({ ...run, searchDefinition: search, providerSnapshotId: started.snapshotId, submittedGeography: started.submittedGeography, progress: 10, duration: 'Waiting for discovery' })
     recordEvent('run', run.id, 'discovery_started', { snapshotId: started.snapshotId, submittedGeography: started.submittedGeography })
     return
   }
+  throwIfJobCancelled(job.id)
+  assertPollDeadline(job, settings)
   const progress = await pollDiscovery(job.payload.snapshotId, settings)
-  if (progress.status === 'failed') throw new Error('Bright Data discovery failed')
+  if (progress.status === 'failed') throw codedProviderError('Bright Data discovery failed', 'PROVIDER_FAILED')
   if (!['ready', 'completed'].includes(progress.status)) {
     updateJob(job.id, { status: 'Waiting', progress: Math.max(12, job.progress), nextAttemptAt: new Date(Date.now() + 10_000).toISOString() })
     return
   }
   const records = await downloadDiscovery(job.payload.snapshotId, settings)
+  throwIfJobCancelled(job.id)
+  if (!claimJobCompletion(job.id)) return run
+  // A run cancelled while the provider answered enqueues nothing further.
+  if (isRunCancelled(job.runId)) return readRun(job.runId) || run
   const limit = Math.max(1, Number(run.limit || 25))
   const reconciled = reconcileRecords(records, { fallbackCategory: 'Unknown', fallbackLocation: search.displayLocation, limit })
   const leads = reconciled.retained.map((record, index) => insertUniqueLead(record, index, 'Bright Data Google Maps', { runId: run.id })).filter(Boolean)
   const uniqueLeads = [...new Map(leads.map((lead) => [lead.id, lead])).values()]
   const newClientIds = [...new Set(uniqueLeads.filter((lead) => lead._runImport?.created).map((lead) => lead.id))]
   const matchedClientIds = [...new Set(uniqueLeads.filter((lead) => !lead._runImport?.created).map((lead) => lead.id))]
-  uniqueLeads.slice(0, Math.max(1, Number(run.deepAuditLimit || 10))).forEach((lead) => queueJob({ type: 'audit', runId: run.id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
+  // Website-less leads are retained but never queued for website audits.
+  const auditable = uniqueLeads.filter((lead) => lead.website)
+  const skippedNoWebsite = uniqueLeads.filter((lead) => !lead.website)
+  skippedNoWebsite.forEach((lead) => recordEvent('lead', lead.id, 'audit_skipped', { runId: run.id, reason: 'no-website' }))
+  auditable.slice(0, Math.max(1, Number(run.deepAuditLimit || 10))).forEach((lead) => queueJob({ type: 'audit', runId: run.id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
   const geography = describeGeographyCoverage(search, reconciled.retained)
   saveRun({ ...readRun(run.id), searchDefinition: search, discovered: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id), newClientIds, matchedClientIds, providerSnapshotId: job.payload.snapshotId, duration: 'Auditing discovered websites',
     reconciliation: {
@@ -873,19 +1235,83 @@ async function runDiscoveryJob(job) {
 }
 
 let workerBusy = false
+// Maps a terminal job outcome onto the lead so every interruption shows an
+// honest state with a clear next action, and the pipeline never advances on
+// one: interrupted audits leave opportunityScore untouched, so done[1] stays
+// false and qualification stays gated. Shared by the failure path, the cancel
+// endpoint and the watchdog so all three stay consistent.
+function applyJobOutcomeToLead(job, outcome, cause = null) {
+  const lead = job.leadId ? readLead(job.leadId) : null
+  if (!lead) return null
+  const failure = { stage: 1, reason: outcome.detail, code: outcome.code, retryable: outcome.retryable, ...(cause ? { cause } : {}) }
+  if (job.type === 'audit') {
+    return saveLead({
+      ...lead,
+      researchStatus: outcome.status === 'Cancelled' ? 'Cancelled' : 'Failed',
+      researchFailure: failure,
+      lastAuditAttempt: { jobId: job.id, at: nowIso(), url: lead.website || null, status: outcome.status, reason: outcome.label, captureQuality: null },
+      researchJob: { id: job.id, status: outcome.status, progress: 100, phase: outcome.label },
+      ...(job.payload.manualAction ? { manualRun: manualRunState(lead, job.payload.manualAction, { status: outcome.status, progress: 100, phase: outcome.label, jobId: job.id, error: outcome.detail, completedAt: nowIso() }) } : {}),
+      updated: outcome.status === 'Cancelled' ? 'Audit cancelled' : 'Just now',
+    })
+  }
+  if (job.type === 'synthesize') {
+    return saveLead({
+      ...lead,
+      museAnalysis: { ...(lead.museAnalysis || {}), status: 'Failed', error: outcome.detail },
+      museJob: { id: job.id, status: outcome.status, progress: 100, phase: outcome.label, error: outcome.detail, retryable: outcome.retryable },
+      ...(job.payload.manualAction ? { manualRun: manualRunState(lead, job.payload.manualAction, { status: outcome.status, progress: 100, phase: outcome.label, jobId: job.id, error: outcome.detail, completedAt: nowIso() }) } : {}),
+      updated: 'Just now',
+    })
+  }
+  if (job.type === 'refresh') {
+    return saveLead({
+      ...lead,
+      refreshJob: { id: job.id, status: outcome.status, progress: 100, phase: outcome.label, error: outcome.detail, retryable: outcome.retryable },
+      ...(job.payload.manualAction ? { manualRun: manualRunState(lead, job.payload.manualAction, { status: outcome.status, progress: 100, phase: outcome.label, jobId: job.id, error: outcome.detail, completedAt: nowIso() }) } : {}),
+      updated: 'Just now',
+    })
+  }
+  return lead
+}
+
+// Watchdog: Running jobs past their deadline become Timed out with honest
+// lead state and a single terminal event. In-flight work that finishes late
+// is ignored by the completion claim, so it cannot resurrect the job.
+function runJobWatchdog() {
+  const settings = readSettings()
+  const timeoutMs = Number(settings.jobTimeoutMs) || 600000
+  const running = db.prepare("SELECT * FROM jobs WHERE status = 'Running'").all().map(parseJob)
+  for (const job of findTimedOutJobs(running, Date.now(), timeoutMs)) {
+    const outcome = classifyJobError({ code: 'TIMEOUT', message: 'Job exceeded its time budget' })
+    updateJob(job.id, {
+      status: outcome.status, progress: 100, error: outcome.detail, nextAttemptAt: null,
+      payload: { ...job.payload, jobOutcome: { code: outcome.code, retryable: outcome.retryable } },
+    })
+    applyJobOutcomeToLead(job, outcome)
+    recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_timed_out`, { jobId: job.id, timeoutMs })
+    if (job.runId) syncRun(job.runId)
+  }
+}
+
 async function processNextJob() {
   if (workerBusy) return
-  const rows = db.prepare("SELECT * FROM jobs WHERE (status = 'Queued' OR status = 'Waiting') AND (next_attempt_at IS NULL OR next_attempt_at <= ?) ORDER BY created_at ASC LIMIT 20").all(nowIso())
-  const row = rows.find((candidate) => {
-    if (!candidate.run_id) return true
-    const run = readRun(candidate.run_id)
-    return run && !['Paused', 'Cancelled'].includes(run.status)
-  })
+  runJobWatchdog()
+  runRunWatchdog()
+  // Run eligibility is enforced inside the query (before LIMIT), so jobs
+  // parked behind paused or cancelled runs can never hide runnable work.
+  const row = db.prepare(`SELECT * FROM jobs
+    WHERE (status = 'Queued' OR status = 'Waiting')
+      AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+      AND (run_id IS NULL OR run_id NOT IN (SELECT id FROM runs WHERE json_extract(payload, '$.status') IN ('Paused', 'Cancelled')))
+    ORDER BY created_at ASC LIMIT 1`).get(nowIso())
   if (!row) return
   workerBusy = true
   const job = parseJob(row)
   const attempt = job.attempts + (job.status === 'Queued' ? 1 : 0)
-  updateJob(job.id, { status: 'Running', attempts: attempt, error: null, nextAttemptAt: null })
+  const { cancelRequested: _staleCancel, startedAt: _staleStart, jobOutcome: _staleOutcome, ...payload } = job.payload || {}
+  updateJob(job.id, { status: 'Running', attempts: attempt, error: null, nextAttemptAt: null, payload: { ...payload, startedAt: nowIso() } })
+  jobSignals.set(job.id, new AbortController())
   try {
     if (job.type === 'audit') await runAuditJob({ ...job, attempts: attempt })
     else if (job.type === 'synthesize') await runSynthesisJob({ ...job, attempts: attempt })
@@ -894,58 +1320,50 @@ async function processNextJob() {
     else throw new Error(`Unsupported job type: ${job.type}`)
   } catch (error) {
     const current = readJob(job.id)
-    const retry = current.attempts < current.maxAttempts
-    updateJob(job.id, {
-      status: retry ? 'Queued' : 'Failed',
-      progress: retry ? Math.max(5, current.progress) : 100,
-      error: error.message,
-      nextAttemptAt: retry ? new Date(Date.now() + 2_000).toISOString() : null,
-    })
-    if (job.type === 'audit') {
-      const lead = readLead(job.leadId)
-      if (lead) saveLead({
-        ...lead,
-        researchStatus: retry ? 'Queued' : 'Failed',
-        researchFailure: retry ? null : { stage: 1, reason: error.message, code: error.code || 'AUDIT_FAILED', at: nowIso(), jobId: job.id },
-        lastAuditAttempt: retry ? lead.lastAuditAttempt || null : { jobId: job.id, at: nowIso(), url: lead.website || null, status: 'Failed', reason: error.message, captureQuality: null },
-        researchJob: { id: job.id, status: retry ? 'Queued' : 'Failed', progress: retry ? 5 : 100 },
-        updated: retry ? 'Retrying soon' : 'Just now',
+    // A job that already reached a terminal state (cancelled by the user or
+    // timed out by the watchdog while this attempt was in flight) keeps it:
+    // the late failure records nothing new.
+    if (!current || isTerminalJobStatus(current.status)) {
+      // fall through to release
+    } else {
+      const outcome = classifyJobError(error)
+      // A provider trigger that never produced a snapshot id is never
+      // auto-retried: replaying the trigger could place (and bill) a second
+      // paid request. The failure stays visible; a manual retry is explicit.
+      const triggerPhase = ['discover', 'refresh'].includes(job.type) && !current.payload?.snapshotId
+      const retry = outcome.autoRetry && !triggerPhase && current.attempts < current.maxAttempts
+      // The raw cause is kept next to the plain-language outcome so a failure
+      // stays actionable for the user and debuggable for support.
+      const cause = String(error?.message || '').trim() || null
+      updateJob(job.id, {
+        status: retry ? 'Queued' : outcome.status,
+        progress: retry ? Math.max(5, current.progress) : 100,
+        error: retry ? error.message : outcome.detail,
+        nextAttemptAt: retry ? new Date(Date.now() + 2_000).toISOString() : null,
+        payload: retry ? current.payload : { ...current.payload, jobOutcome: { code: outcome.code, retryable: outcome.retryable, cause } },
       })
+      if (retry) {
+        const lead = readLead(job.leadId)
+        if (job.type === 'audit' && lead) saveLead({
+          ...lead,
+          researchStatus: 'Queued',
+          researchJob: { id: job.id, status: 'Queued', progress: 5 },
+          updated: 'Retrying soon',
+        })
+        if (job.payload.manualAction && lead) saveLead({
+          ...readLead(job.leadId),
+          manualRun: manualRunState(lead, job.payload.manualAction, {
+            status: 'Queued', progress: Math.max(5, current.progress), phase: 'Retrying soon', jobId: job.id, error: null, completedAt: null,
+          }),
+        })
+      } else {
+        applyJobOutcomeToLead({ ...job, payload: current.payload }, outcome, cause)
+        recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_${outcome.status === 'Cancelled' ? 'cancelled' : outcome.status === 'Timed out' ? 'timed_out' : outcome.status === 'Error' ? 'errored' : 'failed'}`, { jobId: job.id, code: outcome.code, error: error.message })
+      }
     }
-    if (job.type === 'synthesize') {
-      const lead = readLead(job.leadId)
-      if (lead) saveLead({
-        ...lead,
-        museAnalysis: { ...(lead.museAnalysis || {}), status: retry ? 'Queued' : 'Failed', error: retry ? null : error.message },
-        museJob: { id: job.id, status: retry ? 'Queued' : 'Failed', progress: retry ? Math.max(5, current.progress) : 100, phase: retry ? 'Retrying soon' : 'Synthesis failed' },
-        updated: retry ? 'Muse retrying soon' : 'Muse synthesis failed',
-      })
-    }
-    if (job.type === 'refresh') {
-      const lead = readLead(job.leadId)
-      if (lead) saveLead({
-        ...lead,
-        refreshJob: { id: job.id, status: retry ? 'Queued' : 'Failed', progress: retry ? Math.max(5, current.progress) : 100, phase: retry ? 'Retrying soon' : 'Business refresh failed' },
-        updated: retry ? 'Business refresh retrying soon' : 'Business refresh failed',
-      })
-    }
-    if (job.payload.manualAction) {
-      const lead = readLead(job.leadId)
-      if (lead) saveLead({
-        ...lead,
-        manualRun: manualRunState(lead, job.payload.manualAction, {
-          status: retry ? 'Queued' : 'Failed',
-          progress: retry ? Math.max(5, current.progress) : 100,
-          phase: retry ? 'Retrying soon' : error.message,
-          jobId: job.id,
-          error: retry ? null : error.message,
-          completedAt: retry ? null : nowIso(),
-        }),
-      })
-    }
-    if (!retry) recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_failed`, { jobId: job.id, error: error.message })
   } finally {
     if (job.runId) syncRun(job.runId)
+    releaseJobCancel(job.id)
     workerBusy = false
   }
 }
@@ -975,6 +1393,89 @@ app.get('/api/status', (_req, res) => {
   })
 })
 
+// ── Local backup / restore (ROH-29): everything stays on this machine ────────
+app.get('/api/storage/health', (_req, res) => {
+  const names = listBackups(backupsDir)
+  res.json({
+    ok: true,
+    writable: storageWritable(dataDir),
+    databasePath: join(dataDir, 'scoutline.db'),
+    artifactFailures: readArtifactFailures(),
+    activeJobs: activeJobCount(),
+    backups: { count: names.length, latest: names.length ? names[names.length - 1] : null },
+  })
+})
+
+app.get('/api/backups', (_req, res) => {
+  const backups = listBackups(backupsDir).map((name) => {
+    try {
+      const manifest = JSON.parse(readFileSync(join(backupsDir, name, 'manifest.json'), 'utf8'))
+      return { name, createdAt: manifest.createdAt || null, counts: manifest.counts || null, files: Array.isArray(manifest.files) ? manifest.files.length : 0 }
+    } catch {
+      return { name, createdAt: null, counts: null, files: 0 }
+    }
+  })
+  res.json({ ok: true, backups })
+})
+
+app.post('/api/backups', async (_req, res) => {
+  try {
+    const created = await createBackup({ db, dataDir, backupsDir })
+    const pruned = pruneBackups(backupsDir, 5)
+    recordEvent('system', 'backup', 'created', { name: created.name, counts: created.manifest.counts })
+    res.status(201).json({ ok: true, name: created.name, createdAt: created.manifest.createdAt, counts: created.manifest.counts, files: created.manifest.files.length, pruned })
+  } catch (error) {
+    res.status(500).json({ error: `Backup failed — ${error.message}`, code: 'BACKUP_FAILED' })
+  }
+})
+
+app.delete('/api/backups/:name', (req, res) => {
+  const name = String(req.params.name || '')
+  if (!listBackups(backupsDir).includes(name)) return notFound(res, 'Backup not found', 'name')
+  try {
+    rmSync(join(backupsDir, name), { recursive: true, force: true })
+    recordEvent('system', 'backup', 'deleted', { name })
+    res.json({ ok: true, name })
+  } catch (error) {
+    res.status(500).json({ error: `Could not delete backup — ${error.message}`, code: 'BACKUP_DELETE_FAILED' })
+  }
+})
+
+// Live restore from an on-disk snapshot: the snapshot is verified, converted
+// to the portable format, and applied to the running database.
+app.post('/api/backups/:name/restore', async (req, res) => {
+  const name = String(req.params.name || '')
+  if (!listBackups(backupsDir).includes(name)) return notFound(res, 'Backup not found', 'name')
+  if (!req.body || req.body.confirm !== true) return badRequest(res, 'confirm', 'Restoring overwrites current data — send { "confirm": true } to proceed')
+  if (activeJobCount() > 0) return conflict(res, 'Restore blocked — background jobs still active. Cancel or wait for them first.', null, 'RESTORE_BLOCKED_ACTIVE_JOBS')
+  const backupPath = join(backupsDir, name)
+  const verification = await verifyBackup(backupPath, { openDatabase: (path) => new Database(path, { readonly: true }) })
+  if (!verification.ok) return res.status(422).json({ error: `Restore refused — backup failed verification: ${verification.errors.join('; ')}`, code: 'INVALID_BACKUP', details: verification.errors.map((message) => ({ message })) })
+  let snapshotDb = null
+  try {
+    snapshotDb = new Database(join(backupPath, 'scoutline.db'), { readonly: true })
+    const collected = collectJsonBackupFiles(backupPath)
+    if (!collected.ok) return payloadTooLarge(res, collected.error)
+    const portable = buildJsonBackup({ tables: readBackupTables(snapshotDb), files: collected.files, createdAt: verification.manifest.createdAt })
+    const result = applyJsonRestore(db, dataDir, portable, { regenerateLead: (lead) => writeLeadArtifacts(lead) })
+    if (!result.ok) return res.status(500).json({ error: `Restore incomplete — ${result.failed.length} file(s) could not be written`, code: 'BACKUP_RESTORE_PARTIAL', restored: result.restored, failed: result.failed })
+    recordEvent('system', 'backup', 'restored', { name, tables: result.restored.tables, files: result.restored.files })
+    res.json({ ok: true, name, restored: result.restored, failed: [] })
+  } catch (error) {
+    res.status(500).json({ error: `Restore failed — ${error.message}`, code: 'BACKUP_RESTORE_FAILED' })
+  } finally {
+    try { snapshotDb?.close() } catch { /* already closed */ }
+  }
+})
+
+app.get('/api/backup/export', (_req, res) => {
+  const collected = collectJsonBackupFiles(dataDir)
+  if (!collected.ok) return payloadTooLarge(res, collected.error)
+  const backup = buildJsonBackup({ tables: readBackupTables(db), files: collected.files })
+  res.setHeader('Content-Disposition', `attachment; filename="scoutline-backup-${backup.createdAt.replace(/[:.]/g, '-')}.json"`)
+  res.json(backup)
+})
+
 app.get('/api/leads', (_req, res) => res.json(readRows('leads')))
 app.get('/api/leads/:id/events', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
@@ -995,6 +1496,64 @@ app.get('/api/jobs/:id', (req, res) => {
   const job = readJob(req.params.id)
   if (!job) return notFound(res, 'Job not found', 'id')
   res.json(job)
+})
+
+app.post('/api/jobs/:id/cancel', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid job id format')
+  const job = readJob(req.params.id)
+  if (!job) return notFound(res, 'Job not found', 'id')
+  if (!isActiveJobStatus(job.status)) return res.status(409).json({ error: 'This job already finished and cannot be cancelled.', code: 'JOB_TERMINAL' })
+  const outcome = classifyJobError({ code: 'CANCELLED', message: 'Cancelled by user' })
+  if (job.status === 'Running') {
+    // In-flight work stops at the next cancellation point; the completion
+    // claim drops anything that finishes afterwards.
+    requestJobCancel(job.id)
+    const mirror = job.leadId ? readLead(job.leadId) : null
+    if (mirror) {
+      const patch = {}
+      if (job.type === 'audit' && mirror.researchJob?.id === job.id) patch.researchJob = { ...mirror.researchJob, phase: 'Cancelling…' }
+      if (job.type === 'synthesize' && mirror.museJob?.id === job.id) patch.museJob = { ...mirror.museJob, phase: 'Cancelling…' }
+      if (job.type === 'refresh' && mirror.refreshJob?.id === job.id) patch.refreshJob = { ...mirror.refreshJob, phase: 'Cancelling…' }
+      if (Object.keys(patch).length) saveLead({ ...mirror, ...patch, updated: 'Cancelling job' })
+    }
+    recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_cancel_requested`, { jobId: job.id })
+    return res.json({ job: readJob(job.id), cancelling: true, lead: job.leadId ? readLead(job.leadId) : null })
+  }
+  updateJob(job.id, {
+    status: outcome.status, progress: 100, error: outcome.detail, nextAttemptAt: null,
+    payload: { ...job.payload, jobOutcome: { code: outcome.code, retryable: outcome.retryable } },
+  })
+  applyJobOutcomeToLead(job, outcome)
+  recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_cancelled`, { jobId: job.id })
+  if (job.runId) syncRun(job.runId)
+  res.json({ job: readJob(job.id), cancelling: false, lead: job.leadId ? readLead(job.leadId) : null })
+})
+
+app.post('/api/jobs/:id/retry', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid job id format')
+  const job = readJob(req.params.id)
+  if (!job) return notFound(res, 'Job not found', 'id')
+  if (!canRetryJob(job)) {
+    const reason = !isTerminalJobStatus(job.status)
+      ? 'This job is still active; cancel it before starting a replacement.'
+      : 'This job cannot be retried; start a fresh run instead.'
+    return res.status(409).json({ error: reason, code: 'JOB_NOT_RETRYABLE' })
+  }
+  if (job.leadId) {
+    const active = db.prepare("SELECT id FROM jobs WHERE lead_id = ? AND type = ? AND status IN ('Queued', 'Running', 'Waiting') AND id != ?").get(job.leadId, job.type, job.id)
+    if (active) return res.status(409).json({ error: 'A replacement job is already queued for this work.', code: 'JOB_NOT_RETRYABLE' })
+  }
+  // A retry is a brand-new job: new id, reset attempts, same parameters. The
+  // original row and all collected evidence stay untouched, and resume keeps
+  // whatever progress the lead already holds.
+  const { cancelRequested: _cancel, startedAt: _start, jobOutcome: _outcome, ...payload } = job.payload || {}
+  const retry = queueJob({
+    type: job.type, runId: job.runId, leadId: job.leadId,
+    payload: { ...payload, retriedFrom: job.id },
+    maxAttempts: job.maxAttempts, triggeredBy: 'retry',
+  })
+  recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_retried`, { jobId: retry.id, retriedFrom: job.id })
+  res.status(201).json({ job: retry })
 })
 app.get('/api/settings', (_req, res) => res.json(readSettings()))
 
@@ -1027,6 +1586,17 @@ app.patch('/api/settings', (req, res) => {
   if ('respectRobots' in body && typeof body.respectRobots !== 'boolean') push('respectRobots', 'Must be a boolean')
   if ('crawlMaxAttempts' in body) { const n = clampInt(body.crawlMaxAttempts, 10, 500); if (n == null) push('crawlMaxAttempts', 'Must be an integer 10-500') }
   if ('crawlTimeLimitMs' in body) { const n = clampInt(body.crawlTimeLimitMs, 15000, 600000); if (n == null) push('crawlTimeLimitMs', 'Must be an integer 15000-600000') }
+  if ('leadValueWeights' in body) {
+    const w = body.leadValueWeights
+    if (!w || typeof w !== 'object' || Array.isArray(w)) push('leadValueWeights', 'Must be an object with need/businessFit/reachability/timing weights')
+    else for (const key of ['need', 'businessFit', 'reachability', 'timing']) {
+      const n = Number(w[key])
+      if (!Number.isFinite(n) || n < 0 || n > 1) push(`leadValueWeights.${key}`, 'Each weight must be a number 0-1')
+    }
+  }
+  if ('jobTimeoutMs' in body) { const n = clampInt(body.jobTimeoutMs, 60000, 3600000); if (n == null) push('jobTimeoutMs', 'Must be an integer 60000-3600000') }
+  if ('discoveryPollTimeoutMs' in body) { const n = clampInt(body.discoveryPollTimeoutMs, 300000, 7200000); if (n == null) push('discoveryPollTimeoutMs', 'Must be an integer 300000-7200000') }
+  if ('runTimeoutMs' in body) { const n = clampInt(body.runTimeoutMs, 900000, 43200000); if (n == null) push('runTimeoutMs', 'Must be an integer 900000-43200000') }
   if ('blockPrivateNetworks' in body && typeof body.blockPrivateNetworks !== 'boolean') push('blockPrivateNetworks', 'Must be a boolean')
   if ('discoveryCountry' in body && !isStringWithLength(body.discoveryCountry, 2, 3)) push('discoveryCountry', 'Must be 2-3 character country code')
   if ('discoveryLatitude' in body) { const n = Number(body.discoveryLatitude); if (!Number.isFinite(n) || n < -90 || n > 90) push('discoveryLatitude', 'Must be a number -90 to 90') }
@@ -1049,14 +1619,15 @@ app.post('/api/leads', (req, res) => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
   const company = String(body.company || '').trim()
   if (!isStringWithLength(company, 2, 120)) return badRequest(res, 'company', 'Company is required and must be 2-120 characters', [{ field: 'company', message: 'Must be 2-120 characters' }])
+  // Website is optional enrichment (ROH-5): a business without one is a
+  // first-class lead. Omission stays unknown, never an asserted absence.
   const rawWebsite = String(body.website || '').trim()
-  if (!rawWebsite) return badRequest(res, 'website', 'Website is required', [{ field: 'website', message: 'Website is required (3-253 chars, domain-like)' }])
-  const website = normalizeDomainInput(rawWebsite)
-  if (!isStringWithLength(website, 3, 253) || !isValidDomain(website)) return badRequest(res, 'website', 'Website must be a valid domain (e.g. example.com)', [{ field: 'website', message: 'Must be 3-253 chars, domain-like with a TLD' }])
+  const website = rawWebsite ? normalizeDomainInput(rawWebsite) : ''
+  if (rawWebsite && (!isStringWithLength(website, 3, 253) || !isValidDomain(website))) return badRequest(res, 'website', 'Website must be a valid domain (e.g. example.com)', [{ field: 'website', message: 'Must be 3-253 chars, domain-like with a TLD' }])
   if (body.phone != null && String(body.phone).trim() && String(body.phone).trim() !== 'Not collected' && !isPhoneLike(String(body.phone))) return badRequest(res, 'phone', 'Phone number format is invalid', [{ field: 'phone', message: 'Must be 7-30 chars, digits, spaces, +, -, (), .' }])
   if (body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) return badRequest(res, 'email', 'Email format is invalid', [{ field: 'email', message: 'Must be a valid email address' }])
   const websiteLower = website.toLowerCase()
-  if (readRows('leads').some((lead) => String(lead.website || '').toLowerCase() === websiteLower)) {
+  if (website && readRows('leads').some((lead) => String(lead.website || '').toLowerCase() === websiteLower)) {
     return conflict(res, 'A client with this website already exists', 'website', 'DUPLICATE_WEBSITE')
   }
   if (readRows('leads').some((lead) => String(lead.company || '').trim().toLowerCase() === company.toLowerCase())) {
@@ -1064,9 +1635,9 @@ app.post('/api/leads', (req, res) => {
   }
   const lead = importedLead({ ...body, company, website }, 0, 'Manual entry')
   db.prepare('INSERT INTO leads (id, payload) VALUES (?, ?)').run(lead.id, JSON.stringify(lead))
-  writeLeadArtifacts(lead)
+  const artifacts = persistLeadArtifacts(lead)
   recordEvent('lead', lead.id, 'created', { source: 'Manual entry' })
-  res.status(201).json(lead)
+  res.status(201).json(artifacts.ok ? lead : { ...lead, artifactWarning: artifacts.error })
 })
 
 app.post('/api/leads/import', (req, res) => {
@@ -1080,9 +1651,10 @@ app.post('/api/leads/import', (req, res) => {
   body.rows.forEach((row, idx) => {
     if (!row || typeof row !== 'object' || Array.isArray(row)) { rowErrors.push({ field: `rows[${idx}]`, message: 'Each row must be an object' }); return }
     const c = String(row.company || row.name || row.business || '').trim()
-    const w = normalizeDomainInput(String(row.website || row.domain || ''))
+    const rawW = String(row.website || row.domain || '').trim()
+    const w = rawW ? normalizeDomainInput(rawW) : ''
     if (!isStringWithLength(c, 2, 120)) rowErrors.push({ field: `rows[${idx}].company`, message: 'Company must be 2-120 chars' })
-    if (!isStringWithLength(w, 3, 253) || !isValidDomain(w)) rowErrors.push({ field: `rows[${idx}].website`, message: 'Website must be 3-253 chars domain-like' })
+    if (rawW && (!isStringWithLength(w, 3, 253) || !isValidDomain(w))) rowErrors.push({ field: `rows[${idx}].website`, message: 'Website must be 3-253 chars domain-like' })
     if (row.phone != null && String(row.phone).trim() && String(row.phone).trim() !== 'Not collected' && !isPhoneLike(String(row.phone))) rowErrors.push({ field: `rows[${idx}].phone`, message: 'Invalid phone format' })
     if (row.email != null && String(row.email).trim() && String(row.email).trim() !== 'Not collected' && !isEmail(String(row.email))) rowErrors.push({ field: `rows[${idx}].email`, message: 'Invalid email format' })
   })
@@ -1094,14 +1666,23 @@ app.post('/api/leads/import', (req, res) => {
   const seenInBatch = new Set()
   rows.forEach((row, index) => {
     const company = String(row.company || row.name || row.business || '').trim()
-    const website = normalizeDomainInput(String(row.website || row.domain || ''))
-    if (!isStringWithLength(company, 2, 120) || !isStringWithLength(website, 3, 253) || !isValidDomain(website) || existingDomains.has(website.toLowerCase()) || seenInBatch.has(website.toLowerCase())) { skipped += 1; return }
+    const rawWebsite = String(row.website || row.domain || '').trim()
+    const website = rawWebsite ? normalizeDomainInput(rawWebsite) : ''
+    // Website-less rows survive import consistently. Rows with a strong
+    // provider identity always go through identity matching (a shared domain
+    // never skips them); the domain fast-path only applies to weak rows.
+    const rowBusinessId = row.businessId || businessIdentityFor(row) || null
+    const strongRow = Boolean(rowBusinessId && !String(rowBusinessId).startsWith('manual:'))
+    const batchKey = strongRow ? `id:${rowBusinessId}` : website ? `site:${website.toLowerCase()}` : `row:${normalizeIdentityText(company)}|${normalizeIdentityText(row.address || row.location)}`
+    if (!isStringWithLength(company, 2, 120) || (rawWebsite && (!isStringWithLength(website, 3, 253) || !isValidDomain(website)))) { skipped += 1; return }
+    if (!strongRow && website && (existingDomains.has(website.toLowerCase()) || seenInBatch.has(batchKey))) { skipped += 1; return }
+    if (seenInBatch.has(batchKey)) { skipped += 1; return }
     if (row.phone != null && String(row.phone).trim() && String(row.phone).trim() !== 'Not collected' && !isPhoneLike(String(row.phone))) { skipped += 1; return }
     if (row.email != null && String(row.email).trim() && String(row.email).trim() !== 'Not collected' && !isEmail(String(row.email))) { skipped += 1; return }
-    const lead = insertUniqueLead({ ...row, company, website }, index, 'CSV import')
+    const lead = insertUniqueLead({ ...row, company, website, businessId: row.businessId || businessIdentityFor(row) || undefined }, index, 'CSV import')
     if (!lead) { skipped += 1; return }
-    existingDomains.add(website.toLowerCase())
-    seenInBatch.add(website.toLowerCase())
+    if (website) existingDomains.add(website.toLowerCase())
+    seenInBatch.add(batchKey)
     created.push(lead)
   })
   res.status(201).json({ imported: created.length, skipped, leads: created, ...(rowErrors.length ? { rowErrors: rowErrors.slice(0, 20) } : {}) })
@@ -1149,6 +1730,34 @@ app.patch('/api/leads/:id', (req, res) => {
     }
   }
   if ('outreachStatus' in body && !ALLOWED_OUTREACH_STATUS.has(body.outreachStatus)) push('outreachStatus', `Must be one of: ${[...ALLOWED_OUTREACH_STATUS].join(', ')}`)
+  if ('nextTask' in body) {
+    const task = body.nextTask
+    if (!task || typeof task !== 'object' || Array.isArray(task)) push('nextTask', 'Must be an object with type/dueAt/status')
+    else {
+      if (!NEXT_TASK_TYPES.includes(task.type)) push('nextTask.type', `Must be one of: ${NEXT_TASK_TYPES.join(', ')}`)
+      if (task.dueAt != null && !isValidDayString(task.dueAt)) push('nextTask.dueAt', 'Must be a YYYY-MM-DD date or null')
+      if (task.status != null && !TASK_STATUSES.includes(task.status)) push('nextTask.status', `Must be one of: ${TASK_STATUSES.join(', ')}`)
+      if (task.owner != null && task.owner !== '' && !TASK_OWNERS.includes(task.owner)) push('nextTask.owner', `Must be one of: ${TASK_OWNERS.join(', ')} or empty`)
+      if (task.note != null && String(task.note).length > 500) push('nextTask.note', 'Note is limited to 500 chars')
+    }
+  }
+  if ('doNotContact' in body) {
+    const suppression = body.doNotContact
+    if (!suppression || typeof suppression !== 'object' || Array.isArray(suppression)) push('doNotContact', 'Must be an object with status/reason')
+    else {
+      if (typeof suppression.status !== 'boolean') push('doNotContact.status', 'Must be a boolean')
+      if (suppression.status === true && !String(suppression.reason || '').trim()) push('doNotContact.reason', 'A reason is required when suppressing contact')
+      if (suppression.scope != null && !['business', 'contact'].includes(suppression.scope)) push('doNotContact.scope', 'Must be business or contact')
+    }
+  }
+  if ('briefRationale' in body) {
+    const rationale = body.briefRationale
+    if (!rationale || typeof rationale !== 'object' || Array.isArray(rationale)) push('briefRationale', 'Must be an object with text/by')
+    else {
+      if (!String(rationale.text || '').trim() || String(rationale.text).length > 2000) push('briefRationale.text', 'Text is required (max 2000 chars)')
+      if (rationale.by != null && String(rationale.by).length > 40) push('briefRationale.by', 'Author is limited to 40 chars')
+    }
+  }
   if ('museStale' in body && typeof body.museStale !== 'boolean') push('museStale', 'Must be a boolean')
   if ('outreachStale' in body && typeof body.outreachStale !== 'boolean') push('outreachStale', 'Must be a boolean')
   if ('contactedAt' in body) {
@@ -1177,6 +1786,12 @@ app.patch('/api/leads/:id', (req, res) => {
   if ('phone' in body && body.phone != null && String(body.phone).trim() && String(body.phone).trim() !== 'Not collected' && !isPhoneLike(String(body.phone))) push('phone', 'Invalid phone format')
   if ('email' in body && body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) push('email', 'Invalid email format')
   if ('rev' in body && (!Number.isInteger(body.rev) || body.rev < 0)) push('rev', 'Must be a non-negative integer revision')
+  if ('website' in body) {
+    const raw = String(body.website || '').trim()
+    const normalized = raw ? normalizeDomainInput(raw) : ''
+    if (raw && (!isStringWithLength(normalized, 3, 253) || !isValidDomain(normalized))) push('website', 'Must be a valid domain or empty')
+    else if (normalized && readRows('leads').some((item) => item.id !== req.params.id && String(item.website || '').toLowerCase() === normalized.toLowerCase())) push('website', 'Another client already uses this website')
+  }
   if (details.length) return badRequest(res, null, 'Invalid lead patch values', details)
 
   const { rev: expectedRev, ...changes } = body
@@ -1194,6 +1809,46 @@ app.patch('/api/leads/:id', (req, res) => {
     delete patched.museStale
   }
   if (changes.outreachStale === false) patched.outreachStaleReason = null
+  if ('nextTask' in changes) {
+    const task = changes.nextTask
+    patched.nextTask = {
+      type: task.type,
+      dueAt: task.dueAt ?? patched.nextTask?.dueAt ?? null,
+      status: task.status ?? 'open',
+      owner: task.owner ?? patched.nextTask?.owner ?? '',
+      note: String(task.note ?? patched.nextTask?.note ?? ''),
+      updatedAt: nowIso(),
+    }
+  }
+  if ('doNotContact' in changes) {
+    const suppression = changes.doNotContact
+    patched.doNotContact = {
+      status: suppression.status,
+      reason: String(suppression.reason || '').trim(),
+      scope: suppression.scope || patched.doNotContact?.scope || 'business',
+      at: suppression.status ? nowIso() : patched.doNotContact?.at || null,
+      ...(suppression.status ? {} : { clearedAt: nowIso() }),
+    }
+  }
+  if ('briefRationale' in changes) {
+    patched.briefRationale = { text: String(changes.briefRationale.text).trim(), by: String(changes.briefRationale.by || 'Reviewer').slice(0, 40), at: nowIso(), manual: true }
+  }
+  // Contacted reflects an actual recorded attempt — copying a draft or
+  // flipping the status directly never counts.
+  if (changes.outreachStatus === 'Contacted' && fresh.outreachStatus !== 'Contacted' && !(fresh.contactAttempts || []).length) {
+    return res.status(409).json({ error: 'Record a contact attempt first — copying a draft does not count as contact.', code: 'ATTEMPT_REQUIRED' })
+  }
+  if ('website' in changes) {
+    // Adding or changing the website later keeps the stable business id and
+    // all history; only the website attribute moves, which re-enables audit.
+    const normalized = String(changes.website || '').trim() ? normalizeDomainInput(String(changes.website)) : ''
+    patched.website = normalized
+    if (normalized !== String(fresh.website || '')) {
+      patched.websiteStatus = 'supplied'
+      patched.leadValue = scoreLeadValue({ ...patched, website: normalized }, { weights: readSettings().leadValueWeights })
+      if (fresh.opportunityScore != null || fresh.analysisSource) recordEvent('lead', lead.id, 'website_changed', { from: fresh.website || null, to: normalized || null })
+    }
+  }
   const draftEdited = ('outreachDraft' in changes && String(changes.outreachDraft || '') !== String(fresh.outreachDraft || '')) ||
     ('outreachDrafts' in changes && JSON.stringify(changes.outreachDrafts || {}) !== JSON.stringify(fresh.outreachDrafts || {})) ||
     ('outreachSubject' in changes && String(changes.outreachSubject || '') !== String(fresh.outreachSubject || ''))
@@ -1261,6 +1916,18 @@ app.post('/api/leads/:id/analyze', (req, res) => {
   res.status(202).json(queueAuditForLead(lead, { workflow: 'audit' }))
 })
 
+app.post('/api/leads/:id/score', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  // Recompute commercial value from saved evidence under current weights.
+  // Stored scores keep their own version, so history stays interpretable.
+  const scored = scoreLeadValue(lead, { weights: readSettings().leadValueWeights })
+  const updated = saveLead({ ...lead, leadValue: scored, updated: 'Just now' })
+  recordEvent('lead', lead.id, 'value_rescored', { version: scored.version, score: scored.leadValueScore, band: scored.band })
+  res.json(updated)
+})
+
 app.post('/api/leads/:id/muse/analyze', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
@@ -1301,12 +1968,24 @@ app.post('/api/leads/:id/actions/:action', async (req, res) => {
       return res.json({ lead: updated, job: null, message: 'Three outreach drafts generated' })
     }
     if (action === 'full') {
-      if (!getOutreachConfig().configured) return serviceUnavailable(res, 'Muse must be configured before running the full workflow', 'MUSE_NOT_CONFIGURED')
+      // No website and no refresh source: complete honestly without queueing —
+      // there is nothing to audit, synthesize or draft from.
+      if (!lead.website && !(getBrightDataConfig(readSettings()).ready && lead.sourceUrl)) {
+        const done = saveLead({ ...lead, manualRun: manualRunState(lead, 'full', { reset: true, status: 'Completed', progress: 100, phase: 'No website to audit — business review continues manually', completedAt: nowIso() }), updated: 'Just now' })
+        return res.json({ lead: done, job: null, skipped: true, message: 'No website to audit — business review continues manually' })
+      }
+      // No AI gate: without Muse the workflow finishes the deterministic
+      // audit plus template outreach drafts and says so honestly.
       const brightData = getBrightDataConfig(readSettings())
-      const queued = brightData.ready && lead.sourceUrl
-        ? queueRefreshForLead(lead, { manualAction: 'full' })
-        : queueAuditForLead(lead, { workflow: 'full', manualAction: 'full' })
-      return res.status(202).json({ ...queued, message: brightData.ready && lead.sourceUrl ? 'Full workflow queued from business refresh' : 'Full workflow queued from website audit' })
+      if (brightData.ready && lead.sourceUrl) {
+        return res.status(202).json({ ...queueRefreshForLead(lead, { manualAction: 'full' }), message: 'Full workflow queued from business refresh' })
+      }
+      const queued = queueAuditForLead(lead, { workflow: 'full', manualAction: 'full' })
+      if (queued.skipped) {
+        const done = saveLead({ ...queued.lead, manualRun: manualRunState(queued.lead, 'full', { status: 'Completed', progress: 100, phase: 'No website to audit — business review continues manually', completedAt: nowIso() }), updated: 'Just now' })
+        return res.json({ lead: done, job: null, skipped: true, message: 'No website to audit — business review continues manually' })
+      }
+      return res.status(202).json({ ...queued, message: 'Full workflow queued from website audit' })
     }
   } catch (error) {
     const current = readLead(lead.id) || lead
@@ -1350,10 +2029,96 @@ app.post('/api/enrichment/backfill', async (req, res) => {
   }
 })
 
+app.post('/api/leads/:id/attempts', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const body = req.body
+  const details = []
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
+  if (!ATTEMPT_OUTCOMES.includes(body.outcome)) details.push({ field: 'outcome', message: `Must be one of: ${ATTEMPT_OUTCOMES.join(', ')}` })
+  if (body.channel != null && !['email', 'phone', 'maps', 'in-person', 'other'].includes(body.channel)) details.push({ field: 'channel', message: 'Must be email, phone, maps, in-person or other' })
+  if (body.contact != null && String(body.contact).length > 120) details.push({ field: 'contact', message: 'Contact is limited to 120 chars' })
+  if (body.notes != null && String(body.notes).length > 1000) details.push({ field: 'notes', message: 'Notes are limited to 1000 chars' })
+  if (details.length) return badRequest(res, null, 'Invalid contact attempt', details)
+  const attempt = {
+    id: `att-${randomUUID().slice(0, 8)}`,
+    channel: body.channel || 'other',
+    contact: String(body.contact || '').trim(),
+    outcome: body.outcome,
+    notes: String(body.notes || '').trim(),
+    at: nowIso(),
+  }
+  const attempts = [...(lead.contactAttempts || []), attempt]
+  // Only outcomes that prove a human was reached move the status.
+  const contacted = CONTACT_OUTCOMES.includes(body.outcome)
+  const updated = saveLead({
+    ...lead,
+    contactAttempts: attempts,
+    ...(contacted ? { outreachStatus: 'Contacted', contactedAt: lead.contactedAt || nowIso() } : {}),
+    updated: 'Just now',
+  })
+  recordEvent('lead', lead.id, 'contact_attempt', { attemptId: attempt.id, channel: attempt.channel, outcome: attempt.outcome, contacted })
+  res.status(201).json({ lead: updated, attempt })
+})
+
+app.post('/api/leads/:id/findings/review', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const body = req.body
+  const details = []
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
+  if (!['accepted', 'rejected'].includes(body.decision)) details.push({ field: 'decision', message: 'Must be accepted or rejected' })
+  if (body.decision === 'rejected' && !String(body.reason || '').trim()) details.push({ field: 'reason', message: 'A reason is required when rejecting a finding' })
+  if (body.reason != null && String(body.reason).length > 1000) details.push({ field: 'reason', message: 'Reason is limited to 1000 chars' })
+  if (body.by != null && String(body.by).length > 40) details.push({ field: 'by', message: 'Author is limited to 40 chars' })
+  const findings = briefFindings(lead)
+  const finding = findings.find((item) => item.key === body.findingKey)
+  if (!finding && !details.length) details.push({ field: 'findingKey', message: 'Finding is not part of the current audit' })
+  if (details.length) return badRequest(res, null, 'Invalid finding review', details)
+  const review = {
+    findingKey: finding.key,
+    decision: body.decision,
+    reason: String(body.reason || '').trim(),
+    by: String(body.by || 'Reviewer').slice(0, 40),
+    auditId: lead.currentAuditId || null,
+    at: nowIso(),
+  }
+  const reviews = (lead.findingReviews || []).filter((item) => item.findingKey !== review.findingKey || item.auditId !== review.auditId)
+  reviews.push(review)
+  const updated = saveLead({ ...lead, findingReviews: reviews, updated: 'Just now' })
+  recordEvent('lead', lead.id, 'finding_reviewed', { findingKey: review.findingKey, decision: review.decision, auditId: review.auditId })
+  res.status(201).json({ lead: updated, review })
+})
+
+app.get('/api/leads/:id/brief', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const readiness = briefReadiness(lead)
+  const status = reviewStatus(lead)
+  res.json({ lead, readiness, reviews: { accepted: status.accepted, rejected: status.rejected, stale: status.stale, pending: status.pending } })
+})
+
+app.post('/api/leads/:id/brief-export', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const readiness = briefReadiness(lead)
+  if (!readiness.accepted.length) {
+    return res.status(409).json({ error: 'No reviewed findings to export — review the audit evidence first.', code: 'NOTHING_REVIEWED' })
+  }
+  const markdown = buildBriefMarkdown(lead, readiness)
+  recordEvent('lead', lead.id, 'brief_exported', { accepted: readiness.accepted.length, ready: readiness.ready })
+  res.json({ lead, markdown, readiness })
+})
+
 app.post('/api/leads/:id/outreach/generate', async (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
   if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (lead.doNotContact?.status) return res.status(409).json({ error: `Outreach is suppressed${lead.doNotContact.reason ? `: ${lead.doNotContact.reason}` : ''}. Clear the suppression explicitly to reopen.`, code: 'SUPPRESSED' })
   if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before generating outreach', 'opportunityScore', 'AUDIT_REQUIRED')
   try {
     res.json(await generateAndSaveOutreach(lead))
@@ -1442,6 +2207,7 @@ app.post('/api/runs', (req, res) => {
     searchDefinition,
     source: brightData.ready ? 'Bright Data Google Maps' : 'Existing client websites',
     status: 'Running', progress: 0, discovered: 0, crawled: 0, audited: 0, failed: 0, datasets: 0, duration: 'Starting',
+    deadlineAt: new Date(now.getTime() + (Number(readSettings().runTimeoutMs) || 7200000)).toISOString(),
     limit, deepAuditLimit, options: (body.options && typeof body.options === 'object' && !Array.isArray(body.options)) ? body.options : {},
   }
   db.prepare('INSERT INTO runs (id, payload) VALUES (?, ?)').run(id, JSON.stringify(run))
@@ -1490,6 +2256,10 @@ app.patch('/api/runs/:id', (req, res) => {
   const updated = saveRun({ ...run, status: requested, duration: requested === 'Cancelled' ? 'Cancelled manually' : requested })
   if (requested === 'Cancelled') {
     db.prepare("UPDATE jobs SET status = 'Cancelled', progress = 100, updated_at = ? WHERE run_id = ? AND status IN ('Queued', 'Waiting')").run(nowIso(), run.id)
+    // Running jobs stop at their next cancellation point; their completion
+    // claim then drops any late finish, and the guards below prevent any
+    // further downstream enqueueing for this run.
+    for (const active of db.prepare("SELECT id FROM jobs WHERE run_id = ? AND status = 'Running'").all(run.id)) requestJobCancel(active.id)
   }
   recordEvent('run', run.id, requested.toLowerCase(), {})
   res.json(syncRun(run.id) || updated)
