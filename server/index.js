@@ -1,7 +1,7 @@
 import express from 'express'
 import Database from 'better-sqlite3'
 import 'dotenv/config'
-import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
@@ -14,11 +14,36 @@ import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
 import { acceptOutreachCandidate, buildRefreshPatch, dismissOutreachCandidates, getRev, resolveOutreachCompletion, resolveSynthesisCompletion, updateLeadFields } from './services/revisions.js'
 import { auditIdForJob, buildLeadReport, listAuditManifests, loadAuditForSynthesis, readManifest, renderLeadReportMarkdown, saveAuditArtifacts } from './services/artifacts.js'
+import { applyJsonRestore, BACKUP_RESTORE_COLUMNS, BACKUP_TABLES, buildJsonBackup, collectJsonBackupFiles, createBackup, listBackups, planJsonRestore, pruneBackups, storageWritable, validateJsonBackup, verifyBackup } from './services/backup.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
 const dataDir = process.env.SCOUTLINE_DATA_DIR ? resolve(process.env.SCOUTLINE_DATA_DIR) : join(rootDir, 'data')
 mkdirSync(dataDir, { recursive: true })
+const backupsDir = join(dataDir, 'backups')
+
+// Active background work blocks a live restore (it would wipe the jobs table
+// out from under the worker). Shared by both restore endpoints.
+function activeJobCount() {
+  try {
+    return db.prepare("SELECT COUNT(*) AS count FROM jobs WHERE status IN ('Queued', 'Running', 'Waiting')").get().count
+  } catch {
+    return 0
+  }
+}
+
+function readBackupTables(database) {
+  const tables = {}
+  for (const table of BACKUP_TABLES) {
+    const columns = BACKUP_RESTORE_COLUMNS[table]
+    try {
+      tables[table] = database.prepare(`SELECT ${columns.join(', ')} FROM ${table}`).all()
+    } catch {
+      tables[table] = []
+    }
+  }
+  return tables
+}
 
 const db = new Database(join(dataDir, 'scoutline.db'))
 db.pragma('journal_mode = WAL')
@@ -89,6 +114,28 @@ const settingInsert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VA
 Object.entries(defaultSettings).forEach(([key, value]) => settingInsert.run(key, JSON.stringify(value)))
 
 const app = express()
+// Portable-backup uploads can legitimately exceed the 1mb API default, so
+// this route is registered before the global parser with its own limit.
+app.post('/api/backup/restore', express.json({ limit: '160mb' }), (req, res) => {
+  const body = req.body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object with a backup payload')
+  const parsed = validateJsonBackup(body.backup ?? body)
+  if (!parsed.ok) return res.status(422).json({ error: `Backup is not usable: ${parsed.errors.join('; ')}`, code: 'INVALID_BACKUP', details: parsed.errors.map((message) => ({ message })) })
+  if (body.confirm === true) {
+    const active = activeJobCount()
+    if (active > 0) return conflict(res, `Restore blocked — ${active} background job(s) still active. Cancel or wait for them first.`, null, 'RESTORE_BLOCKED_ACTIVE_JOBS')
+    let result
+    try {
+      result = applyJsonRestore(db, dataDir, parsed.backup, { regenerateLead: (lead) => writeLeadArtifacts(lead) })
+    } catch (error) {
+      return res.status(422).json({ error: `Restore refused — ${error.message}`, code: 'INVALID_BACKUP' })
+    }
+    if (!result.ok) return res.status(500).json({ error: `Restore incomplete — ${result.failed.length} file(s) could not be written`, code: 'BACKUP_RESTORE_PARTIAL', restored: result.restored, failed: result.failed })
+    recordEvent('system', 'backup', 'restored', { tables: result.restored.tables, files: result.restored.files })
+    return res.json({ ok: true, restored: result.restored, failed: [] })
+  }
+  return res.json({ ok: true, ...planJsonRestore(parsed.backup) })
+})
 app.use(express.json({ limit: '1mb' }))
 
 // ── Shared validation helpers (structured errors) ─────────────────────────────────
@@ -181,7 +228,7 @@ const readRun = (id) => {
 const saveLead = (lead) => {
   const next = { ...lead, rev: getRev(lead) + 1 }
   db.prepare('UPDATE leads SET payload = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(JSON.stringify(next), lead.id)
-  writeLeadArtifacts(next)
+  persistLeadArtifacts(next)
   return next
 }
 
@@ -190,7 +237,7 @@ const saveLead = (lead) => {
 // the revision. Exported for tests via the revisions module contract.
 const scopedLeadUpdate = (id, patch, { expectedRev = null } = {}) => {
   const next = updateLeadFields(db, id, patch, { expectedRev })
-  writeLeadArtifacts(next)
+  persistLeadArtifacts(next)
   return next
 }
 
@@ -313,8 +360,8 @@ function buildAuditData(lead) {
   }
 }
 
-function writeLeadArtifacts(lead, includeProfile = false) {
-  const folder = join(dataDir, 'leads', lead.id)
+function writeLeadArtifacts(lead, includeProfile = false, rootDir = dataDir) {
+  const folder = join(rootDir, 'leads', lead.id)
   mkdirSync(folder, { recursive: true })
   const businessData = {
     id: lead.id, company: lead.company, category: lead.category, location: lead.location,
@@ -327,7 +374,7 @@ function writeLeadArtifacts(lead, includeProfile = false) {
   if (lead.businessIntelligence) writeFileSync(join(folder, 'business-intelligence.json'), JSON.stringify(businessData, null, 2), 'utf8')
   writeFileSync(join(folder, 'audit.json'), JSON.stringify(auditData, null, 2), 'utf8')
   if (lead.opportunityScore != null) {
-    const manifest = lead.currentAuditId ? readManifest(dataDir, lead.id, lead.currentAuditId) : null
+    const manifest = lead.currentAuditId ? readManifest(rootDir, lead.id, lead.currentAuditId) : null
     writeFileSync(join(folder, 'analysis-v1.md'), renderLeadReportMarkdown(lead, { manifest }), 'utf8')
   }
   if (lead.outreachDraft || Object.keys(lead.outreachDrafts || {}).length) {
@@ -349,6 +396,49 @@ function writeLeadArtifacts(lead, includeProfile = false) {
   if (lead.contract) writeFileSync(join(folder, 'contract.json'), JSON.stringify(lead.contract, null, 2), 'utf8')
   if (includeProfile) writeFileSync(join(folder, 'profile.md'), leadMarkdown(lead), 'utf8')
   return folder
+}
+
+// DB-versus-artifact failures (ROH-29) are never silent: the DB write stands
+// (it succeeded), the artifact error is recorded with status, and repair
+// rewrites the files from the database row (covered by API-level tests).
+function tryWriteLeadArtifacts(lead, rootDir = dataDir) {
+  try {
+    writeLeadArtifacts(lead, false, rootDir)
+    return { ok: true, error: null }
+  } catch (error) {
+    return { ok: false, error: error.message }
+  }
+}
+
+function readArtifactFailures() {
+  try {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('storage_artifact_failures')
+    const list = row ? JSON.parse(row.value) : []
+    return Array.isArray(list) ? list : []
+  } catch {
+    return []
+  }
+}
+
+function noteArtifactFailure(leadId, error) {
+  const failures = [{ leadId, error: String(error || 'unknown write error'), at: nowIso() }, ...readArtifactFailures().filter((item) => item.leadId !== leadId)].slice(0, 20)
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('storage_artifact_failures', JSON.stringify(failures))
+}
+
+function clearArtifactFailure(leadId) {
+  const remaining = readArtifactFailures().filter((item) => item.leadId !== leadId)
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('storage_artifact_failures', JSON.stringify(remaining))
+}
+
+function persistLeadArtifacts(lead) {
+  const written = tryWriteLeadArtifacts(lead)
+  if (!written.ok) {
+    recordEvent('lead', lead.id, 'artifact_write_failed', { error: written.error, rev: lead.rev })
+    noteArtifactFailure(lead.id, written.error)
+  } else if (readArtifactFailures().some((item) => item.leadId === lead.id)) {
+    clearArtifactFailure(lead.id)
+  }
+  return written
 }
 
 readRows('leads').forEach((lead) => {
@@ -480,7 +570,7 @@ function insertUniqueLead(row, index, source, { runId = null, at = nowIso() } = 
   }
   const created = touchLeadRun(lead, { runId, source, relationship: 'new', at })
   db.prepare('INSERT INTO leads (id, payload) VALUES (?, ?)').run(created.id, JSON.stringify(created))
-  writeLeadArtifacts(created)
+  persistLeadArtifacts(created)
   recordEvent('lead', created.id, 'created', { source, runId, relationship: 'new' })
   Object.defineProperty(created, '_runImport', { value: { created: true, relationship: 'new' }, enumerable: false })
   return created
@@ -975,6 +1065,89 @@ app.get('/api/status', (_req, res) => {
   })
 })
 
+// ── Local backup / restore (ROH-29): everything stays on this machine ────────
+app.get('/api/storage/health', (_req, res) => {
+  const names = listBackups(backupsDir)
+  res.json({
+    ok: true,
+    writable: storageWritable(dataDir),
+    databasePath: join(dataDir, 'scoutline.db'),
+    artifactFailures: readArtifactFailures(),
+    activeJobs: activeJobCount(),
+    backups: { count: names.length, latest: names.length ? names[names.length - 1] : null },
+  })
+})
+
+app.get('/api/backups', (_req, res) => {
+  const backups = listBackups(backupsDir).map((name) => {
+    try {
+      const manifest = JSON.parse(readFileSync(join(backupsDir, name, 'manifest.json'), 'utf8'))
+      return { name, createdAt: manifest.createdAt || null, counts: manifest.counts || null, files: Array.isArray(manifest.files) ? manifest.files.length : 0 }
+    } catch {
+      return { name, createdAt: null, counts: null, files: 0 }
+    }
+  })
+  res.json({ ok: true, backups })
+})
+
+app.post('/api/backups', async (_req, res) => {
+  try {
+    const created = await createBackup({ db, dataDir, backupsDir })
+    const pruned = pruneBackups(backupsDir, 5)
+    recordEvent('system', 'backup', 'created', { name: created.name, counts: created.manifest.counts })
+    res.status(201).json({ ok: true, name: created.name, createdAt: created.manifest.createdAt, counts: created.manifest.counts, files: created.manifest.files.length, pruned })
+  } catch (error) {
+    res.status(500).json({ error: `Backup failed — ${error.message}`, code: 'BACKUP_FAILED' })
+  }
+})
+
+app.delete('/api/backups/:name', (req, res) => {
+  const name = String(req.params.name || '')
+  if (!listBackups(backupsDir).includes(name)) return notFound(res, 'Backup not found', 'name')
+  try {
+    rmSync(join(backupsDir, name), { recursive: true, force: true })
+    recordEvent('system', 'backup', 'deleted', { name })
+    res.json({ ok: true, name })
+  } catch (error) {
+    res.status(500).json({ error: `Could not delete backup — ${error.message}`, code: 'BACKUP_DELETE_FAILED' })
+  }
+})
+
+// Live restore from an on-disk snapshot: the snapshot is verified, converted
+// to the portable format, and applied to the running database.
+app.post('/api/backups/:name/restore', async (req, res) => {
+  const name = String(req.params.name || '')
+  if (!listBackups(backupsDir).includes(name)) return notFound(res, 'Backup not found', 'name')
+  if (!req.body || req.body.confirm !== true) return badRequest(res, 'confirm', 'Restoring overwrites current data — send { "confirm": true } to proceed')
+  if (activeJobCount() > 0) return conflict(res, 'Restore blocked — background jobs still active. Cancel or wait for them first.', null, 'RESTORE_BLOCKED_ACTIVE_JOBS')
+  const backupPath = join(backupsDir, name)
+  const verification = await verifyBackup(backupPath, { openDatabase: (path) => new Database(path, { readonly: true }) })
+  if (!verification.ok) return res.status(422).json({ error: `Restore refused — backup failed verification: ${verification.errors.join('; ')}`, code: 'INVALID_BACKUP', details: verification.errors.map((message) => ({ message })) })
+  let snapshotDb = null
+  try {
+    snapshotDb = new Database(join(backupPath, 'scoutline.db'), { readonly: true })
+    const collected = collectJsonBackupFiles(backupPath)
+    if (!collected.ok) return payloadTooLarge(res, collected.error)
+    const portable = buildJsonBackup({ tables: readBackupTables(snapshotDb), files: collected.files, createdAt: verification.manifest.createdAt })
+    const result = applyJsonRestore(db, dataDir, portable, { regenerateLead: (lead) => writeLeadArtifacts(lead) })
+    if (!result.ok) return res.status(500).json({ error: `Restore incomplete — ${result.failed.length} file(s) could not be written`, code: 'BACKUP_RESTORE_PARTIAL', restored: result.restored, failed: result.failed })
+    recordEvent('system', 'backup', 'restored', { name, tables: result.restored.tables, files: result.restored.files })
+    res.json({ ok: true, name, restored: result.restored, failed: [] })
+  } catch (error) {
+    res.status(500).json({ error: `Restore failed — ${error.message}`, code: 'BACKUP_RESTORE_FAILED' })
+  } finally {
+    try { snapshotDb?.close() } catch { /* already closed */ }
+  }
+})
+
+app.get('/api/backup/export', (_req, res) => {
+  const collected = collectJsonBackupFiles(dataDir)
+  if (!collected.ok) return payloadTooLarge(res, collected.error)
+  const backup = buildJsonBackup({ tables: readBackupTables(db), files: collected.files })
+  res.setHeader('Content-Disposition', `attachment; filename="scoutline-backup-${backup.createdAt.replace(/[:.]/g, '-')}.json"`)
+  res.json(backup)
+})
+
 app.get('/api/leads', (_req, res) => res.json(readRows('leads')))
 app.get('/api/leads/:id/events', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
@@ -1064,9 +1237,9 @@ app.post('/api/leads', (req, res) => {
   }
   const lead = importedLead({ ...body, company, website }, 0, 'Manual entry')
   db.prepare('INSERT INTO leads (id, payload) VALUES (?, ?)').run(lead.id, JSON.stringify(lead))
-  writeLeadArtifacts(lead)
+  const artifacts = persistLeadArtifacts(lead)
   recordEvent('lead', lead.id, 'created', { source: 'Manual entry' })
-  res.status(201).json(lead)
+  res.status(201).json(artifacts.ok ? lead : { ...lead, artifactWarning: artifacts.error })
 })
 
 app.post('/api/leads/import', (req, res) => {
