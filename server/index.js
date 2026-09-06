@@ -11,6 +11,7 @@ import { generateMuseAnalysis } from './services/insights.js'
 import { generateOutreach, getOutreachConfig } from './services/outreach.js'
 import { businessIdentityFor, describeGeographyCoverage, DiscoveryError, downloadDiscovery, filterSavedClientsByLocation, getBrightDataConfig, legacySearchFromSettings, mapDiscoveryRecord, pollDiscovery, reconcileRecords, resolveSearchDefinition, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
+import { ATTEMPT_OUTCOMES, CONTACT_OUTCOMES, NEXT_TASK_TYPES, TASK_OWNERS, TASK_STATUSES, briefFindings, briefReadiness, buildBriefMarkdown, isValidDayString, reviewStatus } from './services/brief.js'
 import { scoreLeadValue } from './services/leadValue.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
 import { canRetryJob, classifyJobError, findTimedOutJobs, isActiveJobStatus, isTerminalJobStatus } from './services/jobControl.js'
@@ -117,7 +118,7 @@ const ALLOWED_OUTREACH_VERSIONS = new Set(['Concise','Balanced','Detailed'])
 const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting','Insufficient evidence'])
 const ALLOWED_MANUAL_ACTIONS = new Set(['refresh','audit','muse','outreach','full'])
 const ALLOWED_SETTINGS_KEYS = new Set(Object.keys(defaultSettings))
-const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale','website'])
+const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','nextTask','doNotContact','briefRationale','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale','website'])
 
 function isNonEmptyString(v, max = 120) {
   return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
@@ -1556,6 +1557,34 @@ app.patch('/api/leads/:id', (req, res) => {
     }
   }
   if ('outreachStatus' in body && !ALLOWED_OUTREACH_STATUS.has(body.outreachStatus)) push('outreachStatus', `Must be one of: ${[...ALLOWED_OUTREACH_STATUS].join(', ')}`)
+  if ('nextTask' in body) {
+    const task = body.nextTask
+    if (!task || typeof task !== 'object' || Array.isArray(task)) push('nextTask', 'Must be an object with type/dueAt/status')
+    else {
+      if (!NEXT_TASK_TYPES.includes(task.type)) push('nextTask.type', `Must be one of: ${NEXT_TASK_TYPES.join(', ')}`)
+      if (task.dueAt != null && !isValidDayString(task.dueAt)) push('nextTask.dueAt', 'Must be a YYYY-MM-DD date or null')
+      if (task.status != null && !TASK_STATUSES.includes(task.status)) push('nextTask.status', `Must be one of: ${TASK_STATUSES.join(', ')}`)
+      if (task.owner != null && task.owner !== '' && !TASK_OWNERS.includes(task.owner)) push('nextTask.owner', `Must be one of: ${TASK_OWNERS.join(', ')} or empty`)
+      if (task.note != null && String(task.note).length > 500) push('nextTask.note', 'Note is limited to 500 chars')
+    }
+  }
+  if ('doNotContact' in body) {
+    const suppression = body.doNotContact
+    if (!suppression || typeof suppression !== 'object' || Array.isArray(suppression)) push('doNotContact', 'Must be an object with status/reason')
+    else {
+      if (typeof suppression.status !== 'boolean') push('doNotContact.status', 'Must be a boolean')
+      if (suppression.status === true && !String(suppression.reason || '').trim()) push('doNotContact.reason', 'A reason is required when suppressing contact')
+      if (suppression.scope != null && !['business', 'contact'].includes(suppression.scope)) push('doNotContact.scope', 'Must be business or contact')
+    }
+  }
+  if ('briefRationale' in body) {
+    const rationale = body.briefRationale
+    if (!rationale || typeof rationale !== 'object' || Array.isArray(rationale)) push('briefRationale', 'Must be an object with text/by')
+    else {
+      if (!String(rationale.text || '').trim() || String(rationale.text).length > 2000) push('briefRationale.text', 'Text is required (max 2000 chars)')
+      if (rationale.by != null && String(rationale.by).length > 40) push('briefRationale.by', 'Author is limited to 40 chars')
+    }
+  }
   if ('museStale' in body && typeof body.museStale !== 'boolean') push('museStale', 'Must be a boolean')
   if ('outreachStale' in body && typeof body.outreachStale !== 'boolean') push('outreachStale', 'Must be a boolean')
   if ('contactedAt' in body) {
@@ -1607,6 +1636,35 @@ app.patch('/api/leads/:id', (req, res) => {
     delete patched.museStale
   }
   if (changes.outreachStale === false) patched.outreachStaleReason = null
+  if ('nextTask' in changes) {
+    const task = changes.nextTask
+    patched.nextTask = {
+      type: task.type,
+      dueAt: task.dueAt ?? patched.nextTask?.dueAt ?? null,
+      status: task.status ?? 'open',
+      owner: task.owner ?? patched.nextTask?.owner ?? '',
+      note: String(task.note ?? patched.nextTask?.note ?? ''),
+      updatedAt: nowIso(),
+    }
+  }
+  if ('doNotContact' in changes) {
+    const suppression = changes.doNotContact
+    patched.doNotContact = {
+      status: suppression.status,
+      reason: String(suppression.reason || '').trim(),
+      scope: suppression.scope || patched.doNotContact?.scope || 'business',
+      at: suppression.status ? nowIso() : patched.doNotContact?.at || null,
+      ...(suppression.status ? {} : { clearedAt: nowIso() }),
+    }
+  }
+  if ('briefRationale' in changes) {
+    patched.briefRationale = { text: String(changes.briefRationale.text).trim(), by: String(changes.briefRationale.by || 'Reviewer').slice(0, 40), at: nowIso(), manual: true }
+  }
+  // Contacted reflects an actual recorded attempt — copying a draft or
+  // flipping the status directly never counts.
+  if (changes.outreachStatus === 'Contacted' && fresh.outreachStatus !== 'Contacted' && !(fresh.contactAttempts || []).length) {
+    return res.status(409).json({ error: 'Record a contact attempt first — copying a draft does not count as contact.', code: 'ATTEMPT_REQUIRED' })
+  }
   if ('website' in changes) {
     // Adding or changing the website later keeps the stable business id and
     // all history; only the website attribute moves, which re-enables audit.
@@ -1798,10 +1856,96 @@ app.post('/api/enrichment/backfill', async (req, res) => {
   }
 })
 
+app.post('/api/leads/:id/attempts', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const body = req.body
+  const details = []
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
+  if (!ATTEMPT_OUTCOMES.includes(body.outcome)) details.push({ field: 'outcome', message: `Must be one of: ${ATTEMPT_OUTCOMES.join(', ')}` })
+  if (body.channel != null && !['email', 'phone', 'maps', 'in-person', 'other'].includes(body.channel)) details.push({ field: 'channel', message: 'Must be email, phone, maps, in-person or other' })
+  if (body.contact != null && String(body.contact).length > 120) details.push({ field: 'contact', message: 'Contact is limited to 120 chars' })
+  if (body.notes != null && String(body.notes).length > 1000) details.push({ field: 'notes', message: 'Notes are limited to 1000 chars' })
+  if (details.length) return badRequest(res, null, 'Invalid contact attempt', details)
+  const attempt = {
+    id: `att-${randomUUID().slice(0, 8)}`,
+    channel: body.channel || 'other',
+    contact: String(body.contact || '').trim(),
+    outcome: body.outcome,
+    notes: String(body.notes || '').trim(),
+    at: nowIso(),
+  }
+  const attempts = [...(lead.contactAttempts || []), attempt]
+  // Only outcomes that prove a human was reached move the status.
+  const contacted = CONTACT_OUTCOMES.includes(body.outcome)
+  const updated = saveLead({
+    ...lead,
+    contactAttempts: attempts,
+    ...(contacted ? { outreachStatus: 'Contacted', contactedAt: lead.contactedAt || nowIso() } : {}),
+    updated: 'Just now',
+  })
+  recordEvent('lead', lead.id, 'contact_attempt', { attemptId: attempt.id, channel: attempt.channel, outcome: attempt.outcome, contacted })
+  res.status(201).json({ lead: updated, attempt })
+})
+
+app.post('/api/leads/:id/findings/review', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const body = req.body
+  const details = []
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
+  if (!['accepted', 'rejected'].includes(body.decision)) details.push({ field: 'decision', message: 'Must be accepted or rejected' })
+  if (body.decision === 'rejected' && !String(body.reason || '').trim()) details.push({ field: 'reason', message: 'A reason is required when rejecting a finding' })
+  if (body.reason != null && String(body.reason).length > 1000) details.push({ field: 'reason', message: 'Reason is limited to 1000 chars' })
+  if (body.by != null && String(body.by).length > 40) details.push({ field: 'by', message: 'Author is limited to 40 chars' })
+  const findings = briefFindings(lead)
+  const finding = findings.find((item) => item.key === body.findingKey)
+  if (!finding && !details.length) details.push({ field: 'findingKey', message: 'Finding is not part of the current audit' })
+  if (details.length) return badRequest(res, null, 'Invalid finding review', details)
+  const review = {
+    findingKey: finding.key,
+    decision: body.decision,
+    reason: String(body.reason || '').trim(),
+    by: String(body.by || 'Reviewer').slice(0, 40),
+    auditId: lead.currentAuditId || null,
+    at: nowIso(),
+  }
+  const reviews = (lead.findingReviews || []).filter((item) => item.findingKey !== review.findingKey || item.auditId !== review.auditId)
+  reviews.push(review)
+  const updated = saveLead({ ...lead, findingReviews: reviews, updated: 'Just now' })
+  recordEvent('lead', lead.id, 'finding_reviewed', { findingKey: review.findingKey, decision: review.decision, auditId: review.auditId })
+  res.status(201).json({ lead: updated, review })
+})
+
+app.get('/api/leads/:id/brief', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const readiness = briefReadiness(lead)
+  const status = reviewStatus(lead)
+  res.json({ lead, readiness, reviews: { accepted: status.accepted, rejected: status.rejected, stale: status.stale, pending: status.pending } })
+})
+
+app.post('/api/leads/:id/brief-export', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const readiness = briefReadiness(lead)
+  if (!readiness.accepted.length) {
+    return res.status(409).json({ error: 'No reviewed findings to export — review the audit evidence first.', code: 'NOTHING_REVIEWED' })
+  }
+  const markdown = buildBriefMarkdown(lead, readiness)
+  recordEvent('lead', lead.id, 'brief_exported', { accepted: readiness.accepted.length, ready: readiness.ready })
+  res.json({ lead, markdown, readiness })
+})
+
 app.post('/api/leads/:id/outreach/generate', async (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
   if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (lead.doNotContact?.status) return res.status(409).json({ error: `Outreach is suppressed${lead.doNotContact.reason ? `: ${lead.doNotContact.reason}` : ''}. Clear the suppression explicitly to reopen.`, code: 'SUPPRESSED' })
   if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before generating outreach', 'opportunityScore', 'AUDIT_REQUIRED')
   try {
     res.json(await generateAndSaveOutreach(lead))
