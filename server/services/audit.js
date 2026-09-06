@@ -759,7 +759,7 @@ export function analyzeHtml(html, finalUrl, sitemapPageCount = null, options = {
     stack,
     auditSummary: {
       title, description, viewport: Boolean(viewport), canonical: Boolean(canonical), h1Count, forms, inputCount, images, altCoverage, ctaCount,
-      hasSchema, hasLocalBusinessSchema, hasPhone, hasEmail, internalLinks: internalLinks.size,
+      hasSchema, hasLocalBusinessSchema, hasPhone, hasEmail, hasTrustLanguage, internalLinks: internalLinks.size,
       formDetails, imageAlt: { descriptive: imagesDescriptive, decorative: imagesDecorative, missing: imagesMissing },
       schemaBlocks: { total: schemaBlocks.length, valid: validSchemaBlocks.length, types: schemaTypesSeen },
     },
