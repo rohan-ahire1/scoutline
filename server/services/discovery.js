@@ -267,10 +267,22 @@ function normalizeDomain(value) {
   } catch { return '' }
 }
 
+// Stable business identity (ROH-5): the Google Place ID / CID names the
+// business; the domain is a website attribute, never the business key.
+export function businessIdentityFor(record = {}) {
+  const placeId = String(record.place_id || '').trim()
+  if (placeId) return `brightdata:place:${placeId}`
+  const cid = String(record.cid || '').trim()
+  if (cid) return `brightdata:cid:${cid}`
+  return null
+}
+
 export function mapDiscoveryRecord(record, fallbackCategory = 'Uncategorized', fallbackLocation = 'Unknown') {
   const company = String(firstValue(record, ['name', 'title', 'business_name', 'place_name'])).trim()
   const website = normalizeDomain(firstValue(record, ['website', 'website_url', 'open_website', 'domain', 'company_url']))
-  if (!company || !website) return null
+  if (!company) return null
+  // A missing provider website field is unknown — never proof of no website.
+  const websiteStatus = website ? 'supplied' : 'not_supplied'
   const providerCategory = String(firstValue(record, ['category', 'primary_category', 'type']) || '').trim()
   const rawReviews = firstValue(record, ['reviews_count', 'review_count', 'reviews', 'user_ratings_total'])
   const reviews = typeof rawReviews === 'object' ? 0 : Number(rawReviews || 0)
@@ -291,6 +303,8 @@ export function mapDiscoveryRecord(record, fallbackCategory = 'Uncategorized', f
   return {
     company,
     website,
+    websiteStatus,
+    businessId: businessIdentityFor(record),
     category: providerCategory || String(fallbackCategory || 'Unknown'),
     categoryProvenance: providerCategory ? 'provider' : (fallbackCategory && fallbackCategory !== 'Unknown' ? 'run-fallback' : 'unknown'),
     location,
@@ -303,7 +317,8 @@ export function mapDiscoveryRecord(record, fallbackCategory = 'Uncategorized', f
       source: 'Bright Data Google Maps', fetchedAt: record.timestamp || new Date().toISOString(),
       placeId: record.place_id || null, cid: record.cid || null,
       claimed: typeof record.is_claimed === 'boolean' ? record.is_claimed : null,
-      businessStatus: record.permanently_closed ? 'Permanently closed' : record.temporarily_closed ? 'Temporarily closed' : 'Active',
+      // Absent closure flags mean unknown — never an asserted Active.
+      businessStatus: record.permanently_closed ? 'Permanently closed' : record.temporarily_closed ? 'Temporarily closed' : record.is_claimed === true ? 'Active' : 'Unknown',
       openHours: record.open_hours && typeof record.open_hours === 'object' ? record.open_hours : null,
       open24Hours: Object.values(record.open_hours || {}).filter(Boolean).length === 7 && Object.values(record.open_hours || {}).every((value) => /open 24 hours/i.test(String(value))),
       services, categories, onlineBooking, onlineEstimates,
@@ -338,13 +353,15 @@ export function reconcileRecords(records, { fallbackCategory = 'Unknown', fallba
     }
     const out = mapDiscoveryRecord(record, fallbackCategory, fallbackLocation)
     if (!out) {
-      const company = String(record.name || record.title || record.business_name || '').trim()
-      rejected.push({ index, reason: company ? `missing usable website for "${company.slice(0, 60)}"` : 'missing business name and website', kind: 'unusable' })
+      rejected.push({ index, reason: 'missing business name', kind: 'unusable' })
       return
     }
-    const key = String(out.website).toLowerCase().split('/')[0]
+    // Identity-first dedupe: same Place ID / CID is the same business even
+    // when the website is absent or later changes. Two locations sharing a
+    // domain stay distinct unless an explicit grouping is applied.
+    const key = out.businessId || `name:${out.company.toLowerCase()}|site:${String(out.website || '').toLowerCase()}`
     if (seen.has(key)) {
-      rejected.push({ index, reason: `duplicate website in provider payload: ${out.website}`, kind: 'duplicate' })
+      rejected.push({ index, reason: `duplicate business in provider payload: ${out.company.slice(0, 60)}`, kind: 'duplicate' })
       return
     }
     seen.add(key)
