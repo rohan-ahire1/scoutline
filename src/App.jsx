@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowLeft,
   ArrowRight,
+  Ban,
   Bot,
   BriefcaseBusiness,
   Building2,
@@ -177,6 +178,7 @@ function validateFailureDraft({ reason }) {
 const statusTone = {
   Qualified: 'purple', Contacted: 'blue', Replied: 'purple', Meeting: 'amber', Proposal: 'pink', Won: 'green', Lost: 'gray',
   Running: 'orange', Queued: 'purple', Waiting: 'amber', Paused: 'amber', Completed: 'green', Cancelled: 'gray', Failed: 'red',
+  Error: 'red', 'Timed out': 'amber', 'Completed with errors': 'amber', Skipped: 'gray',
 }
 
 const categoryTone = {
@@ -185,6 +187,12 @@ const categoryTone = {
 }
 
 function cn(...values) { return values.filter(Boolean).join(' ') }
+
+// Commercial rank first (ROH-6), then audit evidence: the queue answers who
+// is worth sales effort, not just whose website has the most flaws.
+function leadRankValue(lead = {}) {
+  return Number(lead.leadValue?.leadValueScore ?? lead.opportunityScore ?? lead.prelimScore ?? 0) || 0
+}
 
 function websiteUrl(website) {
   const value = String(website || '').trim()
@@ -433,7 +441,7 @@ function ClientsPage({ leads, runs, onOpen, onImport, onExport }) {
     if (view === 'Pipeline') return isOpenPipelineLead(lead)
     if (view === 'Won') return lead.salesStage === 'Won'
     return true
-  }).sort((a, b) => (b.opportunityScore || b.prelimScore) - (a.opportunityScore || a.prelimScore))
+  }).sort((a, b) => leadRankValue(b) - leadRankValue(a))
   const inPipeline = leads.filter(isOpenPipelineLead)
   const won = leads.filter((lead) => lead.salesStage === 'Won')
   const ready = leads.filter((lead) => researchState(lead).museComplete && !isQualifiedLead(lead))
@@ -468,7 +476,7 @@ function ClientsPage({ leads, runs, onOpen, onImport, onExport }) {
             const { failure, phase } = researchState(lead)
             const origin = leadRunInfo(lead, runs)
             const originLabel = origin.collectionRun ? `Added in ${runLabel(origin.collectionRun)}` : lead.labels?.includes('CSV import') ? 'Manual import' : 'Existing client'
-            return <button className="client-row" key={lead.id} onClick={() => onOpen(lead)}><span className="client-name"><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.category} · {lead.location}</small><small className="client-origin"><Database size={9} />{originLabel}{origin.collectionRun ? ` · ${runTimestamp(origin.collectionRun)}` : ''}</small></span></span><span className="phase-cell"><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : phase === 1 ? 'blue' : 'gray'} dot>{getResearchLabel(lead)}</Badge></span><Score value={lead.opportunityScore} /><span>{lead.salesStage ? <Badge tone={statusTone[lead.salesStage]} dot>{lead.salesStage}</Badge> : <span className="muted-dash">Not in sales</span>}</span><span className="next-action-cell">{getNextAction(lead)}</span><ChevronRight size={13} /></button>
+            return <button className="client-row" key={lead.id} onClick={() => onOpen(lead)}><span className="client-name"><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.category} · {lead.location}{lead.website ? '' : ' · No website'}</small><small className="client-origin"><Database size={9} />{originLabel}{origin.collectionRun ? ` · ${runTimestamp(origin.collectionRun)}` : ''}</small></span></span><span className="phase-cell"><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : phase === 1 ? 'blue' : 'gray'} dot>{getResearchLabel(lead)}</Badge></span><Score value={lead.opportunityScore} /><span>{lead.salesStage ? <Badge tone={statusTone[lead.salesStage]} dot>{lead.salesStage}</Badge> : <span className="muted-dash">Not in sales</span>}</span><span className="next-action-cell">{getNextAction(lead)}</span><ChevronRight size={13} /></button>
           })}
           {!filtered.length && <div className="empty-state"><Search size={20} /><h3>No clients here</h3><p>Try another view or search.</p></div>}
         </div>
@@ -516,7 +524,7 @@ function RunHistory({ runs, leads, onOpen }) {
   </section>
 }
 
-function ResearchPage({ leads, runs, activeRunId, onOpen, onExport, onUpdate, onAnalyze, onNewRun, onTogglePause, onCancel }) {
+function ResearchPage({ leads, runs, activeRunId, onOpen, onExport, onUpdate, onAnalyze, onCancelJob, onRetryJob, onNewRun, onTogglePause, onCancel }) {
   const initialParams = new URLSearchParams(window.location.search)
   const [tab, setTab] = useState(initialParams.get('tab') === 'runs' ? 'Runs' : 'Prospects')
   const [filter, setFilter] = useState(initialParams.get('filter') || 'Ready to review')
@@ -527,8 +535,11 @@ function ResearchPage({ leads, runs, activeRunId, onOpen, onExport, onUpdate, on
     else params.delete('filter')
     window.history.replaceState(window.history.state, '', `${window.location.pathname}?${params.toString()}`)
   }, [tab, filter])
-  const allSorted = [...leads].sort((a, b) => getNextAction(a).localeCompare(getNextAction(b)) || (b.opportunityScore || b.prelimScore) - (a.opportunityScore || a.prelimScore))
+  const allSorted = [...leads].sort((a, b) => getNextAction(a).localeCompare(getNextAction(b)) || leadRankValue(b) - leadRankValue(a))
   const sorted = allSorted.filter((lead) => {
+    // Provider-confirmed closed businesses leave the default queue with a
+    // visible reason; 'All' still shows them.
+    if (lead.leadValue?.excluded && filter !== 'All') return false
     const state = researchState(lead)
     if (filter === 'Needs analysis') return !state.analyzed && !state.processing
     if (filter === 'In progress') return state.processing
@@ -559,8 +570,11 @@ function ResearchPage({ leads, runs, activeRunId, onOpen, onExport, onUpdate, on
             const { done, failure, phase } = researchState(lead)
             const auditReady = lead.performance != null || (lead.problems || []).length > 0
             const jobActive = ['Queued', 'Running', 'Waiting'].includes(lead.researchJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.manualRun?.status) || ['Queued', 'Analyzing'].includes(lead.researchStatus)
+            const rowRunning = activeLeadJob(lead)
+            const rowFailed = failedLeadJob(lead)
+            const rowResumable = !rowRunning && rowFailed && leadJobRetryable(lead, rowFailed) ? rowFailed : null
             const origin = leadRunInfo(lead, runs)
-            return <article className={cn('research-row', failure && 'has-failure')} key={lead.id}><button className="research-client" onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.category} · {failure?.reason || lead.mainIssue}</small>{origin.collectionRun && <small className="client-origin"><Database size={9} />{`Added in ${runLabel(origin.collectionRun)}`}</small>}</span></button><ResearchProgress lead={lead} /><span className={cn('research-result', failure && 'is-failed')}><small>{failure ? 'Research state' : jobActive ? 'Research state' : 'Muse guidance'}</small><strong>{failure ? `${researchLabels[phase]} failed` : jobActive ? 'In progress' : getMuseGuidance(lead) || getResearchLabel(lead)}</strong>{done[1] && !failure && <em>{lead.opportunityScore}/100 score</em>}</span><div className="research-action">{jobActive ? <Badge tone={statusTone[lead.researchJob?.status] || 'orange'} dot>{lead.researchJob?.phase || lead.researchJob?.status || lead.researchStatus}</Badge> : failure ? <button className="button button-secondary button-small retry-button" onClick={() => onAnalyze(lead)}><RefreshCcw size={12} />Retry audit</button> : !done[1] ? <button className="button button-primary button-small" onClick={() => onAnalyze(lead)}>{auditReady ? <RefreshCcw size={12} /> : <Play size={12} />}Analyze website</button> : !isQualifiedLead(lead) ? <button className="button button-primary button-small" onClick={() => onUpdate(lead.id, { qualified: true, salesStage: 'Qualified' })}><CheckCircle2 size={12} />Qualify for outreach</button> : <Badge tone="purple" dot>In sales</Badge>}</div></article>
+            return <article className={cn('research-row', failure && 'has-failure')} key={lead.id}><button className="research-client" onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.category} · {failure?.reason || lead.mainIssue}</small>{origin.collectionRun && <small className="client-origin"><Database size={9} />{`Added in ${runLabel(origin.collectionRun)}`}</small>}</span></button><ResearchProgress lead={lead} /><span className={cn('research-result', failure && 'is-failed')}><small>{failure ? 'Research state' : jobActive ? 'Research state' : 'Muse guidance'}</small><strong>{failure ? `${researchLabels[phase]} failed` : jobActive ? 'In progress' : getMuseGuidance(lead) || getResearchLabel(lead)}</strong>{lead.leadValue?.excluded ? <em>{lead.leadValue.excluded.reason}</em> : done[1] && !failure ? <em>{lead.opportunityScore}/100 score</em> : lead.leadValue ? <em>Value {lead.leadValue.leadValueScore}/100 · {lead.leadValue.band}</em> : null}</span><div className="research-action">{jobActive ? <><Badge tone={statusTone[lead.researchJob?.status] || 'orange'} dot>{lead.researchJob?.phase || lead.researchJob?.status || lead.researchStatus}</Badge>{rowRunning ? <button className="button button-quiet button-small" title="Cancel this job" onClick={() => onCancelJob(lead, rowRunning.id)}><Ban size={12} /></button> : null}</> : failure ? (rowResumable ? <button className="button button-secondary button-small retry-button" onClick={() => onRetryJob(lead, rowResumable.id)}><RefreshCcw size={12} />Resume job</button> : <button className="button button-secondary button-small retry-button" onClick={() => onAnalyze(lead)}><RefreshCcw size={12} />Retry audit</button>) : !done[1] ? (lead.website ? <button className="button button-primary button-small" onClick={() => onAnalyze(lead)}>{auditReady ? <RefreshCcw size={12} /> : <Play size={12} />}Analyze website</button> : <span className="muted-dash" title="No website supplied — score and qualify on business evidence; add a website to enable the audit">No website</span>) : !isQualifiedLead(lead) ? <button className="button button-primary button-small" onClick={() => onUpdate(lead.id, { qualified: true, salesStage: 'Qualified' })}><CheckCircle2 size={12} />Qualify for outreach</button> : <Badge tone="purple" dot>In sales</Badge>}</div></article>
           })}
           {!sorted.length && <div className="empty-state"><CheckCircle2 size={20} /><h3>Nothing needs attention here</h3><p>Try another research filter or start a new run.</p></div>}
         </div>
@@ -832,7 +846,23 @@ function MuseSynthesis({ lead, onAnalyze, onUpdate }) {
   const recommendationTone = analysis?.qualificationRecommendation === 'Pursue' ? 'green' : analysis?.qualificationRecommendation === 'Review' ? 'amber' : 'gray'
   return <section className={cn('muse-card', status === 'Failed' && 'has-failed')}>
     <div className="muse-card-head"><div><span className="muse-mark"><Bot size={14} /></span><span><strong>Muse synthesis</strong><small>Grounded in the saved crawl and Lighthouse evidence</small></span></div>{analysis?.status === 'Completed' ? <Badge tone={recommendationTone} dot>{analysis.qualificationRecommendation}</Badge> : <Badge tone={statusTone[status] || 'gray'} dot>{active ? lead.museJob?.phase || status : status}</Badge>}</div>
-    {analysis?.status === 'Completed' ? <><p className="muse-summary">{analysis.summary}</p><div className="muse-opportunities">{(analysis.topOpportunities || []).slice(0, 4).map((item) => <article key={`${item.title}-${item.evidence}`}><span className={cn('muse-severity', `is-${item.severity.toLowerCase()}`)}>{item.severity}</span><div><strong>{item.title}</strong><p>{item.evidence}</p><small>{item.recommendation}</small></div></article>)}</div><div className="muse-foot"><span><b>{analysis.strengths?.length || 0}</b> strengths</span><span><b>{analysis.unknowns?.length || 0}</b> unknowns</span>{analysis?.stale && <span className="stale-badge">Stale — a newer audit completed</span>}<span>Muse does not change the score</span>{analysis?.stale && <button className="button button-quiet button-small" onClick={() => onUpdate(lead.id, { museStale: false })}>Mark reviewed</button>}<button className="button button-quiet button-small" onClick={() => onAnalyze(lead)}><RefreshCcw size={11} />Regenerate</button></div></> : <div className="muse-empty"><div><strong>{status === 'Failed' ? 'Muse could not finish this synthesis' : active ? 'Muse is reviewing the evidence' : 'Add a second layer of reasoning'}</strong><p>{status === 'Failed' ? analysis.error : active ? 'The deterministic score remains available while this runs.' : 'Muse will prioritize the measured issues, explain why they matter, and suggest factual outreach angles.'}</p></div><button className="button button-secondary button-small" disabled={active} onClick={() => onAnalyze(lead)}>{active ? <LoaderCircle className="spin" size={12} /> : <WandSparkles size={12} />}{active ? 'Analyzing' : status === 'Failed' ? 'Retry Muse' : 'Analyze with Muse'}</button></div>}
+    {analysis?.status === 'Completed' ? <><p className="muse-summary">{analysis.summary}</p><div className="muse-opportunities">{(analysis.topOpportunities || []).slice(0, 4).map((item) => <article key={`${item.title}-${item.evidence}`}><span className={cn('muse-severity', `is-${item.severity.toLowerCase()}`)}>{item.severity}</span><div><strong>{item.title}</strong><p>{item.evidence}</p><small>{item.recommendation}</small></div></article>)}</div><div className="muse-foot"><span><b>{analysis.strengths?.length || 0}</b> strengths</span><span><b>{analysis.unknowns?.length || 0}</b> unknowns</span>{analysis?.stale && <span className="stale-badge">Stale — a newer audit completed</span>}<span>Muse does not change the score</span>{analysis?.stale && <button className="button button-quiet button-small" onClick={() => onUpdate(lead.id, { museStale: false })}>Mark reviewed</button>}<button className="button button-quiet button-small" onClick={() => onAnalyze(lead)}><RefreshCcw size={11} />Regenerate</button></div></> : <div className="muse-empty"><div><strong>{status === 'Failed' ? 'Muse could not finish this synthesis' : active ? 'Muse is reviewing the evidence' : status === 'Skipped' ? 'Muse synthesis skipped — no AI key configured' : 'Add a second layer of reasoning'}</strong><p>{status === 'Failed' ? analysis.error : active ? 'The deterministic score remains available while this runs.' : status === 'Skipped' ? 'The deterministic audit stands on its own. Add an AI key and retry to get synthesis without re-running the audit.' : 'Muse will prioritize the measured issues, explain why they matter, and suggest factual outreach angles.'}</p></div><button className="button button-secondary button-small" disabled={active} onClick={() => onAnalyze(lead)}>{active ? <LoaderCircle className="spin" size={12} /> : <WandSparkles size={12} />}{active ? 'Analyzing' : status === 'Failed' ? 'Retry Muse' : 'Analyze with Muse'}</button></div>}
+  </section>
+}
+
+const leadValueBandTone = { 'Top Prospect': 'green', Strong: 'purple', Review: 'amber', 'Low Priority': 'gray' }
+
+// "Why this lead" (ROH-6): every component shows its score, top observed
+// contributions and unknown count. Weights are hypotheses, stated as such.
+function LeadValueCard({ lead }) {
+  const value = lead.leadValue
+  if (!value) return null
+  const parts = [['Need', value.need], ['Business fit', value.businessFit], ['Reachability', value.reachability], ['Timing', value.timing]]
+  return <section className="detail-section">
+    <div className="detail-heading"><span className="detail-label">Why this lead</span><Badge tone={leadValueBandTone[value.band] || 'gray'}>{value.band}</Badge></div>
+    <p className="lead-summary">Commercial value {value.leadValueScore}/100 · {value.bandReason}. Evidence coverage {Math.round((value.coverage || 0) * 100)}% · rubric {value.version} (default weights are uncalibrated hypotheses, not a sales forecast).</p>
+    {value.excluded ? <p className="lead-summary">{value.excluded.reason}</p> : null}
+    <div className="problem-list">{parts.map(([label, part]) => <div key={label}><span>{part?.score ?? 0}</span><p><strong>{label} {part?.score ?? 0}/100.</strong> {(part?.contributions || []).slice(0, 2).map((c) => c.signal).join('; ') || 'No observed signals yet.'}{(part?.unknowns || []).length ? ` · ${(part.unknowns || []).length} unknown${(part.unknowns || []).length === 1 ? '' : 's'} lower confidence, not the score.` : ''}</p></div>)}</div>
   </section>
 }
 
@@ -954,6 +984,28 @@ function leadRunInfo(lead, runs = []) {
   }
 }
 
+const ACTIVE_JOB_MIRROR = ['Queued', 'Running', 'Waiting']
+const FAILED_JOB_MIRROR = ['Failed', 'Error', 'Timed out']
+
+// The freshest job mirror across the three per-lead job slots. Mirrors are
+// written alongside every job transition, so the UI never needs a jobs fetch.
+function activeLeadJob(lead = {}) {
+  return [lead.researchJob, lead.museJob, lead.refreshJob].find((mirror) => mirror?.id && ACTIVE_JOB_MIRROR.includes(mirror.status)) || null
+}
+
+function failedLeadJob(lead = {}) {
+  return [lead.researchJob, lead.museJob, lead.refreshJob].find((mirror) => mirror?.id && FAILED_JOB_MIRROR.includes(mirror.status)) || null
+}
+
+// Whether the failed job can be resumed in place (same parameters, kept
+// evidence) or needs a fresh run. Absent flags on legacy rows mean resumable.
+function leadJobRetryable(lead = {}, mirror = null) {
+  if (!mirror) return false
+  if (typeof mirror.retryable === 'boolean') return mirror.retryable
+  if (mirror === lead.researchJob && typeof lead.researchFailure?.retryable === 'boolean') return lead.researchFailure.retryable
+  return true
+}
+
 function ClientRunMenu({ lead, onRun, brightDataReady }) {
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(null)
@@ -977,7 +1029,7 @@ function ClientRunMenu({ lead, onRun, brightDataReady }) {
   </div>
 }
 
-function ManualRunStatus({ lead, onRun }) {
+function ManualRunStatus({ lead, onRun, onCancelJob }) {
   const run = lead.manualRun
   if (!run) return null
   const active = ['Queued', 'Running', 'Waiting'].includes(run.status)
@@ -986,17 +1038,21 @@ function ManualRunStatus({ lead, onRun }) {
     <span>{active ? <LoaderCircle className="spin" size={14} /> : failed ? <CircleAlert size={14} /> : <CheckCircle2 size={14} />}</span>
     <div><small>Manual run</small><strong>{run.label}</strong><em>{run.phase} · {active ? `${run.progress || 0}%` : runTimestamp(run)}</em></div>
     {active && <i><b style={{ width: `${run.progress || 0}%` }} /></i>}
+    {active && run.jobId ? <button className="button button-quiet button-small" onClick={() => onCancelJob(lead, run.jobId)}><Ban size={11} />Cancel</button> : null}
     {failed && <button className="button button-secondary button-small" onClick={() => onRun(lead, run.action)}><RefreshCcw size={11} />Retry</button>}
   </section>
 }
 
-function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAnalyze, onRunAction, onReview, fetchBrief, onBriefExport, brightDataReady, onToast, onContract, onInsight, onFailure, onOutreach }) {
+function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAnalyze, onRunAction, onReview, fetchBrief, onBriefExport, onCancelJob, onRetryJob, brightDataReady, onToast, onContract, onInsight, onFailure, onOutreach }) {
   const [tab, setTab] = useState('Summary')
   const [noteDraft, setNoteDraft] = useState('')
   const [editing, setEditing] = useState(false)
   useEffect(() => { setTab('Summary'); setEditing(false); setNoteDraft(lead?.notes || '') }, [lead?.id])
   if (!lead) return null
   const { done, failure, phase } = researchState(lead)
+  const runningJob = activeLeadJob(lead)
+  const failedJob = failedLeadJob(lead)
+  const resumableJob = failedJob && leadJobRetryable(lead, failedJob) ? failedJob : null
   const pitch = outreachBody(lead)
   const currentSalesIndex = pipelineStages.indexOf(lead.salesStage)
   const origin = leadRunInfo(lead, runs)
@@ -1006,19 +1062,27 @@ function LeadDrawer({ lead, runs, close, onExport, onUpdate, onAnalyze, onMuseAn
       <aside className="lead-drawer simple-drawer">
         <div className="drawer-top"><div><Badge tone={categoryTone[lead.category] || 'gray'}>{lead.category}</Badge><span>{lead.id.toUpperCase()}</span></div><div><ClientRunMenu lead={lead} onRun={onRunAction} brightDataReady={brightDataReady} /><IconButton label="Open website" onClick={() => window.open(`https://${lead.website}`, '_blank', 'noopener,noreferrer')}><ExternalLink size={14} /></IconButton><IconButton label="Close client" onClick={close}><X size={16} /></IconButton></div></div>
         <div className="drawer-hero"><div><h1>{lead.company}</h1><div className="drawer-hero-meta"><a className="drawer-address-link" href={mapsUrl(lead)} target="_blank" rel="noreferrer" aria-label={`Open ${lead.company} address in Google Maps`}><MapPin size={12} aria-hidden="true" /><span className="drawer-address-value">{lead.address || lead.location || 'Address not collected'}</span><span className="drawer-address-action">Open in Google Maps <ExternalLink size={10} aria-hidden="true" /></span></a>{websiteUrl(lead.website) ? <a href={websiteUrl(lead.website)} target="_blank" rel="noreferrer" aria-label={`Open ${lead.company} website`}><Globe2 size={12} aria-hidden="true" /><span>{lead.website}</span></a> : <span className="drawer-hero-missing">Website not collected</span>}</div><div className="drawer-run-origin"><Database size={11} /><span><strong>{originLabel}</strong><small>{origin.collectionRun ? `${runTimestamp(origin.collectionRun)} · ${origin.collection?.relationship === 'new' ? 'New client' : 'Matched client'}` : 'No research run recorded'}</small></span></div></div><div className="hero-score"><Score value={lead.opportunityScore} size="hero" /><span>Opportunity<small>{lead.confidence ? `${lead.confidence}% confidence` : 'Not analyzed'}</small></span></div></div>
-        <div className="drawer-status-strip"><span><small>Research</small><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : 'blue'} dot>{getResearchLabel(lead)}</Badge></span><span><small>Muse</small><Badge tone={getMuseGuidance(lead) === 'Pursue' ? 'green' : getMuseGuidance(lead) === 'Deprioritize' ? 'gray' : 'amber'} dot>{getMuseGuidance(lead) || 'Not run'}</Badge></span><span><small>Sales</small><Badge tone={lead.salesStage ? statusTone[lead.salesStage] : 'gray'} dot>{lead.salesStage || 'Not in sales'}</Badge></span></div>
+        <div className="drawer-status-strip"><span><small>Research</small><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : 'blue'} dot>{getResearchLabel(lead)}</Badge></span><span><small>Muse</small><Badge tone={getMuseGuidance(lead) === 'Pursue' ? 'green' : getMuseGuidance(lead) === 'Pass' ? 'gray' : 'amber'} dot>{getMuseGuidance(lead) || 'Not run'}</Badge></span><span><small>Sales</small><Badge tone={lead.salesStage ? statusTone[lead.salesStage] : 'gray'} dot>{lead.salesStage || 'Not in sales'}</Badge></span></div>
         <div className="drawer-tabs">{['Summary', 'Research', 'Brief', 'Sales'].map((item) => <button key={item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item}</button>)}</div>
         <div className="drawer-body">
-          {tab === 'Summary' && <div className="drawer-two-col"><main><section className="detail-section"><span className="detail-label">Main opportunity</span><h2>{lead.mainIssue}</h2><p className="lead-summary">{lead.issueDetail}</p></section><section className="detail-section"><div className="detail-heading"><span className="detail-label">Findings</span><Badge tone="gray">{lead.problems?.length || 0}</Badge></div><div className="problem-list">{lead.problems?.length ? lead.problems.map((problem, index) => <div key={problem}><span>{index + 1}</span><p>{problem}</p></div>) : <p className="lead-summary">Website analysis has not been completed yet.</p>}</div></section><BusinessIntelligence lead={lead} /></main><aside><div className="business-card"><span className="detail-label">Client profile</span><div><span>Rating</span><strong>{lead.rating} ★ · {lead.reviews} reviews</strong></div><div><span>Phone</span><strong>{lead.phone}</strong></div><div><span>Email</span><strong>{lead.email}</strong></div><div><span>Sales phase</span><strong>{lead.salesStage || 'Not in pipeline'}</strong></div></div><div className="notes-card"><span className="detail-label">Notes</span>{editing ? <><textarea value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} /><div className="note-actions"><button onClick={() => setEditing(false)}>Cancel</button><button onClick={async () => { const saved = await onUpdate(lead.id, { notes: noteDraft.trim() }); if (saved) setEditing(false) }}><Check size={11} />Save</button></div></> : <><p>{lead.notes || 'No notes yet.'}</p><button onClick={() => setEditing(true)}><Plus size={12} />{lead.notes ? 'Edit note' : 'Add note'}</button></>}</div></aside></div>}
+          {tab === 'Summary' && <div className="drawer-two-col"><main><section className="detail-section"><span className="detail-label">Main opportunity</span><h2>{lead.mainIssue}</h2><p className="lead-summary">{lead.issueDetail}</p></section><section className="detail-section"><div className="detail-heading"><span className="detail-label">Findings</span><Badge tone="gray">{lead.problems?.length || 0}</Badge></div><div className="problem-list">{lead.problems?.length ? lead.problems.map((problem, index) => <div key={problem}><span>{index + 1}</span><p>{problem}</p></div>) : <p className="lead-summary">Website analysis has not been completed yet.</p>}</div></section><LeadValueCard lead={lead} /><BusinessIntelligence lead={lead} /></main><aside><div className="business-card"><span className="detail-label">Client profile</span><div><span>Rating</span><strong>{lead.rating} ★ · {lead.reviews} reviews</strong></div><div><span>Phone</span><strong>{lead.phone}</strong></div><div><span>Email</span><strong>{lead.email}</strong></div><div><span>Sales phase</span><strong>{lead.salesStage || 'Not in pipeline'}</strong></div></div><div className="notes-card"><span className="detail-label">Notes</span>{editing ? <><textarea value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} /><div className="note-actions"><button onClick={() => setEditing(false)}>Cancel</button><button onClick={async () => { const saved = await onUpdate(lead.id, { notes: noteDraft.trim() }); if (saved) setEditing(false) }}><Check size={11} />Save</button></div></> : <><p>{lead.notes || 'No notes yet.'}</p><button onClick={() => setEditing(true)}><Plus size={12} />{lead.notes ? 'Edit note' : 'Add note'}</button></>}</div></aside></div>}
           {tab === 'Research' && <div className="research-detail">
             <div className="research-detail-head">
               <div><span className="detail-label">{failure ? 'Failed stage' : 'Research state'}</span><h2 className={failure ? 'failure-title' : ''}>{getResearchLabel(lead)}</h2><p>{failure?.reason || (isQualifiedLead(lead) ? 'Research is complete. Sales progress is tracked separately.' : 'Review the evidence and Muse guidance before deciding whether to qualify this client.')}</p></div>
-              {failure ? <button className="button button-secondary retry-button" onClick={() => onAnalyze(lead)}><RefreshCcw size={13} />Retry audit</button>
-                : !done[1] ? <button className="button button-primary" onClick={() => onAnalyze(lead)} disabled={['Queued', 'Analyzing'].includes(lead.researchStatus)}>{['Queued', 'Analyzing'].includes(lead.researchStatus) ? <LoaderCircle className="spin" size={13} /> : <Sparkles size={13} />}{['Queued', 'Analyzing'].includes(lead.researchStatus) ? lead.researchJob?.phase || lead.researchStatus : 'Analyze website'}</button>
-                  : !isQualifiedLead(lead) ? <button className="button button-primary" onClick={() => onUpdate(lead.id, { qualified: true, salesStage: 'Qualified' })}><CheckCircle2 size={13} />Qualify for outreach</button>
-                    : <Badge tone="purple" dot>In sales</Badge>}
+              {failure ? <>
+                {runningJob ? <button className="button button-secondary" onClick={() => onCancelJob(lead, runningJob.id)}><Ban size={13} />Cancel job</button> : null}
+                {!runningJob && resumableJob ? <button className="button button-primary" onClick={() => onRetryJob(lead, resumableJob.id)}><RefreshCcw size={13} />Resume job</button> : null}
+                <button className={resumableJob ? 'button button-secondary' : 'button button-secondary retry-button'} onClick={() => onAnalyze(lead)}><RefreshCcw size={13} />{resumableJob ? 'Fresh audit' : failure.retryable === false ? 'Start a fresh run' : 'Retry audit'}</button>
+                {done[1] && !isQualifiedLead(lead) ? <button className="button button-quiet" onClick={() => onUpdate(lead.id, { qualified: true, salesStage: 'Qualified' })} title="The saved evidence from the earlier attempt is kept"><CheckCircle2 size={13} />Qualify with saved evidence</button> : null}
+              </>
+                : runningJob ? <><button className="button button-primary" disabled><LoaderCircle className="spin" size={13} />{runningJob.phase || runningJob.status}</button><button className="button button-secondary" onClick={() => onCancelJob(lead, runningJob.id)}><Ban size={13} />Cancel job</button></>
+                  : !done[1] ? (lead.website
+                    ? <button className="button button-primary" onClick={() => onAnalyze(lead)}><Sparkles size={13} />Analyze website</button>
+                    : <span className="lead-summary">No website supplied — the audit needs one. This business can still be scored, qualified and moved through sales; add a website to enable the audit.</span>)
+                    : !isQualifiedLead(lead) ? <button className="button button-primary" onClick={() => onUpdate(lead.id, { qualified: true, salesStage: 'Qualified' })}><CheckCircle2 size={13} />Qualify for outreach</button>
+                      : <Badge tone="purple" dot>In sales</Badge>}
             </div>
-            <ManualRunStatus lead={lead} onRun={onRunAction} />
+            <ManualRunStatus lead={lead} onRun={onRunAction} onCancelJob={onCancelJob} />
             {lead.researchStatus === 'Inconclusive' && <div className="candidate-banner"><span><strong>Latest capture inconclusive — no score claimed.</strong><small> {lead.captureQuality?.reason || lead.lastAuditAttempt?.reason || 'The page could not be assessed.'} Method: {lead.captureQuality?.captureMethod || 'static-fetch'}{lead.captureQuality?.renderedFallback ? ` · rendered fallback: ${lead.captureQuality.renderedFallback}` : ''}{lead.lastSuccessfulAudit ? ` · Last successful audit ${lead.lastSuccessfulAudit.score}/100 (${auditAge(lead.lastSuccessfulAudit.at)}).` : ' · No successful audit yet.'} The business stays available for manual qualification.</small></span><div><button className="button button-secondary button-small" onClick={() => onAnalyze(lead)}>Retry audit</button></div></div>}
             <div className="research-checklist">{researchLabels.map((label, index) => {
               const failed = failure?.stage === index
@@ -1507,6 +1571,26 @@ export default function App() {
       return result.lead
     } catch (caught) { return showActionError(caught, 'Could not queue Muse') }
   }
+  const cancelLeadJob = async (lead, jobId) => {
+    if (!jobId) return null
+    try {
+      const result = await apiRequest(`/api/jobs/${jobId}/cancel`, { method: 'POST' })
+      if (result.lead) {
+        setLeads((current) => current.map((item) => item.id === result.lead.id ? result.lead : item))
+        setSelectedLead((current) => current?.id === result.lead.id ? result.lead : current)
+      }
+      setToast(result.cancelling ? 'Stopping the job — in-flight work is dropped' : 'Job cancelled')
+      return result.job
+    } catch (caught) { return showActionError(caught, 'Could not cancel the job') }
+  }
+  const retryLeadJob = async (lead, jobId) => {
+    if (!jobId) return null
+    try {
+      const result = await apiRequest(`/api/jobs/${jobId}/retry`, { method: 'POST' })
+      setToast('Replacement job queued — saved evidence is kept')
+      return result.job
+    } catch (caught) { return showActionError(caught, 'Could not retry the job') }
+  }
   const runClientAction = async (lead, action) => {
     try {
       const result = await apiRequest(`/api/leads/${lead.id}/actions/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
@@ -1623,11 +1707,12 @@ export default function App() {
   if (page === 'NotFound') content = <NotFoundPage requestedPath={route.requestedPath} onNavigate={navigate} onBack={() => window.history.length > 1 ? window.history.back() : navigate('Clients')} />
   else if (route.clientId && !selectedLead) content = <NotFoundPage clientId={route.clientId} onNavigate={navigate} onBack={() => window.history.length > 1 ? window.history.back() : navigate('Clients')} />
   else if (page === 'Clients') content = <ClientsPage leads={leads} runs={runs} onOpen={openLead} onImport={() => csvInput.current?.click()} onExport={exportCsv} />
-  else if (page === 'Research') content = <ResearchPage leads={leads} runs={runs} activeRunId={activeRunId} onOpen={openLead} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onNewRun={() => setRunModalOpen(true)} onTogglePause={toggleRunPause} onCancel={cancelRun} />
+  else if (page === 'Research') content = <ResearchPage leads={leads} runs={runs} activeRunId={activeRunId} onOpen={openLead} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} onNewRun={() => setRunModalOpen(true)} onTogglePause={toggleRunPause} onCancel={cancelRun} />
   else if (page === 'Outreach') content = <OutreachPage leads={leads} onOpen={openLead} onUpdate={updateLead} onAttempt={recordContactAttempt} onGenerate={generateOutreachVersions} onCandidate={resolveOutreachCandidate} onToast={setToast} />
   else if (page === 'Pipeline') content = <PipelinePage leads={leads} onOpen={openLead} onUpdate={updateLead} goTo={navigate} onContract={setContractLead} />
   else if (page === 'Contracts') content = <ContractsPage leads={leads} onOpen={openLead} onContract={setContractLead} goTo={navigate} />
   else content = <SettingsPage apiStatus={apiStatus} settings={settingsData} onSave={saveSettings} />
 
-  return <div className="app-shell"><Sidebar page={page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} /><main className="main-shell"><Topbar page={page === 'NotFound' ? 'Not found' : page} onNavigate={navigate} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} onAdd={() => setCreateMenuOpen(true)} /><SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className="page-content">{content}</div></main><LeadDrawer lead={selectedLead} runs={runs} close={closeLead} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} onReview={reviewFinding} fetchBrief={fetchBrief} onBriefExport={exportBrief} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} />{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
+  return <div className="app-shell"><Sidebar page={page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} /><main className="main-shell"><Topbar page={page === 'NotFound' ? 'Not found' : page} onNavigate={navigate} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} onAdd={() => setCreateMenuOpen(true)} /><SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className="page-content">{content}</div></main><LeadDrawer lead={selectedLead} runs={runs} close={closeLead} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} onReview={reviewFinding} fetchBrief={fetchBrief} onBriefExport={exportBrief} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} />{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
+  return <div className="app-shell"><Sidebar page={page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} /><main className="main-shell"><Topbar page={page === 'NotFound' ? 'Not found' : page} onNavigate={navigate} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} onAdd={() => setCreateMenuOpen(true)} /><SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className="page-content">{content}</div></main><LeadDrawer lead={selectedLead} runs={runs} close={closeLead} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} />{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
 }
