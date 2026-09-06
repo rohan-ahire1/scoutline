@@ -1,0 +1,226 @@
+{
+  "format": "scoutline-eval-fixtures",
+  "version": 1,
+  "notes": "Offline quality-benchmark fixtures (ROH-26). Every case runs without network or credentials. expected.observation ids (obs-*) are stable; eval strips volatile timestamps before comparing.",
+  "cases": [
+    {
+      "id": "capture-static-good",
+      "kind": "capture",
+      "appliesTo": ["classifyCapture", "analyzeHtml"],
+      "input": {
+        "url": "https://goodplumbing.example/",
+        "contentType": "text/html",
+        "html": "<!DOCTYPE html><html><head><title>Good Plumbing Co — Drain Cleaning & Water Heaters in Provo, Utah</title><meta name=\"description\" content=\"Family-owned plumbing in Provo since 2009. Same-day drain cleaning and water heater installs.\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head><body><h1>Provo plumbers you can actually reach</h1><p>We have served Utah County homes and small businesses for over fifteen years with upfront pricing and licensed technicians on every visit.</p><p>Call <a href=\"tel:+18015550134\">(801) 555-0134</a> or write to <a href=\"mailto:hello@goodplumbing.example\">hello@goodplumbing.example</a>.</p><form action=\"/quote\"><input name=\"name\"><input name=\"phone\"><textarea name=\"details\"></textarea><button>Request a quote</button></form><img src=\"/team.jpg\" alt=\"Our technicians\"><img src=\"/truck.jpg\" alt=\"Service truck\"></body></html>"
+      },
+      "expect": { "captureQuality": "usable-html", "researchStatus": "Analyzed", "minProblems": 0, "mustNotMention": ["Inconclusive", "JavaScript application shell", "bot challenge"] }
+    },
+    {
+      "id": "capture-static-no-contact",
+      "kind": "capture",
+      "appliesTo": ["classifyCapture", "analyzeHtml"],
+      "input": {
+        "url": "https://nocontact.example/",
+        "contentType": "text/html",
+        "html": "<!DOCTYPE html><html><head><title>No Contact Roofing</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head><body><h1>Roofing work gallery</h1><p>Browse three hundred completed roofs across the valley. Use the social icons below to follow our work.</p><p>We post new projects every Friday afternoon for neighbors and friends to enjoy.</p><img src=\"/roof1.jpg\"><img src=\"/roof2.jpg\"><img src=\"/roof3.jpg\"></body></html>"
+      },
+      "expect": { "captureQuality": "usable-html", "researchStatus": "Analyzed", "minProblems": 1, "mustMention": ["phone", "contact"], "mustNotMention": ["Inconclusive"] }
+    },
+    {
+      "id": "capture-js-shell",
+      "kind": "capture",
+      "appliesTo": ["classifyCapture", "analyzeHtml"],
+      "input": {
+        "url": "https://jsshell.example/",
+        "contentType": "text/html",
+        "html": "<!DOCTYPE html><html><head><title>HVAC Pros</title></head><body><div id=\"root\"></div><div id=\"app\"></div><script src=\"/assets/app.js\"></script><script src=\"/assets/vendor.js\"></script><noscript>Enable JavaScript</noscript></body></html>"
+      },
+      "expect": { "captureQuality": "js-shell", "researchStatus": "Inconclusive", "mustMention": ["JavaScript application shell"], "mustNotMention": ["HTTP 200 at"] }
+    },
+    {
+      "id": "capture-challenge",
+      "kind": "capture",
+      "appliesTo": ["classifyCapture", "analyzeHtml"],
+      "input": {
+        "url": "https://challenge.example/",
+        "contentType": "text/html",
+        "html": "<!DOCTYPE html><html><head><title>Just a moment...</title></head><body><h1>Verifying you are human</h1><p>This may take a few seconds. Performance and security by Cloudflare. Please verify you are a human to continue.</p></body></html>"
+      },
+      "expect": { "captureQuality": "challenge", "researchStatus": "Inconclusive", "mustMention": ["challenge"], "mustNotMention": ["JavaScript application shell"] }
+    },
+    {
+      "id": "capture-empty-body",
+      "kind": "capture",
+      "appliesTo": ["classifyCapture", "analyzeHtml"],
+      "input": { "url": "https://empty.example/", "contentType": "text/html", "html": "   " },
+      "expect": { "captureQuality": "empty-response", "researchStatus": "Inconclusive", "mustMention": ["empty response"], "mustNotMention": ["HTTP 200 at"] }
+    },
+    {
+      "id": "capture-multi-form",
+      "kind": "capture",
+      "appliesTo": ["classifyCapture", "analyzeHtml"],
+      "input": {
+        "url": "https://multiform.example/",
+        "contentType": "text/html",
+        "html": "<!DOCTYPE html><html><head><title>Multi Form Electric — Licensed Electricians Serving Mesa Homes</title><meta name=\"description\" content=\"Licensed electricians in Mesa. Panel upgrades, lighting, and safety inspections with free estimates.\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head><body><h1>Mesa electricians</h1><p>Call <a href=\"tel:+14805550192\">(480) 555-0192</a> for same-week service across the East Valley.</p><form action=\"/quote\"><input name=\"name\"><button>Get a quote</button></form><form action=\"/newsletter\"><input name=\"email\"><button>Tips by email</button></form><form action=\"/financing\"><input name=\"amount\"><button>Apply</button></form></body></html>"
+      },
+      "expect": { "captureQuality": "usable-html", "researchStatus": "Analyzed", "mustNotMention": ["Direct contact methods detected: 0"] }
+    },
+    {
+      "id": "fetch-redirect-chain",
+      "kind": "fetch",
+      "appliesTo": ["fetchBehavior"],
+      "input": {
+        "url": "https://old.example/",
+        "route": [
+          { "status": 301, "headers": { "location": "https://mid.example/" } },
+          { "status": 302, "headers": { "location": "https://new.example/" } },
+          { "status": 200, "headers": { "content-type": "text/html" }, "body": "<html><head><title>Moved Plumbing — Same Crew, New Name, Serving Ogden</title></head><body><h1>Moved</h1><p>Same licensed crew serving Ogden homes for twelve years. Call <a href=\"tel:+18015550177\">(801) 555-0177</a>.</p></body></html>" }
+        ]
+      },
+      "expect": { "ok": true, "finalUrl": "https://new.example/", "redirects": 2 }
+    },
+    {
+      "id": "fetch-slow-timeout",
+      "kind": "fetch",
+      "appliesTo": ["fetchBehavior"],
+      "input": { "url": "https://slow.example/", "route": [{ "hang": true }], "timeoutMs": 50 },
+      "expect": { "ok": false, "errorCode": "TIMEOUT", "mustNotMention": ["broken"] }
+    },
+    {
+      "id": "fetch-http-500",
+      "kind": "fetch",
+      "appliesTo": ["fetchBehavior"],
+      "input": { "url": "https://down.example/", "route": [{ "status": 500, "headers": {}, "body": "error" }] },
+      "expect": { "ok": false, "errorCode": "HTTP_ERROR", "mustMention": ["HTTP 500"], "mustNotMention": ["broken"] }
+    },
+    {
+      "id": "fetch-dns-fail",
+      "kind": "fetch",
+      "appliesTo": ["fetchBehavior"],
+      "input": { "url": "https://gone.example/", "dnsFail": true, "route": [{ "networkError": "must never be reached" }] },
+      "expect": { "ok": false, "errorCode": "DNS_FAILED", "mustMention": ["Could not resolve"] }
+    },
+    {
+      "id": "discovery-wellformed",
+      "kind": "discovery",
+      "appliesTo": ["discoveryMapping"],
+      "input": {
+        "record": { "name": "Wellformed HVAC", "website": "https://wellformed.example", "category": "HVAC", "full_address": "12 Main St, Boise, ID", "phone": "(208) 555-0140", "rating": 4.8, "reviews_count": 212, "place_id": "ChIJ1", "timestamp": "2026-09-01T00:00:00.000Z" }
+      },
+      "expect": { "mapped": true, "company": "Wellformed HVAC", "website": "wellformed.example", "category": "HVAC" }
+    },
+    {
+      "id": "discovery-malformed",
+      "kind": "discovery",
+      "appliesTo": ["discoveryMapping"],
+      "input": { "record": { "title": "  ", "reviews": { "nested": true }, "services_provided": "not-an-array", "timestamp": "2026-09-01T00:00:00.000Z" } },
+      "expect": { "mapped": false }
+    },
+    {
+      "id": "discovery-duplicates",
+      "kind": "discovery",
+      "appliesTo": ["discoveryDedupe"],
+      "input": {
+        "records": [
+          { "name": "Dupe Roofing", "website": "https://dupe.example", "place_id": "ChIJdupe1", "full_address": "1 A St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
+          { "name": "Dupe Roofing LLC", "website": "https://dupe.example/", "place_id": "ChIJdupe1", "full_address": "1 A St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
+          { "name": "Other Solar", "website": "https://other.example", "place_id": "ChIJother1", "full_address": "2 B St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
+          { "name": "Dupe Sister Co", "website": "https://dupe.example", "place_id": "ChIJdupe2", "full_address": "3 C St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" }
+        ]
+      },
+      "expect": { "returned": 4, "retained": 3, "rejectedDuplicates": 1, "rejectedUnusable": 0 }
+    },
+    {
+      "id": "discovery-geo-mix",
+      "kind": "discovery",
+      "appliesTo": ["discoveryMapping", "discoveryDedupe"],
+      "input": {
+        "search": { "displayLocation": "Reno, NV", "categories": ["Roofing"] },
+        "records": [
+          { "name": "Reno Roofing", "website": "https://renoroof.example", "full_address": "5 C St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
+          { "name": "Sparks Roofing", "website": "https://sparksroof.example", "full_address": "9 D St, Sparks, NV", "timestamp": "2026-09-01T00:00:00.000Z" }
+        ]
+      },
+      "expect": { "returned": 2, "retained": 2, "coverageMentions": ["Reno"] }
+    },
+    {
+      "id": "discovery-branches",
+      "kind": "discovery",
+      "appliesTo": ["discoveryDedupe"],
+      "input": {
+        "records": [
+          { "name": "Branch Plumbing", "website": "https://branchreno.example", "full_address": "1 A St, Reno, NV", "timestamp": "2026-09-01T00:00:00.000Z" },
+          { "name": "Branch Plumbing", "website": "https://branchsparks.example", "full_address": "2 B St, Sparks, NV", "timestamp": "2026-09-01T00:00:00.000Z" }
+        ]
+      },
+      "expect": { "returned": 2, "retained": 2, "rejectedDuplicates": 0, "rejectedUnusable": 0 }
+    },
+    {
+      "id": "muse-grounded",
+      "kind": "muse",
+      "appliesTo": ["museGrounding"],
+      "input": {
+        "observations": [
+          { "id": "obs-title", "text": "Homepage title length: 4 characters" },
+          { "id": "obs-contact", "text": "Direct contact methods detected: 0" }
+        ],
+        "analysis": { "summary": "The site hides how to contact the business.", "qualificationRecommendation": "Review", "noSupportedOpportunity": false, "topOpportunities": [{ "title": "Add visible contact paths", "severity": "High", "evidence": "Direct contact methods detected: 0 on the homepage", "evidenceIds": ["obs-contact"], "whyItMatters": "Visitors cannot call or write without hunting.", "recommendation": "Put the phone number and a quote form above the fold." }] }
+      },
+      "expect": { "valid": true }
+    },
+    {
+      "id": "muse-uncited-id",
+      "kind": "muse",
+      "appliesTo": ["museGrounding"],
+      "input": {
+        "observations": [{ "id": "obs-title", "text": "Homepage title length: 4 characters" }],
+        "analysis": { "summary": "Needs work.", "qualificationRecommendation": "Review", "noSupportedOpportunity": false, "topOpportunities": [{ "title": "Fix the title", "severity": "Medium", "evidence": "The title is short", "evidenceIds": ["obs-ghost"], "whyItMatters": "Search clarity.", "recommendation": "Write a descriptive title." }] }
+      },
+      "expect": { "valid": false, "errorMatch": "unknown or stale evidence" }
+    },
+    {
+      "id": "muse-stale-ids",
+      "kind": "muse",
+      "appliesTo": ["museGrounding"],
+      "input": {
+        "observations": [{ "id": "obs-new-1", "text": "Homepage returned HTTP 200 at https://fresh.example/" }],
+        "analysis": { "summary": "Reused old packet.", "qualificationRecommendation": "Review", "noSupportedOpportunity": false, "topOpportunities": [{ "title": "Add visible contact paths", "severity": "High", "evidence": "Direct contact methods detected: 0 on the homepage", "evidenceIds": ["obs-contact"], "whyItMatters": "Visitors cannot call.", "recommendation": "Add a phone number." }] }
+      },
+      "expect": { "valid": false, "errorMatch": "stale evidence" }
+    },
+    {
+      "id": "muse-empty-evidence",
+      "kind": "muse",
+      "appliesTo": ["museGrounding"],
+      "input": {
+        "observations": [],
+        "analysis": { "summary": "Nothing measurable on the page.", "qualificationRecommendation": "Pass", "noSupportedOpportunity": true, "topOpportunities": [] }
+      },
+      "expect": { "valid": true }
+    },
+    {
+      "id": "muse-filler-opportunity",
+      "kind": "muse",
+      "appliesTo": ["museGrounding"],
+      "input": {
+        "observations": [],
+        "analysis": { "summary": "Nothing measurable.", "qualificationRecommendation": "Pass", "noSupportedOpportunity": false, "topOpportunities": [{ "title": "Improve overall web presence", "severity": "Low", "evidence": "General best practice", "evidenceIds": [], "whyItMatters": "It helps.", "recommendation": "Do marketing." }] }
+      },
+      "expect": { "valid": false, "errorMatch": "cites no evidence" }
+    },
+    {
+      "id": "outreach-invented-traffic",
+      "kind": "outreach",
+      "appliesTo": ["outreachGrounding"],
+      "input": { "text": "Your new site will double your traffic and add 30% more revenue next quarter." },
+      "expect": { "valid": false, "errorMatch": "Unverified" }
+    },
+    {
+      "id": "outreach-grounded",
+      "kind": "outreach",
+      "appliesTo": ["outreachGrounding"],
+      "input": { "text": "Your homepage has no phone link or quote form, so visitors cannot reach you directly. Adding both above the fold matches what your highest-rated competitors already show." },
+      "expect": { "valid": true }
+    }
+  ]
+}
