@@ -105,3 +105,23 @@ test('insufficient evidence never overwrites existing drafts', () => {
   const bare = applyOutreachGeneration({ company: 'Acme' }, { subject: 'Quick idea for Acme', drafts: null, findings: [], insufficientEvidence: true, reason: 'No verified findings', generation: { source: 'rules' } })
   assert.equal(bare.outreachStatus, 'Insufficient evidence')
 })
+
+test('channel drafts use the configured offer and stay evidence-only', async () => {
+  const { buildChannelDrafts, resolveOffer } = await import('./outreach.js')
+  const lead = { company: 'Acme', website: 'acme.example', phone: '555-0100', mainIssue: 'Enquiry friction', problems: ['One observed form asks for 12 details at once.'], contactCandidates: [{ id: 'c1', kind: 'contactPage', value: 'https://acme.example/contact', normalized: 'https://acme.example/contact', source: 'website' }] }
+  const offer = { ...resolveOffer(null), callToAction: 'Open to a 15-minute walkthrough?', proofPoints: [], service: 'Website tune-ups' }
+  const channels = buildChannelDrafts(lead, { observation: 'One observed form asks for 12 details at once', offer, contact: { kind: 'phone', value: '555-0100' } })
+  assert.match(channels.email, /15-minute walkthrough/)
+  assert.match(channels.email, /12 details/)
+  assert.ok(!/free homepage|guarantee|\$|revenue/i.test(channels.email + channels.phone.opener + channels.form.message))
+  assert.match(channels.phone.notes, /555-0100/)
+  assert.equal(channels.form.pageToOpen, 'https://acme.example/contact')
+  assert.match(channels.form.note, /manually/i)
+  assert.ok(channels.words.email > 20 && channels.words.email < 120, `email was ${channels.words.email} words`)
+})
+
+test('default offer leaves unconfirmed claims blank', async () => {
+  const { buildChannelDrafts, resolveOffer } = await import('./outreach.js')
+  const channels = buildChannelDrafts({ company: 'Acme', problems: ['Slow mobile load observed.'] }, { offer: resolveOffer(null) })
+  assert.ok(!/free|guarantee|results|clients|\$/i.test(channels.email))
+})

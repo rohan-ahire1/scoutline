@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client workspace — design prototype</title>
+<style>
+  /* Prototype tokens, mirroring the app theme (light). */
+  :root {
+    --bg: #f5f0e6;
+    --surface: #fffefb;
+    --surface-muted: #f7f4ec;
+    --text: #191847;
+    --text-soft: #3f3e69;
+    --muted: #55566e;
+    --subtle: #6f7093;
+    --border: rgba(25, 24, 71, .12);
+    --border-soft: rgba(25, 24, 71, .07);
+    --primary: #1e1b4b;
+    --primary-hover: #2b2870;
+    --green: #27845a;
+    --green-bg: #effaf2;
+    --red: #c5473d;
+    --red-bg: #fdeeec;
+    --amber: #b7771f;
+    --amber-bg: #fdf0e3;
+    --blue: #315d86;
+    --blue-bg: #eff5ff;
+    --lav-bg: #f4f1ff;
+    --peach-bg: #fff6ec;
+    --fs-name: 27px;
+    --fs-section: 19px;
+    --fs-body: 15px;
+    --fs-small: 14px;
+    --fs-meta: 12px;
+    --r-md: 6px;
+    --r-lg: 8px;
+    --r-xl: 10px;
+    --r-pill: 999px;
+    --shadow-pop: 0 18px 46px rgba(25, 24, 71, .16);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: var(--fs-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Prototype-only state switcher bar. */
+  .proto-bar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 20px;
+    background: var(--primary); color: #fff;
+    font-size: 13px;
+  }
+  .proto-bar strong { font-weight: 700; }
+  .proto-bar .states { display: flex; gap: 6px; }
+  .proto-bar button {
+    border: 1px solid rgba(255,255,255,.35); border-radius: var(--r-pill);
+    background: transparent; color: #fff;
+    font: inherit; padding: 4px 12px; cursor: pointer;
+  }
+  .proto-bar button[aria-pressed="true"] { background: #fff; color: var(--primary); font-weight: 700; }
+  .workspace { max-width: 1060px; margin: 0 auto; padding: 0 20px 80px; }
+
+  /* Context row: back + prev/next. */
+  .context-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px 0 10px;
+  }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--text-soft); font-size: var(--fs-small); font-weight: 600;
+    background: none; border: 0; padding: 4px 0; cursor: pointer;
+  }
+  .back-link:hover { color: var(--text); }
+  .back-link svg { width: 14px; height: 14px; flex: none; }
+  .pager { display: flex; align-items: center; gap: 4px; color: var(--subtle); font-size: var(--fs-meta); }
+  .icon-btn {
+    width: 30px; height: 30px; display: inline-grid; place-items: center;
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    background: var(--surface); color: var(--text-soft); cursor: pointer;
+  }
+  .icon-btn:hover { border-color: var(--text-soft); color: var(--text); }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  /* Identity bar: compact, ~100px. */
+  .identity {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    padding: 16px 20px 14px;
+  }
+  .identity-top { display: flex; align-items: flex-start; gap: 16px; }
+  .identity-main { min-width: 0; flex: 1; }
+  .identity-main h1 {
+    margin: 0; font-size: var(--fs-name); font-weight: 800; letter-spacing: -.02em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .identity-sub {
+    margin: 3px 0 0; color: var(--muted); font-size: var(--fs-small);
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .identity-sub a { color: var(--blue); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
+  .identity-sub a:hover { text-decoration: underline; }
+  .identity-sub svg { width: 12px; height: 12px; }
+  .identity-side { display: flex; align-items: center; gap: 8px; flex: none; }
+  .stage-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: var(--r-pill);
+    font-size: 13px; font-weight: 700; white-space: nowrap;
+  }
+  .stage-chip i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .stage-review { background: var(--lav-bg); color: #4b4494; }
+  .stage-collected { background: var(--surface-muted); color: var(--muted); }
+  .stage-qualified { background: var(--green-bg); color: var(--green); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    border-radius: var(--r-lg); font: inherit; cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    border: 1px solid var(--primary); background: var(--primary); color: #fff;
+    font-size: var(--fs-small); font-weight: 700; padding: 8px 16px;
+  }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-secondary {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font-size: var(--fs-small); font-weight: 600; padding: 7px 13px;
+  }
+  .btn-secondary:hover { border-color: var(--text-soft); }
+  .btn svg { width: 14px; height: 14px; }
+  details.record-details { margin-top: 10px; }
+  details.record-details summary {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--subtle); font-size: var(--fs-meta); font-weight: 600;
+    cursor: pointer; list-style: none;
+  }
+  details.record-details summary::-webkit-details-marker { display: none; }
+  details.record-details summary:hover { color: var(--text); }
+  details.record-details summary svg { width: 12px; height: 12px; transition: transform 120ms; }
+  details.record-details[open] summary svg { transform: rotate(180deg); }
+  .record-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 4px 24px; margin: 10px 0 2px; padding-top: 10px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .record-grid div { display: flex; gap: 8px; font-size: var(--fs-meta); padding: 3px 0; }
+  .record-grid dt { color: var(--subtle); flex: none; }
+  .record-grid dd { margin: 0; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .record-grid dd.mono { font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+
+  /* Tabs: sticky under the identity block. */
+  .tabs {
+    position: sticky; top: 41px; z-index: 20;
+    display: flex; gap: 2px;
+    margin-top: 14px; padding: 0 4px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .tabs button {
+    border: 0; border-bottom: 2px solid transparent; background: none;
+    color: var(--muted); font-size: var(--fs-small); font-weight: 600;
+    padding: 10px 12px; cursor: pointer;
+  }
+  .tabs button:hover { color: var(--text); }
+  .tabs button[aria-selected="true"] { border-color: var(--primary); color: var(--text); font-weight: 700; }
+  .tabs button .count {
+    margin-left: 6px; padding: 1px 7px; border-radius: var(--r-pill);
+    background: var(--surface-muted); border: 1px solid var(--border-soft);
+    color: var(--subtle); font-size: var(--fs-meta); font-weight: 700;
+  }
+
+  /* Content: main + supporting column. */
+  .content { padding-top: 22px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+  section.block { margin: 0 0 30px; }
+  section.block > h2 { margin: 0 0 4px; font-size: var(--fs-section); font-weight: 800; letter-spacing: -.01em; }
+  section.block > .lede { margin: 0 0 12px; color: var(--muted); font-size: var(--fs-small); }
+  .next-step {
+    border: 1px solid var(--border); border-radius: var(--r-xl);
+    background: var(--surface); padding: 16px 18px;
+    display: grid; gap: 8px;
+  }
+  .next-step .why { margin: 0; color: var(--text-soft); font-size: var(--fs-body); }
+  .next-step .why strong { color: var(--text); }
+  .next-step .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .conflict {
+    border-radius: var(--r-lg); background: var(--amber-bg); color: #6b4a12;
+    font-size: var(--fs-small); padding: 9px 12px;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .conflict svg { width: 15px; height: 15px; flex: none; margin-top: 2px; }
+  .summary-text { margin: 0; font-size: var(--fs-body); color: var(--text-soft); max-width: 62ch; }
+  .summary-text a { color: var(--blue); }
+  .kv { margin: 12px 0 0; padding: 0; }
+  .kv > div {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-top: 1px solid var(--border-soft);
+    font-size: var(--fs-small);
+  }
+  .kv > div:first-child { border-top: 0; }
+  .kv dt { width: 110px; flex: none; color: var(--subtle); }
+  .kv dd { margin: 0; min-width: 0; flex: 1; color: var(--text); overflow-wrap: anywhere; }
+  .kv dd.missing { color: var(--subtle); font-style: italic; }
+  .kv .mini-btn {
+    flex: none; display: inline-flex; align-items: center; gap: 4px;
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    background: none; color: var(--muted); font-size: var(--fs-meta); font-weight: 600;
+    padding: 3px 8px; cursor: pointer;
+  }
+  .kv .mini-btn:hover { color: var(--text); border-color: var(--text-soft); }
+  .kv .mini-btn svg { width: 11px; height: 11px; }
+  .activity { list-style: none; margin: 12px 0 0; padding: 0; display: grid; }
+  .activity li {
+    display: flex; gap: 10px; padding: 8px 0;
+    border-top: 1px solid var(--border-soft); font-size: var(--fs-small);
+  }
+  .activity li:first-child { border-top: 0; }
+  .activity svg { width: 14px; height: 14px; flex: none; margin-top: 3px; color: var(--subtle); }
+  .activity time { margin-left: auto; flex: none; color: var(--subtle); font-size: var(--fs-meta); }
+  .text-btn {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    color: var(--blue); font-size: var(--fs-small); font-weight: 600;
+  }
+  .text-btn:hover { text-decoration: underline; }
+  .empty-note {
+    border: 1px dashed var(--border); border-radius: var(--r-lg);
+    padding: 18px; color: var(--muted); font-size: var(--fs-small);
+    display: grid; gap: 8px; background: var(--surface);
+  }
+  .empty-note strong { color: var(--text); font-size: var(--fs-body); }
+
+  /* Research tab. */
+  .reco {
+    border: 1px solid var(--border); border-radius: var(--r-xl);
+    background: var(--surface); padding: 16px 18px;
+    display: grid; gap: 6px; margin-bottom: 26px;
+  }
+  .reco .verdict { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .reco .verdict strong { font-size: var(--fs-section); font-weight: 800; letter-spacing: -.01em; }
+  .reco p { margin: 0; color: var(--text-soft); font-size: var(--fs-body); max-width: 64ch; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 11px; border-radius: var(--r-pill);
+    font-size: var(--fs-meta); font-weight: 700; white-space: nowrap;
+  }
+  .pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill-green { background: var(--green-bg); color: var(--green); }
+  .pill-amber { background: var(--amber-bg); color: var(--amber); }
+  .pill-blue { background: var(--blue-bg); color: var(--blue); }
+  .pill-neutral { background: var(--surface-muted); color: var(--muted); }
+  .finding {
+    border: 1px solid var(--border); border-radius: var(--r-xl);
+    background: var(--surface); margin-bottom: 10px; overflow: hidden;
+  }
+  .finding summary {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 13px 16px; cursor: pointer; list-style: none;
+    font-size: var(--fs-body); font-weight: 700;
+  }
+  .finding summary::-webkit-details-marker { display: none; }
+  .finding summary:hover { background: var(--surface-muted); }
+  .finding summary .n {
+    flex: none; width: 22px; height: 22px; align-self: center;
+    display: inline-grid; place-items: center;
+    border-radius: 50%; background: var(--peach-bg);
+    color: var(--text-soft); font-size: var(--fs-meta); font-weight: 700;
+  }
+  .finding summary svg { width: 14px; height: 14px; margin-left: auto; flex: none; align-self: center; color: var(--subtle); transition: transform 120ms; }
+  .finding[open] summary svg { transform: rotate(180deg); }
+  .finding .detail { padding: 0 16px 16px 48px; display: grid; gap: 10px; }
+  .finding .detail h4 {
+    margin: 0; font-size: var(--fs-meta); font-weight: 700;
+    color: var(--subtle); text-transform: uppercase; letter-spacing: .05em;
+  }
+  .finding .detail h4 + p { margin: 2px 0 0; }
+  .finding .detail p { font-size: var(--fs-small); color: var(--text-soft); max-width: 64ch; }
+  .evidence {
+    display: grid; gap: 6px;
+    border-radius: var(--r-lg); background: var(--surface-muted);
+    padding: 10px 12px; font-size: var(--fs-small);
+  }
+  .evidence div { display: flex; gap: 8px; min-width: 0; }
+  .evidence dt { flex: none; width: 86px; color: var(--subtle); }
+  .evidence dd { margin: 0; min-width: 0; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .evidence dd.mono { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  .evidence a { color: var(--blue); }
+  .limit {
+    display: flex; gap: 8px; align-items: flex-start;
+    font-size: var(--fs-small); color: var(--muted);
+  }
+  .limit svg { width: 14px; height: 14px; flex: none; margin-top: 3px; color: var(--subtle); }
+  .notice {
+    display: flex; gap: 10px; align-items: flex-start;
+    border: 1px solid var(--border); border-radius: var(--r-xl);
+    background: var(--surface); padding: 14px 16px; margin-bottom: 22px;
+    font-size: var(--fs-small); color: var(--text-soft);
+  }
+  .notice svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+  .notice.dup { border-color: rgba(89, 99, 168, .3); background: var(--lav-bg); }
+  .notice.warn { border-color: rgba(183, 119, 31, .3); background: var(--amber-bg); }
+  .notice .grow { flex: 1; min-width: 0; }
+  .details-group {
+    border: 1px solid var(--border); border-radius: var(--r-xl);
+    background: var(--surface); margin: 26px 0 30px; overflow: hidden;
+  }
+  .details-group > summary {
+    padding: 13px 16px; cursor: pointer; list-style: none;
+    font-size: var(--fs-body); font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .details-group > summary::-webkit-details-marker { display: none; }
+  .details-group > summary svg { width: 14px; height: 14px; margin-left: auto; color: var(--subtle); }
+  .details-group .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 4px 24px; padding: 0 16px 16px;
+  }
+  .details-group .grid div { padding: 7px 0; border-top: 1px solid var(--border-soft); font-size: var(--fs-small); }
+  .details-group .grid dt { color: var(--subtle); font-size: var(--fs-meta); margin-bottom: 1px; }
+  .details-group .grid dd { margin: 0; color: var(--text); }
+  .score-line { display: flex; align-items: baseline; gap: 10px; }
+  .score-line strong { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+  .score-line span { color: var(--subtle); font-size: var(--fs-meta); }
+  .reserved {
+    border: 1px dashed var(--border); border-radius: var(--r-xl);
+    background: var(--surface); padding: 26px; color: var(--muted);
+    font-size: var(--fs-small); max-width: 62ch;
+  }
+  .reserved strong { display: block; color: var(--text); font-size: var(--fs-body); margin-bottom: 4px; }
+  @media (max-width: 860px) {
+    .cols { grid-template-columns: 1fr; }
+    .identity-top { flex-direction: column; }
+    .identity-side { width: 100%; }
+    .identity-side .btn-primary { flex: 1; justify-content: center; }
+    .identity-main h1 { white-space: normal; }
+    .tabs { top: 41px; overflow-x: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    details summary svg { transition: none; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+  </defs>
+</svg>
+
+<header class="proto-bar">
+  <strong>Design prototype · Client workspace</strong>
+  <div class="states" role="group" aria-label="Client state">
+    <button data-state="awaiting" aria-pressed="true">A · Awaiting decision</button>
+    <button data-state="unanalyzed" aria-pressed="false">B · Not analyzed</button>
+    <button data-state="qualified" aria-pressed="false">C · Qualified</button>
+  </div>
+</header>
+
+<div class="workspace">
+  <div class="context-row">
+    <button class="back-link" type="button"><svg><use href="#i-back"/></svg><span id="backLabel">Back to Research</span></button>
+    <div class="pager">
+      <button class="icon-btn" type="button" aria-label="Previous client"><svg><use href="#i-prev"/></svg></button>
+      <span id="pagerPos">3 of 9</span>
+      <button class="icon-btn" type="button" aria-label="Next client"><svg><use href="#i-next"/></svg></button>
+    </div>
+  </div>
+
+  <div class="identity">
+    <div class="identity-top">
+      <div class="identity-main">
+        <h1 id="bizName"></h1>
+        <p class="identity-sub" id="bizSub"></p>
+      </div>
+      <div class="identity-side">
+        <span class="stage-chip" id="stageChip"></span>
+        <button class="btn btn-primary" id="primaryAction" type="button"></button>
+        <button class="icon-btn" type="button" aria-label="More actions" title="More actions"><svg><use href="#i-dots"/></svg></button>
+      </div>
+    </div>
+    <details class="record-details">
+      <summary><svg><use href="#i-chev"/></svg>Record details</summary>
+      <dl class="record-grid" id="recordGrid"></dl>
+    </details>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Client sections">
+    <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+    <button role="tab" data-tab="research" aria-selected="false">Research <span class="count" id="findingCount"></span></button>
+    <button role="tab" data-tab="outreach" aria-selected="false">Outreach</button>
+    <button role="tab" data-tab="activity" aria-selected="false">Activity</button>
+  </nav>
+
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+const icon = (id) => `<svg aria-hidden="true"><use href="#${id}"/></svg>`;
+const STATES = {
+  awaiting: {
+    back: 'Back to Research', pos: '3 of 9',
+    name: 'Rocky Mountain Power',
+    sub: ['Electric utility company', 'Salt Lake City, UT'],
+    website: 'rockymountainpower.net', websiteUrl: 'https://www.rockymountainpower.net/',
+    stage: ['Ready to review', 'stage-review'],
+    primary: 'Qualify for outreach',
+    record: [
+      ['Record', 'LEAD-MT5N9LZV-5-9CB953'], ['Address', '1407 W North Temple St, Salt Lake City, UT 84116'],
+      ['Collected', 'Run 4 · Aug 23, 3:41 PM'], ['Audit', 'Deterministic · Aug 23, 10:10 AM'],
+      ['Source', 'Bright Data Google Maps'], ['Profile', 'Claimed · Active · Open 24 hours'],
+    ],
+    findingCount: 4,
+    next: {
+      title: 'Next step',
+      why: '<strong>Decide whether to qualify.</strong> The audit found real but bounded issues — 13 competing headings, no meta description, thin alt text — against an established, claimed business profile. A score of 62 lands in the review band: worth pursuing, not worth skipping the decision.',
+      actions: [['Qualify for outreach', 'btn-primary'], ['Request another look', 'btn-secondary']],
+    },
+    summaryTitle: 'Opportunity summary',
+    summary: 'A large utility whose site works but undersells it: search engines see thirteen H1s and no description, and nearly half the images carry no useful alt text. None of this needs redesign — it needs a careful content pass, which is a concrete, quotable package. <a href="#" data-goto="research">Supporting findings below.</a>',
+    contacts: [
+      ['i-phone', 'Phone', '+1 888-221-7070', false, 'Copy'],
+      ['i-mail', 'Email', 'Not collected', true, null],
+      ['i-pin', 'Address', '1407 W North Temple St, Salt Lake City, UT 84116', false, 'Open map'],
+    ],
+    activity: [
+      ['i-file', 'AI analysis completed — content hierarchy flagged as the main issue.', 'Aug 23'],
+      ['i-check', 'Website audit finished — 10 pages crawled, 0 broken links.', 'Aug 23'],
+      ['i-layers', 'Collected into Run 4 from Google Maps.', 'Aug 23'],
+    ],
+    reco: {
+      pill: ['Review band · score 62', 'pill-amber'],
+      title: 'Review, then likely qualify',
+      text: 'The deterministic audit (confidence 88 of 100) flags content hierarchy as the main issue. The site is functional — HTTP 200, no broken links, claimed profile — and digital maturity reads Foundational (33 of 100), so the work is technical and bounded. A 62 suggests review rather than immediate pursuit.',
+    },
+    dup: 'A second record for this business exists — collected but not yet analyzed. Comparing keeps both visible with a way back.',
+    findings: [
+      { t: 'No clear primary heading', why: 'Search engines use the top-level heading to understand what a page is about. Thirteen competing H1s split that signal, so the homepage competes with itself for its own name.',
+        ev: [['Source', 'https://www.rockymountainpower.net/'], ['Observed', 'Homepage H1 count: 13'], ['Captured', 'Aug 23, 10:10 AM']],
+        limit: 'Automated count only — the visual hierarchy was not judged. A glance at the rendered page would confirm it in seconds.' },
+      { t: 'Images missing useful alternative text', why: 'Alt text is how search engines and screen readers understand images. At under half coverage, a large share of the page is invisible to both.',
+        ev: [['Source', 'https://www.rockymountainpower.net/'], ['Observed', 'Image alt-text coverage: 46%'], ['Captured', 'Aug 23, 10:10 AM']],
+        limit: 'Coverage is measured, not quality — some present alt text may still be unhelpful.' },
+      { t: 'Meta description missing', why: 'The description is the pitch under the search result. Without one, Google invents it — usually badly — which depresses click-through from existing rankings.',
+        ev: [['Source', 'https://www.rockymountainpower.net/'], ['Observed', 'Meta description length: 0 characters'], ['Captured', 'Aug 23, 10:10 AM']],
+        limit: 'None — absence is directly observed.' },
+      { t: 'No structured data detected', why: 'Without schema, the business is ineligible for rich results it would otherwise win easily, given the claimed profile and reviews.',
+        ev: [['Source', 'https://www.rockymountainpower.net/'], ['Observed', 'Structured data: not found'], ['Captured', 'Aug 23, 10:10 AM']],
+        limit: 'Only the homepage was checked; deeper pages were not scanned for schema.' },
+    ],
+    details: [
+      ['Method', 'Deterministic audit · confidence 88'], ['Crawl', '10 pages · 87 internal links · 0 broken'],
+      ['Provider', 'Bright Data Google Maps'], ['Profile', 'Claimed · Active · Open 24 hours'],
+      ['Performance', 'Unknown — Lighthouse could not run in this environment'],
+      ['History', 'Run 4 · one capture, Aug 23'],
+    ],
+    score: ['62', 'of 100 · review band — real issues, bounded scope. Above this band scores argue for pursuit; below it, for deferring.'],
+  },
+  unanalyzed: {
+    back: 'Back to Clients', pos: '14 of 35',
+    name: 'Salt City Plumbing, Heating & Air',
+    sub: ['Plumber', 'Salt Lake City, UT'],
+    website: 'saltcityplumbing.com', websiteUrl: 'https://www.saltcityplumbing.com/',
+    stage: ['Collected', 'stage-collected'],
+    primary: 'Analyze website',
+    record: [
+      ['Record', 'LEAD-MSV17OQP-0-7A892E'], ['Address', '47 S Orange St A8, Salt Lake City, UT 84116'],
+      ['Collected', 'Run 4 · Aug 23, 3:41 PM'], ['Audit', 'Not run yet'],
+      ['Source', 'Bright Data Google Maps'], ['Profile', 'Rating 4.9 · 683 reviews'],
+    ],
+    findingCount: 0,
+    next: {
+      title: 'Next step',
+      why: '<strong>Run the website audit.</strong> This record has a business profile but no evidence — there is nothing to decide until the site has been crawled. Analysis takes seconds and unlocks the full workspace.',
+      actions: [['Analyze website', 'btn-primary']],
+    },
+    summaryTitle: 'Opportunity summary',
+    summary: null,
+    contacts: [
+      ['i-phone', 'Phone', 'Not collected', true, null],
+      ['i-mail', 'Email', 'Not collected', true, null],
+      ['i-pin', 'Address', '47 S Orange St A8, Salt Lake City, UT 84116', false, 'Open map'],
+    ],
+    activity: [
+      ['i-layers', 'Collected into Run 4 from Google Maps.', 'Aug 23'],
+    ],
+    reco: null,
+    findings: [],
+    details: [],
+    score: null,
+  },
+  qualified: {
+    back: 'Back to Research', pos: '1 of 1',
+    name: 'Utah Remodel Works',
+    sub: ['General contractor', 'Salt Lake City, UT'],
+    website: 'general-contractors-utah.com', websiteUrl: 'https://general-contractors-utah.com/',
+    stage: ['Qualified', 'stage-qualified'],
+    primary: 'Prepare outreach',
+    record: [
+      ['Record', 'LEAD-MT5N9LZT-4-6BA8EF'], ['Address', '32 W 200 S #348b, Salt Lake City, UT 84101'],
+      ['Collected', 'Run 4 · Aug 23, 3:41 PM'], ['Audit', 'Deterministic · Aug 23, 10:09 AM'],
+      ['Qualified', 'After manual review'], ['Profile', 'Claimed · 4.9 from 31 reviews'],
+    ],
+    findingCount: 4,
+    next: {
+      title: 'Next step',
+      why: '<strong>Generate the first draft from the saved evidence.</strong> Qualification is complete and no contact has been recorded. The draft should lead with the title and lead-form gaps — the two findings closest to revenue.',
+      actions: [['Prepare outreach', 'btn-primary']],
+    },
+    summaryTitle: 'Opportunity summary',
+    summary: 'Strong offline trust — 4.9 stars across 31 reviews on a claimed listing — paired with a site that undersells it: an overlong, unfocused title, no meta description, and no way to enquire from the homepage despite six separate calls to action. Fixing the title and description plus adding a lead form and LocalBusiness schema is a concrete, quotable package. <a href="#" data-goto="research">Supporting findings below.</a>',
+    contacts: [
+      ['i-phone', 'Phone', '+1 801-893-7755', false, 'Copy'],
+      ['i-mail', 'Email', 'Not collected', true, null],
+      ['i-pin', 'Address', '32 W 200 S #348b, Salt Lake City, UT 84101', false, 'Open map'],
+    ],
+    activity: [
+      ['i-check', 'Qualified after manual review.', 'Aug 23'],
+      ['i-file', 'AI analysis completed — search clarity flagged as the main issue.', 'Aug 23'],
+      ['i-check', 'Website audit finished — 10 pages crawled, 0 broken links.', 'Aug 23'],
+      ['i-layers', 'Collected into Run 4 from Google Maps.', 'Aug 23'],
+    ],
+    reco: {
+      pill: ['Qualified · score 63', 'pill-green'],
+      title: 'Proceed to outreach',
+      text: 'Manual review accepted the audit: the gaps are real, fixable, and tied to enquiry. Deterministic confidence is 90 of 100. The one open question is performance — Lighthouse could not run here — so avoid promising speed work in the first message.',
+    },
+    findings: [
+      { t: 'Homepage title is missing or unfocused', why: 'The title is the single strongest on-page relevance signal. At 116 characters it reads as keyword stuffing, which blunts the exact searches a remodeler needs to win.',
+        ev: [['Source', 'https://general-contractors-utah.com/'], ['Observed', 'Title at 116 characters, unfocused'], ['Captured', 'Aug 23, 10:09 AM']],
+        limit: 'Length is measured; how Google currently rewrites this title was not checked.' },
+      { t: 'Two competing top-level headings', why: 'Two H1s split the page\u2019s subject signal the same way thirteen do — just more quietly. One page, one subject.',
+        ev: [['Source', 'https://general-contractors-utah.com/'], ['Observed', 'Homepage H1 count: 2'], ['Captured', 'Aug 23, 10:09 AM']],
+        limit: 'Automated count only.' },
+      { t: 'Meta description empty', why: 'Same mechanics as any missing description: Google invents the snippet, and invented snippets underperform written ones.',
+        ev: [['Source', 'https://general-contractors-utah.com/'], ['Observed', 'Meta description length: 0 characters'], ['Captured', 'Aug 23, 10:09 AM']],
+        limit: 'None — absence is directly observed.' },
+      { t: 'No enquiry path on the homepage', why: 'This is the finding closest to revenue: six calls to action, zero forms. Every other fix only matters if a visitor can act on it.',
+        ev: [['Source', 'https://general-contractors-utah.com/'], ['Observed', '6 CTA phrases · 0 forms'], ['Captured', 'Aug 23, 10:09 AM']],
+        limit: 'Contact or quote pages were not checked — the gap is homepage-only until verified.' },
+    ],
+    details: [
+      ['Method', 'Deterministic audit · confidence 90'], ['Crawl', '10 pages · 6 internal links · 0 broken'],
+      ['Provider', 'Bright Data Google Maps'], ['Profile', 'Claimed · 4.9 from 31 reviews (97% 4–5 star)'],
+      ['Performance', 'Unknown — Lighthouse could not run in this environment'],
+      ['History', 'Run 4 · one capture, Aug 23'],
+    ],
+    score: ['63', 'of 100 · qualified — past the review band on trust plus fixable gaps.'],
+  },
+};
+
+let cur = 'awaiting';
+let tab = 'overview';
+const $ = (id) => document.getElementById(id);
+
+function renderIdentity(s) {
+  $('backLabel').textContent = s.back;
+  $('pagerPos').textContent = s.pos;
+  $('bizName').textContent = s.name;
+  $('bizSub').innerHTML =
+    `<span>${s.sub[0]}</span><span aria-hidden="true">·</span><span>${s.sub[1]}</span>` +
+    `<a href="${s.websiteUrl}">${icon('i-globe')}${s.website}</a>`;
+  $('stageChip').className = 'stage-chip ' + s.stage[1];
+  $('stageChip').innerHTML = `<i aria-hidden="true"></i>${s.stage[0]}`;
+  $('primaryAction').textContent = s.primary;
+  $('recordGrid').innerHTML = s.record.map(([dt, dd]) =>
+    `<div><dt>${dt}</dt><dd class="${/LEAD-/.test(dd) ? 'mono' : ''}" title="${dd}">${dd}</dd></div>`).join('');
+  $('findingCount').textContent = s.findingCount || '';
+  $('findingCount').style.display = s.findingCount ? '' : 'none';
+}
+
+function contactRow([ic, dt, dd, missing, action]) {
+  return `<div><dt>${dt}</dt><dd class="${missing ? 'missing' : ''}">${missing ? dd + ' — worth capturing on first contact' : dd}</dd>` +
+    (action ? `<button class="mini-btn" type="button">${icon(ic === 'i-phone' ? 'i-copy' : 'i-ext')}${action}</button>` : '') + `</div>`;
+}
+
+function renderOverview(s) {
+  const summary = s.summary
+    ? `<section class="block"><h2>${s.summaryTitle}</h2><p class="summary-text">${s.summary}</p></section>`
+    : `<section class="block"><h2>${s.summaryTitle}</h2><div class="empty-note"><strong>Not assessed yet.</strong><span>No audit has run, so there is no summary to give — and no conclusion to draw. Run the analysis to fill this in.</span><span><button class="btn btn-secondary" type="button">Analyze website</button></span></div></section>`;
+  return `<div class="cols"><main>
+    <section class="block"><h2>${s.next.title}</h2>
+      <div class="next-step"><p class="why">${s.next.why}</p>
+        <div class="row">${s.next.actions.map(([label, cls]) => `<button class="btn ${cls}" type="button">${label}</button>`).join('')}</div>
+      </div>
+    </section>
+    ${summary}
+  </main><aside>
+    <section class="block"><h2>Contact details</h2><dl class="kv">${s.contacts.map(contactRow).join('')}</dl></section>
+    <section class="block"><h2>Recent activity</h2>
+      <ul class="activity">${s.activity.map(([ic, text, time]) => `<li>${icon(ic)}<span>${text}</span><time>${time}</time></li>`).join('')}</ul>
+      <p style="margin:10px 0 0"><button class="text-btn" type="button">View all activity</button></p>
+    </section>
+  </aside></div>`;
+}
+
+function findingCard(f, i) {
+  return `<details class="finding"${i === 0 ? ' open' : ''}><summary><span class="n">${i + 1}</span><span>${f.t}</span>${icon('i-chev')}</summary>
+    <div class="detail">
+      <div><h4>Why it matters</h4><p>${f.why}</p></div>
+      <div><h4>Evidence</h4><dl class="evidence">${f.ev.map(([dt, dd]) =>
+        `<div><dt>${dt}</dt><dd class="${/https?:/.test(dd) ? '' : 'mono'}"${/https?:/.test(dd) ? '' : ' title="' + dd + '"'}>${/https?:/.test(dd) ? `<a href="${dd}">${dd}</a>` : dd}</dd></div>`).join('')}</dl></div>
+      <div class="limit">${icon('i-info')}<span><strong>Limitation:</strong> ${f.limit}</span></div>
+    </div></details>`;
+}
+
+function renderResearch(s) {
+  if (!s.reco) {
+    return `<section class="block"><h2>Research</h2>
+      <div class="empty-note"><strong>No research yet.</strong>
+      <span>Findings, evidence, and the recommendation will appear here after the first audit. Nothing is wrong — this record simply has not been analyzed.</span>
+      <span><button class="btn btn-secondary" type="button">Analyze website</button></span></div></section>`;
+  }
+  return `
+    ${s.dup ? `<div class="notice dup">${icon('i-layers')}<span class="grow"><strong>Possible duplicate.</strong> ${s.dup}</span><button class="btn btn-secondary" type="button">Compare records</button></div>` : ''}
+    <section class="block"><h2>Recommendation</h2>
+      <div class="reco"><div class="verdict"><span class="pill ${s.reco.pill[1]}"><i></i>${s.reco.pill[0]}</span><strong>${s.reco.title}</strong></div>
+      <p>${s.reco.text}</p></div>
+    </section>
+    <section class="block"><h2>Findings</h2>
+      <p class="lede">Each finding states what was observed, why it matters, and what remains uncertain. Open one to inspect its evidence.</p>
+      ${s.findings.map(findingCard).join('')}
+    </section>
+    <section class="block"><h2>Score</h2>
+      <div class="score-line"><strong>${s.score[0]}</strong><span>${s.score[1]}</span></div>
+    </section>
+    <details class="details-group"><summary>${icon('i-file')}Research details${icon('i-chev')}</summary>
+      <div class="grid">${s.details.map(([dt, dd]) => `<div><dt>${dt}</dt><dd>${dd}</dd></div>`).join('')}</div>
+    </details>`;
+}
+
+function renderReserved(title, body) {
+  return `<section class="block"><h2>${title}</h2><div class="reserved"><strong>Designed next.</strong>${body}</div></section>`;
+}
+
+function render() {
+  const s = STATES[cur];
+  renderIdentity(s);
+  document.querySelectorAll('.tabs [role="tab"]').forEach((b) =>
+    b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
+  const el = $('content');
+  if (tab === 'overview') el.innerHTML = renderOverview(s);
+  else if (tab === 'research') el.innerHTML = renderResearch(s);
+  else if (tab === 'outreach') el.innerHTML = renderReserved('Outreach', 'Drafts, contact channels, attempts, replies, and follow-up will live here — reusing the finding and evidence structure above rather than duplicating it.');
+  else el.innerHTML = renderReserved('Activity', 'Notes and a chronological history of research, decisions, outreach, and stage changes will live here, fed by the same events already shown under Recent activity.');
+  el.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', (ev) => {
+    ev.preventDefault(); setTab('research');
+  }));
+  window.scrollTo(0, 0);
+}
+function setTab(next) {
+  tab = next; render();
+  document.querySelector('.tabs').scrollIntoView({ block: 'start' });
+}
+document.querySelectorAll('.proto-bar [data-state]').forEach((b) => b.addEventListener('click', () => {
+  cur = b.dataset.state; tab = 'overview';
+  document.querySelectorAll('.proto-bar [data-state]').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  render();
+}));
+document.querySelectorAll('.tabs [role="tab"]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
+render();
+</script>
+</body>
+</html>

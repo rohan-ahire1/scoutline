@@ -81,9 +81,66 @@ export function assertNoInventedClaims(text, where = 'outreach') {
   return true
 }
 
-export function createLocalOutreach(lead) {
+export const DEFAULT_OFFER = {
+  version: 1,
+  service: 'Website improvements for local service businesses',
+  targetCategories: [],
+  geography: '',
+  exclusions: '',
+  proofPoints: [],
+  callToAction: 'Would it be useful if I shared a short outline of the change?',
+  tone: 'direct, calm, helpful, low-pressure',
+  channels: ['email', 'phone', 'form'],
+}
+
+export function resolveOffer(custom) {
+  if (!custom || typeof custom !== 'object') return { ...DEFAULT_OFFER }
+  const offer = { ...DEFAULT_OFFER, ...custom }
+  if (!Array.isArray(offer.proofPoints)) offer.proofPoints = []
+  if (!Array.isArray(offer.channels) || !offer.channels.length) offer.channels = ['email', 'phone', 'form']
+  return offer
+}
+
+export function offerVersionOf(offer) {
+  return offer?.version ?? 1
+}
+
+// Channel-specific drafts (M5). Rules-based, evidence-only: the observation
+// comes from an accepted review when one exists, else the top saved finding.
+// The CTA and proof come from the configured offer; unconfirmed claims stay
+// blank. Phone-only leads get a phone action, never a broken email action.
+export function buildChannelDrafts(lead, { observation = null, offer = null, contact = null } = {}) {
+  const resolved = resolveOffer(offer)
+  const obs = String(observation || lead.mainIssue || (lead.problems || [])[0] || '').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '')
+  const detail = obs ? obs.charAt(0).toLowerCase() + obs.slice(1) : 'something on the website that could make the next step easier for visitors'
+  const cta = String(resolved.callToAction || DEFAULT_OFFER.callToAction).trim()
+  const service = String(resolved.service || '').trim()
+  const serviceBit = service ? ` I help with ${service.charAt(0).toLowerCase() + service.slice(1)}.` : ''
+  const proof = (resolved.proofPoints || []).filter(Boolean).slice(0, 2)
+  const proofBit = proof.length ? ` For context: ${proof.join('; ')}.` : ''
+  const email = `Hi — I looked at ${lead.company}'s website and noticed ${detail}.${serviceBit}${proofBit} ${cta}`
+  const phoneContact = contact?.kind === 'phone' ? contact.value : String(lead.phone || '').trim()
+  const phone = {
+    opener: `Hi, this is Rohan — I had a quick look at ${lead.company}'s website and noticed ${detail}. Do you have 30 seconds?`,
+    question: cta,
+    notes: `Observed: ${obs || 'no single verified observation yet'}.${serviceBit}${phoneContact && phoneContact !== 'Not collected' ? ` Call ${phoneContact}.` : ''} Stick to the configured next step; no pricing or outcome promises.`,
+  }
+  const formPage = contact?.kind === 'contactPage' || contact?.kind === 'booking' || contact?.kind === 'form'
+    ? contact.value
+    : (Array.isArray(lead.contactCandidates) ? (lead.contactCandidates.find((c) => c.kind === 'contactPage' || c.kind === 'booking') || {}).value : null)
+  const form = {
+    message: `Hi — I noticed ${detail} on your website.${serviceBit}${proofBit} ${cta} — submitting here because this looked like the best contact route.`,
+    pageToOpen: formPage || (lead.website ? `https://${String(lead.website).replace(/^https?:\/\//, '')}` : null),
+    note: 'Open the page manually and paste the message. Never submit automatically.',
+  }
+  for (const text of [email, phone.opener, phone.notes, form.message]) assertNoInventedClaims(text, 'channel draft')
+  return { email, phone, form, observation: obs || null, words: { email: wordCount(email), phoneOpener: wordCount(phone.opener), formMessage: wordCount(form.message) } }
+}
+
+export function createLocalOutreach(lead, { offer = null, observation = null } = {}) {
   const observations = buildObservations(lead)
-  const generation = { source: 'rules', model: null, generatedAt: new Date().toISOString(), auditId: lead.currentAuditId || null, targets: { Concise: 50, Balanced: 110, Detailed: 210 }, observationIds: observations.map((item) => item.id) }
+  const resolved = resolveOffer(offer)
+  const generation = { source: 'rules', model: null, generatedAt: new Date().toISOString(), auditId: lead.currentAuditId || null, offerVersion: offerVersionOf(resolved), targets: { Concise: 50, Balanced: 110, Detailed: 210 }, observationIds: observations.map((item) => item.id) }
   if (!observations.length) {
     return {
       subject: `Quick idea for ${lead.company}`,
@@ -104,12 +161,19 @@ export function createLocalOutreach(lead) {
     return `${index + 1}. ${finding}\nWhy it matters: ${advice.why}\nWhat I would change: I would ${advice.change}.`
   }).join('\n\n')
   const countNoun = findings.length === 1 ? 'one opportunity stood out' : `${findings.length} opportunities stood out`
+  // Offer-configured close: no free-homepage promise, no pricing, no proof
+  // unless the offer supplies it. Unconfirmed claims stay blank.
+  const cta = String(resolved.callToAction || DEFAULT_OFFER.callToAction).trim()
+  const service = String(resolved.service || '').trim()
+  const serviceBit = service ? ` I help with ${service.charAt(0).toLowerCase() + service.slice(1)}.` : ''
+  const proof = (resolved.proofPoints || []).filter(Boolean).slice(0, 1)
+  const proofBit = proof.length ? ` For context: ${proof[0]}.` : ''
   const drafts = {
-    Concise: `Hi — I reviewed ${lead.company}'s website and noticed ${first.toLowerCase()}. I have a straightforward way to improve that and make the next step easier for visitors. If useful, I can send a free homepage redesign so you can judge the direction before deciding anything. Would you like to see it?`,
+    Concise: `Hi — I reviewed ${lead.company}'s website and noticed ${first.toLowerCase()}.${serviceBit} I have a straightforward way to improve that and make the next step easier for visitors.${proofBit} ${cta}`,
     Balanced: second
-      ? `Hi —\n\nI reviewed ${lead.company}'s website and two opportunities stood out:\n\n• ${first}\n• ${second}\n\nThese issues can make it harder for visitors to understand the offer and take the next step, especially on mobile. I would focus a redesign on ${mainIssue}, one clear primary action, stronger proof near the enquiry point, and a simpler path from interest to contact.\n\nIf useful, I can create a free homepage concept showing how those changes could work together. You can review the direction before deciding whether to move forward. Would you like me to send it?`
-      : `Hi —\n\nI reviewed ${lead.company}'s website and ${countNoun}:\n\n• ${first}\n\nThis can make it harder for visitors to understand the offer and take the next step. I would focus a redesign on ${mainIssue} and a simpler path from interest to contact.\n\nIf useful, I can create a free homepage concept showing how that change could work. You can review the direction before deciding whether to move forward. Would you like me to send it?`,
-    Detailed: `Hi —\n\nI reviewed ${lead.company}'s website and prepared a short report on the clearest opportunities:\n\n${detailedFindings}\n\nRecommended direction\nI would build the redesign around ${mainIssue}, a clearer content hierarchy, stronger proof beside the key decision points, and a simpler route from the first visit to an enquiry. The goal would be to preserve the useful business information already present while removing friction and making the offer easier to understand on mobile and desktop.\n\nIf useful, I can turn these findings into a free homepage concept. You can review the proposed structure, message, and visual direction before deciding whether any paid work makes sense. Would you like me to send it over?`,
+      ? `Hi —\n\nI reviewed ${lead.company}'s website and two opportunities stood out:\n\n• ${first}\n• ${second}\n\nThese issues can make it harder for visitors to understand the offer and take the next step, especially on mobile.${serviceBit} I would focus a redesign on ${mainIssue}, one clear primary action, stronger proof near the enquiry point, and a simpler path from interest to contact.${proofBit}\n\n${cta}`
+      : `Hi —\n\nI reviewed ${lead.company}'s website and ${countNoun}:\n\n• ${first}\n\nThis can make it harder for visitors to understand the offer and take the next step.${serviceBit} I would focus a redesign on ${mainIssue} and a simpler path from interest to contact.${proofBit}\n\n${cta}`,
+    Detailed: `Hi —\n\nI reviewed ${lead.company}'s website and prepared a short report on the clearest opportunities:\n\n${detailedFindings}\n\nRecommended direction\nI would build the redesign around ${mainIssue}, a clearer content hierarchy, stronger proof beside the key decision points, and a simpler route from the first visit to an enquiry.${serviceBit} The goal would be to preserve the useful business information already present while removing friction and making the offer easier to understand on mobile and desktop.${proofBit}\n\n${cta}`,
   }
   for (const [version, text] of Object.entries(drafts)) assertNoInventedClaims(text, `local ${version} draft`)
   return {
@@ -259,7 +323,8 @@ export function getOutreachConfig(options = {}) {
 
 export async function generateOutreach(lead, options = {}) {
   const config = getOutreachConfig(options)
-  if (!config.configured || options.forceRules) return createLocalOutreach(lead)
+  const offer = resolveOffer(options.offer || null)
+  if (!config.configured || options.forceRules) return createLocalOutreach(lead, { offer, observation: options.observation || null })
   const client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: 45_000, maxRetries: 2 })
   const research = {
     company: lead.company,
@@ -269,8 +334,15 @@ export async function generateOutreach(lead, options = {}) {
     issueDetail: lead.issueDetail,
     findings: (lead.problems || []).slice(0, 6),
     evidence: (lead.evidence || []).slice(0, 10),
+    acceptedObservation: options.observation || null,
+    offer: {
+      service: offer.service,
+      callToAction: offer.callToAction,
+      proofPoints: (offer.proofPoints || []).slice(0, 3),
+      tone: offer.tone,
+    },
   }
-  const developerPrompt = 'Write evidence-based first-contact sales emails for a small web design service. Never invent facts, metrics, people, revenue, or technical details. Keep the tone direct, calm, helpful, and low-pressure. Offer a free homepage concept and require a manual human review before sending.'
+  const developerPrompt = 'Write evidence-based first-contact sales emails for a small web design service. Never invent facts, metrics, people, revenue, pricing, guarantees, or technical details. Use only the configured call to action and proof points supplied in the brief. Keep the tone direct, calm, helpful, and low-pressure. Require a manual human review before sending.'
   const userPrompt = `Create three meaningfully different outreach versions from this saved research:\n${JSON.stringify(research, null, 2)}\n\nLength guidance—natural phrasing and clarity matter more than an exact count:\nConcise: aim for about 50 words, using only the one or two most important findings.\nBalanced: aim for about 110 words, using two or three findings with a compact proposed direction.\nDetailed: aim for about 210 words, formatted as a small report. Cover three findings and, for each, explain why it matters and what should change.\nAll versions must end with one simple question. Do not mention an AI, crawler, score, or audit software.`
   const requestModel = (prompt) => config.provider === 'meta'
     ? client.chat.completions.create({

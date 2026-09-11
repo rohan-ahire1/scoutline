@@ -5,13 +5,14 @@ import { mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { auditWebsite } from './services/audit.js'
+import { auditWebsite, mergeContactCandidates } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
-import { generateOutreach, getOutreachConfig } from './services/outreach.js'
+import { buildChannelDrafts, generateOutreach, getOutreachConfig } from './services/outreach.js'
 import { businessIdentityFor, describeGeographyCoverage, DiscoveryError, downloadDiscovery, filterSavedClientsByLocation, getBrightDataConfig, legacySearchFromSettings, mapDiscoveryRecord, pollDiscovery, reconcileRecords, resolveSearchDefinition, triggerDiscovery, triggerRecordRefresh } from './services/discovery.js'
 import { applyLeadWorkflowChanges, normalizeLeadWorkflow } from './workflow.js'
-import { ATTEMPT_OUTCOMES, CONTACT_OUTCOMES, NEXT_TASK_TYPES, TASK_OWNERS, TASK_STATUSES, briefFindings, briefReadiness, buildBriefMarkdown, isValidDayString, reviewStatus } from './services/brief.js'
+import { ATTEMPT_OUTCOMES, CONTACT_OUTCOMES, NEXT_TASK_TYPES, TASK_OWNERS, TASK_STATUSES, briefFindings, briefReadiness, buildBriefMarkdown, buildProspectBrief, isValidDayString, reviewStatus } from './services/brief.js'
+import { buildQueue, computeReadiness, explainReadiness } from './services/readiness.js'
 import { scoreLeadValue } from './services/leadValue.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
 import { canRetryJob, classifyJobError, findTimedOutJobs, isActiveJobStatus, isTerminalJobStatus } from './services/jobControl.js'
@@ -121,6 +122,17 @@ const defaultSettings = {
   crawlMaxAttempts: 60,
   crawlTimeLimitMs: 120000,
   leadValueWeights: { need: 0.35, businessFit: 0.3, reachability: 0.2, timing: 0.15 },
+  offer: {
+    version: 1,
+    service: 'Website improvements for local service businesses',
+    targetCategories: ['Roofing', 'HVAC', 'Flooring', 'Plumbing', 'Electrical'],
+    geography: 'Salt Lake City, Utah',
+    exclusions: '',
+    proofPoints: [],
+    callToAction: 'Would it be useful if I shared a short outline of the change?',
+    tone: 'direct, calm, helpful, low-pressure',
+    channels: ['email', 'phone', 'form'],
+  },
   jobTimeoutMs: 600000,
   discoveryPollTimeoutMs: 1800000,
   runTimeoutMs: 7200000,
@@ -165,7 +177,7 @@ const ALLOWED_OUTREACH_VERSIONS = new Set(['Concise','Balanced','Detailed'])
 const ALLOWED_OUTREACH_STATUS = new Set(['Draft','Contacted','Replied','Meeting','Insufficient evidence'])
 const ALLOWED_MANUAL_ACTIONS = new Set(['refresh','audit','muse','outreach','full'])
 const ALLOWED_SETTINGS_KEYS = new Set(Object.keys(defaultSettings))
-const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','nextTask','doNotContact','briefRationale','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale','website'])
+const ALLOWED_LEAD_PATCH_KEYS = new Set(['qualified','salesStage','qualifiedAt','notes','outreachSubject','outreachVersion','outreachDraft','outreachDrafts','outreachStatus','contactedAt','contract','lostReason','nextAction','nextTask','doNotContact','briefRationale','labels','category','location','phone','email','address','rating','reviews','sourceUrl','researchStatus','rev','museStale','outreachStale','website','contactCandidates','duplicateReviewed','outreachChannels','outreachProvenance','starred'])
 
 function isNonEmptyString(v, max = 120) {
   return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
@@ -341,7 +353,7 @@ function leadMarkdown(lead) {
   const list = (items = []) => items.length ? items.map((item) => `- ${item}`).join('\n') : '- None recorded'
   const metric = (key) => lead.businessIntelligence?.companyMetrics?.[key]?.value ?? 'Unknown — no source connected'
   const muse = lead.museAnalysis?.status === 'Completed'
-    ? `\n## Muse synthesis (advisory${lead.museAnalysis.stale ? ' — STALE: a newer audit completed after this synthesis' : ''})\n\n- Recommendation: ${lead.museAnalysis.qualificationRecommendation}\n- Rationale: ${lead.museAnalysis.qualificationRationale}\n- Model: ${lead.museAnalysis.generation?.model || 'Not recorded'}\n- Generated: ${lead.museAnalysis.generation?.generatedAt || 'Not recorded'}\n\n${lead.museAnalysis.summary}\n\n### Prioritized opportunities\n\n${(lead.museAnalysis.topOpportunities || []).map((item) => `- **${item.severity} — ${item.title}:** ${item.evidence} Recommendation: ${item.recommendation}`).join('\n') || '- None recorded'}\n\n### Strengths\n\n${list(lead.museAnalysis.strengths)}\n\n### Unknowns\n\n${list(lead.museAnalysis.unknowns)}\n\nMuse is an evidence-synthesis aid. It does not alter the deterministic opportunity score.\n`
+    ? `\n## AI synthesis (advisory${lead.museAnalysis.stale ? ' — STALE: a newer audit completed after this synthesis' : ''})\n\n- Recommendation: ${lead.museAnalysis.qualificationRecommendation}\n- Rationale: ${lead.museAnalysis.qualificationRationale}\n- Model: ${lead.museAnalysis.generation?.model || 'Not recorded'}\n- Generated: ${lead.museAnalysis.generation?.generatedAt || 'Not recorded'}\n\n${lead.museAnalysis.summary}\n\n### Prioritized opportunities\n\n${(lead.museAnalysis.topOpportunities || []).map((item) => `- **${item.severity} — ${item.title}:** ${item.evidence} Recommendation: ${item.recommendation}`).join('\n') || '- None recorded'}\n\n### Strengths\n\n${list(lead.museAnalysis.strengths)}\n\n### Unknowns\n\n${list(lead.museAnalysis.unknowns)}\n\nAI is an evidence-synthesis aid. It does not alter the deterministic opportunity score.\n`
     : ''
   return `# ${lead.company}\n\n` +
     (lead.currentAuditId ? `## Audit version\n\n- Audit ID: ${lead.currentAuditId}${lead.auditVersion != null ? ` (version ${lead.auditVersion})` : ''}\n- Provenance: versioned audit artifacts\n\n` : `## Audit version\n\n- Audit ID: legacy (unversioned)\n- Provenance: unknown — pre-versioning record\n\n`) +
@@ -814,7 +826,7 @@ backfillLeadIdentity()
 const manualActionLabels = {
   refresh: 'Refresh business data',
   audit: 'Run website audit',
-  muse: 'Run Muse analysis',
+  muse: 'Run AI analysis',
   outreach: 'Generate outreach',
   full: 'Run full workflow',
 }
@@ -880,8 +892,8 @@ function queueMuseSynthesis(lead, payload = {}) {
     ...lead,
     museAnalysis: { ...(lead.museAnalysis || {}), status: 'Queued', error: null },
     museJob: { id: job.id, status: 'Queued', progress: 0 },
-    ...(payload.manualAction ? { manualRun: manualRunState(lead, payload.manualAction, { reset: !payload.continueRun, status: 'Queued', progress: payload.manualAction === 'full' ? 72 : 0, phase: 'Muse analysis queued', jobId: job.id }) } : {}),
-    updated: 'Muse synthesis queued',
+    ...(payload.manualAction ? { manualRun: manualRunState(lead, payload.manualAction, { reset: !payload.continueRun, status: 'Queued', progress: payload.manualAction === 'full' ? 72 : 0, phase: 'AI analysis queued', jobId: job.id }) } : {}),
+    updated: 'AI synthesis queued',
   })
   recordEvent('lead', lead.id, 'muse_synthesis_queued', { jobId: job.id, auditJobId: payload.auditJobId || null })
   return { lead: updated, job, alreadyQueued: false }
@@ -965,6 +977,9 @@ async function runAuditJob(job) {
     outreachStaleReason: draftsStale ? `A newer audit (${auditId}) completed after these drafts.` : current.outreachStaleReason || null,
     updated: 'Just now',
   })
+  // Additive contact merge: re-audits never overwrite manual entries and
+  // repeated extraction never multiplies candidates.
+  pendingBase.contactCandidates = mergeContactCandidates(current.contactCandidates || [], result.contactCandidates || [])
   // Commercial value is rescored on every completed audit from saved evidence.
   pendingBase.leadValue = scoreLeadValue(pendingBase, { weights: readSettings().leadValueWeights })
   // Persist versioned artifacts BEFORE the DB pointer advertises them. A
@@ -1003,12 +1018,12 @@ async function runAuditJob(job) {
       const current = readLead(job.leadId) || finished
       return saveLead({
         ...current,
-        manualRun: manualRunState(current, manualAction || 'full', { status: 'Completed', progress: 100, phase: 'Audit complete with template drafts — Muse is not configured', completedAt: nowIso() }),
+        manualRun: manualRunState(current, manualAction || 'full', { status: 'Completed', progress: 100, phase: 'Audit complete with template drafts — AI is not configured', completedAt: nowIso() }),
         updated: 'Just now',
       })
     }
   }
-  if (manualAction === 'full') return saveLead({ ...updated, manualRun: manualRunState(updated, 'full', { status: 'Completed', progress: 100, phase: 'Website audit complete — Muse is not configured', completedAt: nowIso() }) })
+  if (manualAction === 'full') return saveLead({ ...updated, manualRun: manualRunState(updated, 'full', { status: 'Completed', progress: 100, phase: 'Website audit complete — AI is not configured', completedAt: nowIso() }) })
   return updated
 }
 
@@ -1018,14 +1033,41 @@ async function generateAndSaveOutreach(lead, { manualAction = null } = {}) {
   const started = readLead(lead.id) || lead
   const startedSnap = { rev: getRev(started), outreachDraft: started.outreachDraft, outreachVersion: started.outreachVersion }
   const generationStartedAt = nowIso()
-  const generated = await generateOutreach(started)
+  const offer = readSettings().offer || null
+  const accepted = reviewStatus(started).accepted?.[0] || null
+  const observation = accepted?.finding?.detail || started.mainIssue || (started.problems || [])[0] || null
+  const primaryContact = (started.contactCandidates || []).find((c) => ['email', 'phone'].includes(c.kind)) || null
+  const generated = await generateOutreach(started, { offer, observation })
   // A failed provider throws before any save: previous drafts survive and the caller surfaces retry/manual editing.
-  generated.generation = { ...generated.generation, generatedAt: generationStartedAt }
+  generated.generation = { ...generated.generation, generatedAt: generationStartedAt, offerVersion: offer?.version ?? 1 }
+  const provenance = {
+    opportunityKey: accepted?.findingKey || null,
+    opportunityAccepted: Boolean(accepted),
+    auditId: started.currentAuditId || null,
+    offerVersion: offer?.version ?? 1,
+    contactId: primaryContact?.id || null,
+    contactKind: primaryContact?.kind || null,
+    generatedAt: generationStartedAt,
+  }
   let completionType = 'apply'
   const updated = writeJobCompletion(lead.id, (current) => {
     const decision = resolveOutreachCompletion({ started: startedSnap, current, generated, selectedVersion: current.outreachVersion })
     completionType = decision.type
-    const patch = { ...decision.patch, outreachStale: false, outreachStaleReason: null }
+    const patch = { ...decision.patch, outreachStale: false, outreachStaleReason: null, outreachProvenance: provenance }
+    if (decision.type === 'apply' && !generated.insufficientEvidence) {
+      // Channel drafts (email/phone/form) sit alongside the versioned email
+      // drafts; lengths are labelled from actual word counts.
+      const channels = buildChannelDrafts(current, { observation: accepted?.finding?.detail || null, offer, contact: primaryContact })
+      patch.outreachChannels = {
+        email: generated.drafts?.Concise || channels.email,
+        phone: `${channels.phone.opener}\n${channels.phone.question}\nNotes: ${channels.phone.notes}`,
+        form: `${channels.form.message}\nPage to open manually: ${channels.form.pageToOpen || 'see contact candidates'}\n${channels.form.note}`,
+      }
+      patch.outreachChannels._words = {
+        ...Object.fromEntries(Object.entries(generated.drafts || {}).map(([k, v]) => [k, String(v || '').trim().split(/\s+/).filter(Boolean).length])),
+        ...channels.words,
+      }
+    }
     if (manualAction) {
       patch.manualRun = manualRunState(current, manualAction, {
         status: 'Completed', progress: 100,
@@ -1043,7 +1085,7 @@ async function generateAndSaveOutreach(lead, { manualAction = null } = {}) {
 async function runSynthesisJob(job) {
   const lead = readLead(job.leadId)
   if (!lead) throw new Error('Lead not found')
-  if (lead.opportunityScore == null) throw new Error('A completed website audit is required before Muse synthesis')
+  if (lead.opportunityScore == null) throw new Error('A completed website audit is required before AI synthesis')
   const manualAction = job.payload.manualAction || null
   if (!getOutreachConfig().configured) {
     // Synthesis is optional: without AI the deterministic review stands on
@@ -1052,19 +1094,19 @@ async function runSynthesisJob(job) {
     // A full workflow still finishes with supported fallback outreach.
     const skipped = saveLead({
       ...lead,
-      museAnalysis: { ...(lead.museAnalysis || {}), status: 'Skipped', skipped: true, skipReason: 'Muse is not configured; deterministic audit stands', error: null },
-      museJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Skipped — Muse is not configured' },
-      ...(manualAction && job.payload.workflow !== 'full' ? { manualRun: manualRunState(lead, manualAction, { status: 'Completed', progress: 100, phase: 'Muse is not configured — audit stands', completedAt: nowIso() }) } : {}),
+      museAnalysis: { ...(lead.museAnalysis || {}), status: 'Skipped', skipped: true, skipReason: 'AI is not configured; deterministic audit stands', error: null },
+      museJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Skipped — AI is not configured' },
+      ...(manualAction && job.payload.workflow !== 'full' ? { manualRun: manualRunState(lead, manualAction, { status: 'Completed', progress: 100, phase: 'AI is not configured — audit stands', completedAt: nowIso() }) } : {}),
       updated: 'Just now',
     })
-    updateJob(job.id, { status: 'Completed', progress: 100, result: { skipped: true, reason: 'Muse is not configured' }, error: null })
-    recordEvent('lead', lead.id, 'muse_synthesis_skipped', { jobId: job.id, reason: 'Muse is not configured' })
+    updateJob(job.id, { status: 'Completed', progress: 100, result: { skipped: true, reason: 'AI is not configured' }, error: null })
+    recordEvent('lead', lead.id, 'muse_synthesis_skipped', { jobId: job.id, reason: 'AI is not configured' })
     if (job.payload.workflow === 'full' && !isRunCancelled(job.runId)) {
       const finished = await generateAndSaveOutreach(skipped, { manualAction: manualAction || 'full' })
       const current = readLead(job.leadId) || finished
       return saveLead({
         ...current,
-        manualRun: manualRunState(current, manualAction || 'full', { status: 'Completed', progress: 100, phase: 'Audit complete with template drafts — Muse is not configured', completedAt: nowIso() }),
+        manualRun: manualRunState(current, manualAction || 'full', { status: 'Completed', progress: 100, phase: 'Audit complete with template drafts — AI is not configured', completedAt: nowIso() }),
         updated: 'Just now',
       })
     }
@@ -1075,7 +1117,7 @@ async function runSynthesisJob(job) {
     museAnalysis: { ...(lead.museAnalysis || {}), status: 'Running', error: null },
     museJob: { id: job.id, status: 'Running', progress: 20, phase: 'Reading saved evidence' },
     ...(manualAction ? { manualRun: manualRunState(lead, manualAction, { status: 'Running', progress: manualAction === 'full' ? 76 : 20, phase: 'Reading saved evidence', jobId: job.id }) } : {}),
-    updated: 'Muse is analyzing evidence',
+    updated: 'AI is analyzing evidence',
   })
   updateJob(job.id, { progress: 20 })
   // Synthesis reads the explicit audit version the pointer names. A previous
@@ -1093,9 +1135,9 @@ async function runSynthesisJob(job) {
   const activeLead = readLead(job.leadId)
   if (activeLead) saveLead({
     ...activeLead,
-    museJob: { id: job.id, status: 'Running', progress: 45, phase: 'Synthesizing with Muse' },
-    ...(manualAction ? { manualRun: manualRunState(activeLead, manualAction, { status: 'Running', progress: manualAction === 'full' ? 84 : 45, phase: 'Synthesizing with Muse', jobId: job.id }) } : {}),
-    updated: 'Muse is synthesizing findings',
+    museJob: { id: job.id, status: 'Running', progress: 45, phase: 'Synthesizing with AI' },
+    ...(manualAction ? { manualRun: manualRunState(activeLead, manualAction, { status: 'Running', progress: manualAction === 'full' ? 84 : 45, phase: 'Synthesizing with AI', jobId: job.id }) } : {}),
+    updated: 'AI is synthesizing findings',
   })
   const synthesisStartedAt = nowIso()
   throwIfJobCancelled(job.id)
@@ -1114,7 +1156,7 @@ async function runSynthesisJob(job) {
         museJob: { id: job.id, status: 'Completed', progress: 100, phase: 'Synthesis complete' },
         ...(manualAction ? { manualRun: manualRunState(current, manualAction, manualAction === 'full'
           ? { status: 'Running', progress: 92, phase: 'Generating outreach drafts', jobId: job.id }
-          : { status: 'Completed', progress: 100, phase: 'Muse analysis complete', jobId: job.id, completedAt: nowIso() }) } : {}),
+          : { status: 'Completed', progress: 100, phase: 'AI analysis complete', jobId: job.id, completedAt: nowIso() }) } : {}),
         updated: 'Just now',
       }
     })
@@ -1602,6 +1644,25 @@ app.patch('/api/settings', (req, res) => {
   if ('discoveryLatitude' in body) { const n = Number(body.discoveryLatitude); if (!Number.isFinite(n) || n < -90 || n > 90) push('discoveryLatitude', 'Must be a number -90 to 90') }
   if ('discoveryLongitude' in body) { const n = Number(body.discoveryLongitude); if (!Number.isFinite(n) || n < -180 || n > 180) push('discoveryLongitude', 'Must be a number -180 to 180') }
   if ('discoveryZoom' in body) { const n = clampInt(body.discoveryZoom, 12, 16); if (n == null) push('discoveryZoom', 'Must be an integer 12-16') }
+  if ('offer' in body) {
+    const o = body.offer
+    if (!o || typeof o !== 'object' || Array.isArray(o)) push('offer', 'Must be an object')
+    else {
+      if ('service' in o && typeof o.service !== 'string') push('offer.service', 'Must be a string')
+      else if ('service' in o && o.service.length > 500) push('offer.service', 'Must be <=500 chars')
+      if ('geography' in o && typeof o.geography !== 'string') push('offer.geography', 'Must be a string')
+      if ('exclusions' in o && typeof o.exclusions !== 'string') push('offer.exclusions', 'Must be a string')
+      if ('callToAction' in o && typeof o.callToAction !== 'string') push('offer.callToAction', 'Must be a string')
+      else if ('callToAction' in o && o.callToAction.length > 300) push('offer.callToAction', 'Must be <=300 chars')
+      if ('tone' in o && typeof o.tone !== 'string') push('offer.tone', 'Must be a string')
+      if ('proofPoints' in o && !Array.isArray(o.proofPoints)) push('offer.proofPoints', 'Must be an array')
+      else if (Array.isArray(o.proofPoints)) o.proofPoints.forEach((p, i) => { if (typeof p !== 'string' || !p.trim() || p.length > 300) push(`offer.proofPoints[${i}]`, 'Each proof point must be 1-300 chars') })
+      if ('channels' in o && (!Array.isArray(o.channels) || o.channels.some((c) => !['email', 'phone', 'form'].includes(c)))) push('offer.channels', 'Must be an array of email, phone, form')
+      if ('targetCategories' in o && !Array.isArray(o.targetCategories)) push('offer.targetCategories', 'Must be an array')
+      // Editing the offer bumps its version so draft provenance stays honest.
+      o.version = Number.isInteger(o.version) && o.version > 0 ? o.version : Date.now()
+    }
+  }
   if (vdetails.length) return badRequest(res, null, 'Invalid settings values', vdetails)
 
   // cross-field: deepAuditLimit should not exceed resultLimit if both present
@@ -1611,6 +1672,21 @@ app.patch('/api/settings', (req, res) => {
 
   const upsert = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
   db.transaction((entries) => entries.forEach(([key, value]) => { if (ALLOWED_SETTINGS_KEYS.has(key)) upsert.run(key, JSON.stringify(value)) }))(Object.entries(body))
+  if ('offer' in body) {
+    // A new offer version stales existing drafts without discarding them or
+    // human edits: regeneration is offered, never forced.
+    const version = body.offer?.version
+    let staled = 0
+    for (const lead of readRows('leads')) {
+      if (!lead.outreachDraft && !Object.keys(lead.outreachDrafts || {}).length) continue
+      if (lead.outreachProvenance?.offerVersion === version) continue
+      saveLead({ ...lead, outreachStale: true, outreachStaleReason: `Offer settings changed (version ${version ?? 'unknown'}). Regenerate to use the new CTA, or keep the reviewed draft.` })
+      recordEvent('lead', lead.id, 'outreach_staled', { reason: 'offer_changed', offerVersion: version ?? null })
+      staled += 1
+    }
+    const settings = readSettings()
+    return res.json({ ...settings, _offerStaleDrafts: staled })
+  }
   res.json(readSettings())
 })
 
@@ -1785,6 +1861,31 @@ app.patch('/api/leads/:id', (req, res) => {
   if ('location' in body && typeof body.location !== 'string') push('location', 'Must be a string')
   if ('phone' in body && body.phone != null && String(body.phone).trim() && String(body.phone).trim() !== 'Not collected' && !isPhoneLike(String(body.phone))) push('phone', 'Invalid phone format')
   if ('email' in body && body.email != null && String(body.email).trim() && String(body.email).trim() !== 'Not collected' && !isEmail(String(body.email))) push('email', 'Invalid email format')
+  if ('duplicateReviewed' in body && typeof body.duplicateReviewed !== 'boolean') push('duplicateReviewed', 'Must be a boolean')
+  if ('starred' in body && typeof body.starred !== 'boolean') push('starred', 'Must be a boolean')
+  if ('contactCandidates' in body) {
+    if (!Array.isArray(body.contactCandidates)) push('contactCandidates', 'Must be an array')
+    else if (body.contactCandidates.length > 50) push('contactCandidates', 'Max 50 contact candidates')
+    else body.contactCandidates.forEach((c, i) => {
+      if (!c || typeof c !== 'object' || Array.isArray(c)) { push(`contactCandidates[${i}]`, 'Must be an object'); return }
+      if (!['email','phone','form','contactPage','booking'].includes(c.kind)) push(`contactCandidates[${i}].kind`, 'Must be email, phone, form, contactPage or booking')
+      if (!isStringWithLength(String(c.value || ''), 1, 500)) push(`contactCandidates[${i}].value`, 'Value must be 1-500 chars')
+      if (c.source != null && !['website','provider','manual'].includes(c.source)) push(`contactCandidates[${i}].source`, 'Must be website, provider or manual')
+    })
+  }
+  if ('outreachChannels' in body) {
+    const ch = body.outreachChannels
+    if (ch !== null && (typeof ch !== 'object' || Array.isArray(ch))) push('outreachChannels', 'Must be an object or null')
+    else if (ch && typeof ch === 'object') {
+      for (const k of Object.keys(ch)) if (!['email','phone','form'].includes(k)) push(`outreachChannels.${k}`, 'Unknown channel key')
+      for (const k of ['email','phone','form']) if (k in ch && ch[k] != null && typeof ch[k] !== 'string') push(`outreachChannels.${k}`, 'Must be a string')
+      for (const k of ['email','phone','form']) if (k in ch && typeof ch[k] === 'string' && ch[k].length > 10000) push(`outreachChannels.${k}`, 'Must be <=10000 characters')
+    }
+  }
+  if ('outreachProvenance' in body) {
+    const p = body.outreachProvenance
+    if (p !== null && (typeof p !== 'object' || Array.isArray(p))) push('outreachProvenance', 'Must be an object or null')
+  }
   if ('rev' in body && (!Number.isInteger(body.rev) || body.rev < 0)) push('rev', 'Must be a non-negative integer revision')
   if ('website' in body) {
     const raw = String(body.website || '').trim()
@@ -1928,12 +2029,46 @@ app.post('/api/leads/:id/score', (req, res) => {
   res.json(updated)
 })
 
+// Versioned, idempotent commercial backfill (M2). Saved evidence only: no
+// website research, no model calls. Re-running with unchanged inputs and
+// weights reproduces identical scores; only rows whose canonical score
+// inputs changed are rewritten, so notes/stages/contracts/attempts survive.
+app.post('/api/lead-value/backfill', (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {}
+  const force = body.force === true
+  const weights = readSettings().leadValueWeights
+  const leads = readRows('leads')
+  let scored = 0
+  let skipped = 0
+  let unchanged = 0
+  const results = []
+  for (const lead of leads) {
+    const next = scoreLeadValue(lead, { weights })
+    const prev = lead.leadValue || null
+    const same = prev && prev.version === next.version && prev.leadValueScore === next.leadValueScore
+      && Math.abs(Number(prev.coverage || 0) - Number(next.coverage || 0)) < 1e-9
+      && JSON.stringify(prev.weights || {}) === JSON.stringify(next.weights || {})
+    if (same && !force) {
+      unchanged += 1
+      results.push({ id: lead.id, status: 'unchanged', score: prev.leadValueScore, version: prev.version })
+      continue
+    }
+    // Insufficient-evidence rows are still stored explicitly so the UI can
+    // distinguish "scored thin" from "never scored" without refetching.
+    saveLead({ ...lead, leadValue: next, updated: lead.updated || 'Just now' })
+    recordEvent('lead', lead.id, 'value_backfilled', { version: next.version, score: next.leadValueScore, band: next.band, coverage: next.coverage })
+    scored += 1
+    results.push({ id: lead.id, status: prev ? 'rescored' : 'scored', score: next.leadValueScore, version: next.version, coverage: next.coverage, band: next.band })
+  }
+  res.json({ ok: true, total: leads.length, scored, unchanged, skipped, results })
+})
+
 app.post('/api/leads/:id/muse/analyze', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
   if (!lead) return notFound(res, 'Lead not found', 'id')
-  if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before running Muse', 'opportunityScore', 'AUDIT_REQUIRED')
-  if (!getOutreachConfig().configured) return serviceUnavailable(res, 'Muse is not configured', 'MUSE_NOT_CONFIGURED')
+  if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before running AI', 'opportunityScore', 'AUDIT_REQUIRED')
+  if (!getOutreachConfig().configured) return serviceUnavailable(res, 'AI is not configured', 'MUSE_NOT_CONFIGURED')
   const result = queueMuseSynthesis(lead, { requestedManually: true })
   res.status(202).json(result)
 })
@@ -1957,9 +2092,9 @@ app.post('/api/leads/:id/actions/:action', async (req, res) => {
       return res.status(202).json({ ...queueAuditForLead(lead, { workflow: 'audit', manualAction: 'audit' }), message: 'Website audit queued' })
     }
     if (action === 'muse') {
-      if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before running Muse', 'opportunityScore', 'AUDIT_REQUIRED')
-      if (!getOutreachConfig().configured) return serviceUnavailable(res, 'Muse is not configured', 'MUSE_NOT_CONFIGURED')
-      return res.status(202).json({ ...queueMuseSynthesis(lead, { requestedManually: true, manualAction: 'muse' }), message: 'Muse analysis queued' })
+      if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before running AI', 'opportunityScore', 'AUDIT_REQUIRED')
+      if (!getOutreachConfig().configured) return serviceUnavailable(res, 'AI is not configured', 'MUSE_NOT_CONFIGURED')
+      return res.status(202).json({ ...queueMuseSynthesis(lead, { requestedManually: true, manualAction: 'muse' }), message: 'AI analysis queued' })
     }
     if (action === 'outreach') {
       if (lead.opportunityScore == null) return conflict(res, 'Complete the website audit before generating outreach', 'opportunityScore', 'AUDIT_REQUIRED')
@@ -1974,7 +2109,7 @@ app.post('/api/leads/:id/actions/:action', async (req, res) => {
         const done = saveLead({ ...lead, manualRun: manualRunState(lead, 'full', { reset: true, status: 'Completed', progress: 100, phase: 'No website to audit — business review continues manually', completedAt: nowIso() }), updated: 'Just now' })
         return res.json({ lead: done, job: null, skipped: true, message: 'No website to audit — business review continues manually' })
       }
-      // No AI gate: without Muse the workflow finishes the deterministic
+      // No AI gate: without AI the workflow finishes the deterministic
       // audit plus template outreach drafts and says so honestly.
       const brightData = getBrightDataConfig(readSettings())
       if (brightData.ready && lead.sourceUrl) {
@@ -2062,6 +2197,42 @@ app.post('/api/leads/:id/attempts', (req, res) => {
   res.status(201).json({ lead: updated, attempt })
 })
 
+// Lightweight manual contact entry (M3). Additive: website-extracted
+// candidates are never removed here; manual entries win on dedupe conflicts.
+app.post('/api/leads/:id/contacts', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const body = req.body
+  const details = []
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
+  if (!['email', 'phone', 'form', 'contactPage', 'booking'].includes(body.kind)) details.push({ field: 'kind', message: 'Must be email, phone, form, contactPage or booking' })
+  if (!isStringWithLength(String(body.value || ''), 1, 500)) details.push({ field: 'value', message: 'Value must be 1-500 chars' })
+  if (body.kind === 'email' && !isEmail(String(body.value || ''))) details.push({ field: 'value', message: 'Invalid email format' })
+  if (body.kind === 'phone' && !isPhoneLike(String(body.value || ''))) details.push({ field: 'value', message: 'Invalid phone format' })
+  if (details.length) return badRequest(res, null, 'Invalid contact candidate', details)
+  const value = String(body.value).trim()
+  const candidate = {
+    id: `manual-${randomUUID().slice(0, 8)}`,
+    kind: body.kind,
+    value,
+    normalized: body.kind === 'email' ? value.toLowerCase() : value,
+    sourceUrl: 'manual-entry',
+    observedAt: nowIso(),
+    method: 'manual-entry',
+    source: 'manual',
+    verification: 'owner-entered',
+  }
+  const merged = mergeContactCandidates(lead.contactCandidates || [], [candidate])
+  const patch = { contactCandidates: merged, updated: 'Just now' }
+  // Fill empty top-level slots from manual entry without overwriting set values.
+  if (body.kind === 'email' && (!lead.email || lead.email === 'Not collected')) patch.email = value
+  if (body.kind === 'phone' && (!lead.phone || lead.phone === 'Not collected')) patch.phone = value
+  const updated = saveLead({ ...lead, ...patch })
+  recordEvent('lead', lead.id, 'contact_added', { kind: candidate.kind })
+  res.status(201).json({ lead: updated, contact: candidate })
+})
+
 app.post('/api/leads/:id/findings/review', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
@@ -2101,6 +2272,37 @@ app.get('/api/leads/:id/brief', (req, res) => {
   res.json({ lead, readiness, reviews: { accepted: status.accepted, rejected: status.rejected, stale: status.stale, pending: status.pending } })
 })
 
+function duplicateCountsByName(leads) {
+  const groups = new Map()
+  for (const lead of leads) {
+    const key = String(lead?.company || '').trim().toLowerCase()
+    if (!key) continue
+    groups.set(key, (groups.get(key) || 0) + 1)
+  }
+  const counts = new Map()
+  for (const lead of leads) {
+    const key = String(lead?.company || '').trim().toLowerCase()
+    if (key && (groups.get(key) || 0) > 1) counts.set(lead.id, groups.get(key))
+  }
+  return counts
+}
+
+app.get('/api/leads/:id/readiness', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const counts = duplicateCountsByName(readRows('leads'))
+  const readiness = computeReadiness(lead, { duplicateCount: counts.get(lead.id) || 0 })
+  res.json({ leadId: lead.id, readiness, summary: explainReadiness(readiness) })
+})
+
+app.get('/api/queue', (_req, res) => {
+  const leads = readRows('leads')
+  const counts = duplicateCountsByName(leads)
+  const items = buildQueue(leads, { duplicateCounts: counts })
+  res.json({ items, generatedAt: nowIso() })
+})
+
 app.post('/api/leads/:id/brief-export', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
@@ -2112,6 +2314,20 @@ app.post('/api/leads/:id/brief-export', (req, res) => {
   const markdown = buildBriefMarkdown(lead, readiness)
   recordEvent('lead', lead.id, 'brief_exported', { accepted: readiness.accepted.length, ready: readiness.ready })
   res.json({ lead, markdown, readiness })
+})
+
+// Prospect-facing one-pager (M7). Snapshot only: returns markdown with a
+// date and provenance, never sends or publishes it.
+app.post('/api/leads/:id/prospect-brief', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  const markdown = buildProspectBrief(lead, { date: nowIso() })
+  if (!markdown) {
+    return res.status(409).json({ error: 'No reviewed findings to export — review the audit evidence first.', code: 'NOTHING_REVIEWED' })
+  }
+  recordEvent('lead', lead.id, 'prospect_brief_exported', { auditId: lead.currentAuditId || null })
+  res.json({ leadId: lead.id, markdown, exportedAt: nowIso(), auditId: lead.currentAuditId || null })
 })
 
 app.post('/api/leads/:id/outreach/generate', async (req, res) => {

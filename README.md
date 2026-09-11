@@ -9,14 +9,14 @@ Bright Data discovery or CSV import
 → source-backed business enrichment
 → safe website audit
 → deterministic opportunity score + saved evidence
-→ optional Muse evidence synthesis inside Analyzed
+→ optional AI evidence synthesis inside Analyzed
 → human qualification
 → three outreach versions
 → manual send and Kanban follow-up
 → contract record when won
 ```
 
-“Analyzed” remains one complete website-analysis stage. There is no separate LLM-insights checkpoint or ranking checkpoint: the audit evidence and deterministic opportunity score are produced together. When Muse is configured, it adds a grounded advisory synthesis inside that stage—priorities, recommendations, strengths, unknowns, qualification guidance, and outreach angles—without changing the score.
+“Analyzed” remains one complete website-analysis stage. There is no separate LLM-insights checkpoint or ranking checkpoint: the audit evidence and deterministic opportunity score are produced together. When AI is configured, it adds a grounded advisory synthesis inside that stage—priorities, recommendations, strengths, unknowns, qualification guidance, and outreach angles—without changing the score.
 
 ## Backend now included
 
@@ -30,8 +30,8 @@ Bright Data discovery or CSV import
 - Real mobile Lighthouse collection for performance, accessibility, SEO, best practices, and core timing metrics
 - HTML audit for content hierarchy, mobile setup, contact paths, form friction, CTA visibility, image alt coverage, structured data, trust language, and technology signals
 - Deterministic opportunity score and confidence with the exact evidence saved under `data/leads/{lead-id}/`
-- Retryable Muse synthesis jobs grounded in the saved crawl, broken-link checks, Lighthouse metrics, and selected Lighthouse failures
-- Structured Muse recommendations remain advisory and are persisted separately in `muse-analysis.json`
+- Retryable AI synthesis jobs grounded in the saved crawl, broken-link checks, Lighthouse metrics, and selected Lighthouse failures
+- Structured AI recommendations remain advisory and are persisted separately in `muse-analysis.json`
 - Bright Data Google Maps discovery adapter using its async snapshot workflow
 - Google business enrichment for claimed status, hours, services, booking/estimate links, review distribution and recency, photos, categories, and observed locations
 - Transparent digital-maturity scoring from measured website, technology, profile, booking, and maintenance signals

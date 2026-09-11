@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rohan Ahire — Selected Work</title>
+<meta name="description" content="Rohan Ahire builds trading systems, games, and AI tools — end to end, solo.">
+<style>
+:root {
+  --paper: #fffdf9; --ink: #1a1a18; --soft: #44443f; --muted: #767670;
+  --line: #1a1a18; --hair: #ddd8cc; --red: #a31f1f;
+  --serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+  --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.7; }
+::selection { background: #f0dfc0; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+.masthead { text-align: center; padding: 34px 0 0; }
+.masthead .over { font-family: var(--sans); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.masthead h1 { font-size: clamp(46px, 8vw, 84px); line-height: 1; margin: 10px 0 12px; letter-spacing: -0.02em; font-weight: 800; }
+.masthead .dateline { display: flex; justify-content: space-between; gap: 12px; border-top: 3px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 0; font-family: var(--sans); font-size: 12.5px; color: var(--soft); }
+.masthead nav { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 26px; padding: 12px 0; border-bottom: 3px double var(--line); font-family: var(--sans); font-size: 14px; font-weight: 600; }
+.masthead nav a { text-decoration: none; }
+.masthead nav a:hover { color: var(--red); }
+.lede { font-size: clamp(20px, 2.6vw, 24px); line-height: 1.55; margin: 40px 0 8px; max-width: 34ch; }
+.lede-sub { font-family: var(--sans); font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 8px; font-family: var(--sans); }
+.btn { display: inline-block; padding: 11px 22px; font-size: 15px; font-weight: 700; border: 1.5px solid var(--ink); border-radius: 3px; text-decoration: none; transition: background-color 140ms ease, color 140ms ease, transform 100ms ease; }
+.btn:active { transform: scale(.97); }
+.btn-solid { background: var(--ink); color: var(--paper); }
+.btn-solid:hover { background: #000; color: var(--paper); }
+.btn-ghost:hover { background: var(--ink); color: var(--paper); }
+article.project { border-top: 1px solid var(--line); padding: 30px 0 34px; margin-top: 34px; }
+article.project:first-of-type { margin-top: 26px; }
+.kicker { display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--sans); font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.kicker .live { color: var(--red); font-weight: 700; }
+article.project h3 { font-size: clamp(30px, 4.4vw, 42px); line-height: 1.08; letter-spacing: -0.015em; margin: 0 0 12px; font-weight: 800; }
+article.project h3 a { text-decoration: none; }
+article.project h3 a:hover { color: var(--red); }
+.standfirst { font-size: 19px; line-height: 1.6; color: var(--soft); margin: 0 0 12px; max-width: 58ch; }
+.standfirst strong { color: var(--ink); }
+.colophon { font-family: var(--sans); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.colophon .tags { color: var(--soft); }
+section.about { border-top: 3px double var(--line); margin-top: 40px; padding: 34px 0 6px; }
+section.about h2, section.now h2, section.contact h2 { font-size: 26px; letter-spacing: -0.01em; margin: 0 0 14px; }
+.dropcap::first-letter { float: left; font-size: 3.4em; line-height: .9; padding: 4px 10px 0 0; font-weight: 800; }
+.pull { border-left: 3px solid var(--red); margin: 22px 0; padding: 2px 0 2px 18px; font-size: 21px; line-height: 1.5; font-style: italic; color: var(--soft); max-width: 32ch; }
+ul.now { list-style: none; margin: 0; padding: 0; }
+ul.now li { display: grid; grid-template-columns: 110px 1fr; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--hair); font-size: 17px; }
+ul.now li:first-child { border-top: 1px solid var(--hair); }
+ul.now .when { font-family: var(--sans); font-size: 13px; color: var(--muted); padding-top: 4px; }
+.contact-box { border: 1.5px solid var(--ink); border-radius: 4px; padding: 28px; margin-top: 6px; }
+.contact-box p { margin: 0 0 8px; }
+.contact-box .mono { font-family: var(--sans); font-size: 14px; color: var(--muted); }
+footer.colophon-foot { border-top: 3px double var(--line); margin-top: 40px; padding: 16px 0 44px; font-family: var(--sans); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 18px; }
+footer.colophon-foot .right { margin-left: auto; }
+@media (max-width: 600px) {
+  body { font-size: 17px; }
+  ul.now li { grid-template-columns: 1fr; gap: 2px; }
+  .masthead .dateline { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div class="over">Personal edition · No. 01</div>
+    <h1>Rohan Ahire</h1>
+    <div class="dateline"><span>India · Remote</span><span>Builder · Systems · Product</span><span>Open to interesting work</span></div>
+    <nav aria-label="Sections"><a href="#work">Work</a><a href="#about">About</a><a href="#now">Now</a><a href="#contact">Contact</a></nav>
+  </header>
+
+  <p class="lede">I build trading systems, games, and AI tools — end to end, solo.</p>
+  <p class="lede-sub">Six builds below: markets, games, AI, mobile. Each taken from idea to working software.</p>
+  <div class="cta-row">
+    <a class="btn btn-solid" href="#work">Read the work</a>
+    <a class="btn btn-ghost" href="https://github.com/rohan-ahire1">GitHub</a>
+  </div>
+
+  <main id="work">
+    <article class="project">
+      <div class="kicker"><span>No. 01</span><span>2025–26 · Game · PWA</span><span class="live">Active</span></div>
+      <h3><a href="https://flaggo.rohanahire.com">Flaggo — geography, one round at a time</a></h3>
+      <p class="standfirst"><strong>A geography game with flag, capital, map, arcade, and daily-challenge modes.</strong> Spaced repetition decides what you see next, so the countries you miss keep coming back until they stick. Works offline as a PWA.</p>
+      <div class="colophon"><span>Vite · React · TypeScript · Supabase · Tailwind</span><a href="https://flaggo.rohanahire.com">Live ↗</a></div>
+    </article>
+    <article class="project">
+      <div class="kicker"><span>No. 02</span><span>2026 · AI · Chess</span><span>Shipped</span></div>
+      <h3>Coachmate — a chess coach that reads your games</h3>
+      <p class="standfirst"><strong>Type a Chess.com username, get a plain-English report on your repeating mistakes.</strong> Drill those exact positions, or play a bot tuned to your level. Stockfish runs in the browser — games never leave the device. Free, mobile-first. Private / local.</p>
+      <div class="colophon"><span>Next.js · Stockfish · chess.js · OpenRouter</span></div>
+    </article>
+    <article class="project">
+      <div class="kicker"><span>No. 03</span><span>2026 · Quant · Markets</span><span class="live">Active</span></div>
+      <h3>Multibagger — a daily swing-trade scanner</h3>
+      <p class="standfirst"><strong>Every NSE stock, watched for one setup: the Minervini-style swing entry.</strong> Prices pulled each evening, signals run in Polars, Telegram pings only when something is worth a look. No dashboard-watching, no noise. Private / local.</p>
+      <div class="colophon"><span>Python · Polars · DuckDB · FastAPI · React</span></div>
+    </article>
+    <article class="project">
+      <div class="kicker"><span>No. 04</span><span>2025 · AI · Demo</span><span>Demo</span></div>
+      <h3>Extracta — documents in, structured data out</h3>
+      <p class="standfirst"><strong>Drop in an invoice or a resume; watch it become editable, confidence-scored fields.</strong> The AI path is mocked on purpose — this one exists to get the product experience right, not the plumbing. Private / local.</p>
+      <div class="colophon"><span>Next.js · Framer Motion · Three.js · Tailwind</span></div>
+    </article>
+    <article class="project">
+      <div class="kicker"><span>No. 05</span><span>2025 · Mobile · Utility</span><span>Built</span></div>
+      <h3>WA Cleaner — duplicate media, safely deleted</h3>
+      <p class="standfirst"><strong>Finds duplicate photos and forgotten large files eating your storage, then deletes them safely</strong> — with trash and undo. Built on Android's own storage framework: only the folders you pick. Private / local.</p>
+      <div class="colophon"><span>Expo · React Native · Room · Kotlin module</span></div>
+    </article>
+    <article class="project">
+      <div class="kicker"><span>No. 06</span><span>2025–26 · Quant · Research</span><span>Research</span></div>
+      <h3>Clenow NSE — momentum, tested then traded</h3>
+      <p class="standfirst"><strong>Andreas Clenow's momentum rules for Indian equities:</strong> rank the Nifty universe by trend strength, size by volatility, rebalance monthly. Backtested across a decade; now producing live signals through a broker API. Private / local.</p>
+      <div class="colophon"><span>Python · yfinance · Dhan API · Pandas</span></div>
+    </article>
+  </main>
+
+  <section class="about" id="about" aria-label="About">
+    <h2>About</h2>
+    <p class="dropcap">I'm an engineer who takes ideas all the way from first commit to something people can use — design, build, data, and deployment, solo.</p>
+    <p class="pull">One thing well, stated honestly, respectful of device and attention.</p>
+    <p>Right now: a scanner for Indian stock markets, a geography game with daily challenges, and a chess coach that runs entirely in the browser.</p>
+  </section>
+
+  <section class="now" id="now" aria-label="Now" style="margin-top:34px">
+    <h2>Now</h2>
+    <ul class="now">
+      <li><span class="when">Ongoing</span><span><strong>Multibagger</strong> — daily scan live, tuning the signal so Telegram stays quiet unless it matters.</span></li>
+      <li><span class="when">Ongoing</span><span><strong>Flaggo</strong> — daily challenges and spaced-repetition scheduling.</span></li>
+      <li><span class="when">Ongoing</span><span><strong>Coachmate</strong> — on-device mistake-pattern reports.</span></li>
+    </ul>
+  </section>
+
+  <section class="contact" id="contact" aria-label="Contact" style="margin-top:34px">
+    <h2>Contact</h2>
+    <div class="contact-box">
+      <p><strong>Open to interesting work.</strong> Email is best — I read everything and reply within a couple of days.</p>
+      <div class="cta-row">
+        <a class="btn btn-solid" href="mailto:rohanahire1607@gmail.com?subject=Project%20inquiry">Email me</a>
+        <a class="btn btn-ghost" href="https://github.com/rohan-ahire1">GitHub</a>
+      </div>
+      <p class="mono" style="margin:14px 0 0">rohanahire1607@gmail.com · github.com/rohan-ahire1</p>
+    </div>
+  </section>
+
+  <footer class="colophon-foot"><span>© 2026 Rohan Ahire</span><span>Set in Charter and the system sans · No trackers</span><span class="right"><a href="#top">Back to top ↑</a></span></footer>
+</div>
+</body>
+</html>

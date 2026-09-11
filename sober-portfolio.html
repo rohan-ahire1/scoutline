@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rohan Ahire — Builder · Systems · Product</title>
+<meta name="description" content="Rohan Ahire builds trading systems, games, and AI tools — end to end, solo.">
+<style>
+  :root {
+    --paper: #ffffff;
+    --wash: #f4f4f2;
+    --ink: #16181d;
+    --soft: #3f444d;
+    --muted: #6b7078;
+    --faint: #9aa0a8;
+    --line: #e4e4e0;
+    --accent: #0b54c4;
+    --accent-ink: #0a44a0;
+    --radius: 8px;
+    --measure: 62ch;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: #cfe0fb; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+  header.site {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(255, 255, 255, .92);
+    border-bottom: 1px solid var(--line);
+  }
+  .site-inner { max-width: 880px; margin: 0 auto; padding: 0 24px; min-height: 60px; display: flex; align-items: center; gap: 20px; }
+  .site-name { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; color: var(--ink); margin-right: auto; }
+  .site-name:hover { text-decoration: none; color: var(--ink); }
+  nav.site-nav { display: flex; align-items: center; gap: 4px; }
+  nav.site-nav a { color: var(--soft); font-size: 15px; font-weight: 550; padding: 8px 10px; border-radius: 6px; }
+  nav.site-nav a:hover { color: var(--ink); text-decoration: none; background: var(--wash); }
+  nav.site-nav a[aria-current="true"] { color: var(--ink); font-weight: 700; }
+  .menu-btn { display: none; }
+  .hero { padding: 88px 0 64px; }
+  .hero h1 { margin: 0 0 18px; font-size: clamp(44px, 7vw, 76px); line-height: 1.02; letter-spacing: -0.03em; font-weight: 800; }
+  .hero .lede { margin: 0 0 22px; max-width: 26ch; font-family: var(--serif); font-size: clamp(21px, 2.6vw, 26px); line-height: 1.45; color: var(--soft); }
+  .hero .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 30px; padding: 0; list-style: none; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .hero .meta li { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #1d9e57; flex: none; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 22px; border-radius: var(--radius); font-size: 16px; font-weight: 650; border: 1px solid var(--ink); transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, transform 100ms ease; }
+  .btn:hover { text-decoration: none; }
+  .btn:active { transform: scale(.97); }
+  .btn-solid { background: var(--ink); color: #fff; }
+  .btn-solid:hover { background: #000; color: #fff; }
+  .btn-ghost { background: transparent; color: var(--ink); }
+  .btn-ghost:hover { background: var(--wash); color: var(--ink); }
+  section.block { padding: 56px 0; border-top: 1px solid var(--line); scroll-margin-top: 70px; }
+  section.block h2 { margin: 0 0 8px; font-size: 30px; letter-spacing: -0.02em; font-weight: 750; }
+  section.block .sub { margin: 0 0 32px; color: var(--muted); max-width: var(--measure); }
+  ol.work { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  ol.work > li { display: grid; grid-template-columns: 48px 1fr; gap: 4px 20px; padding: 30px 0; border-bottom: 1px solid var(--line); }
+  .work-num { font-family: var(--mono); font-size: 13px; color: var(--faint); padding-top: 6px; }
+  .work-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 8px; }
+  .work-head h3 { margin: 0; font-size: 22px; letter-spacing: -0.015em; font-weight: 720; }
+  .status { font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--paper); white-space: nowrap; }
+  .status-live { color: #14663c; border-color: #bfe3cf; background: #f0f9f3; }
+  .work-desc { margin: 0 0 14px; color: var(--soft); max-width: var(--measure); }
+  .work-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .tags li { padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--wash); color: var(--soft); font-size: 12.5px; white-space: nowrap; }
+  .work-link { font-weight: 650; }
+  .prose p { margin: 0 0 16px; max-width: var(--measure); color: var(--soft); }
+  .prose p:last-child { margin-bottom: 0; }
+  ul.now { list-style: none; margin: 0; padding: 0; max-width: var(--measure); }
+  ul.now li { position: relative; padding: 12px 0 12px 22px; border-bottom: 1px solid var(--line); color: var(--soft); }
+  ul.now li:first-child { border-top: 1px solid var(--line); }
+  ul.now li::before { content: ""; position: absolute; left: 2px; top: 22px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  ul.now li strong { color: var(--ink); font-weight: 650; }
+  .contact-card { border: 1px solid var(--line); border-radius: 12px; background: var(--wash); padding: 30px; display: grid; gap: 6px; }
+  .contact-card p { margin: 0; color: var(--soft); max-width: var(--measure); }
+  .contact-card .cta-row { margin-top: 14px; }
+  .contact-lines { display: grid; gap: 4px; margin-top: 12px; font-family: var(--mono); font-size: 14px; }
+  footer.site { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; }
+  footer.site .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+  footer.site .top { margin-left: auto; }
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="site-inner">
+    <a class="site-name" href="#top">Rohan Ahire</a>
+    <nav class="site-nav" aria-label="Sections">
+      <a href="#work">Work</a>
+      <a href="#about">About</a>
+      <a href="#now">Now</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top" class="wrap">
+  <div class="hero">
+    <h1>Rohan Ahire</h1>
+    <p class="lede">I build trading systems, games, and AI tools — end to end, solo.</p>
+    <ul class="meta">
+      <li><span class="dot" aria-hidden="true"></span>Open to interesting work</li>
+      <li>India · Remote</li>
+      <li>Builder · Systems · Product</li>
+    </ul>
+    <div class="cta-row">
+      <a class="btn btn-solid" href="#work">View selected work</a>
+      <a class="btn btn-ghost" href="mailto:rohanahire1607@gmail.com?subject=Project%20inquiry">Email me</a>
+    </div>
+  </div>
+
+  <section class="block" id="work" aria-labelledby="work-h">
+    <h2 id="work-h">Selected work</h2>
+    <p class="sub">Six builds, each taken from idea to working software — markets, games, AI, mobile.</p>
+    <ol class="work">
+      <li>
+        <span class="work-num" aria-hidden="true">01</span>
+        <div>
+          <div class="work-head"><h3>Flaggo</h3><span class="status status-live">Active</span></div>
+          <p class="work-desc"><strong>Geography, one round at a time.</strong> A geography game with flag, capital, map, arcade, and daily-challenge modes. Spaced repetition decides what you see next, so the countries you miss keep coming back until they stick. Works offline as a PWA.</p>
+          <div class="work-meta"><span>2025–26 · Game · PWA</span><a class="work-link" href="https://flaggo.rohanahire.com">Live ↗</a></div>
+          <ul class="tags" style="margin-top:10px"><li>Vite</li><li>React</li><li>TypeScript</li><li>Supabase</li><li>Tailwind</li></ul>
+        </div>
+      </li>
+      <li>
+        <span class="work-num" aria-hidden="true">02</span>
+        <div>
+          <div class="work-head"><h3>Coachmate</h3><span class="status">Shipped</span></div>
+          <p class="work-desc"><strong>A chess coach that reads your games.</strong> Type a Chess.com username and get a plain-English report on the mistakes you keep repeating — then drill those exact positions, or play a bot tuned to your level. Stockfish runs in the browser, so games never leave the device. Free, mobile-first.</p>
+          <div class="work-meta"><span>2026 · AI · Chess</span><span>Private / local</span></div>
+          <ul class="tags" style="margin-top:10px"><li>Next.js</li><li>Stockfish</li><li>chess.js</li><li>OpenRouter</li></ul>
+        </div>
+      </li>
+      <li>
+        <span class="work-num" aria-hidden="true">03</span>
+        <div>
+          <div class="work-head"><h3>Multibagger</h3><span class="status status-live">Active</span></div>
+          <p class="work-desc"><strong>Daily swing-trade scanner for Indian stocks.</strong> Watches every NSE stock for one specific setup: the Minervini-style swing entry. Pulls prices each evening, runs the signals in Polars, and pings Telegram only when something is actually worth a look. No dashboard-watching, no noise.</p>
+          <div class="work-meta"><span>2026 · Quant · Markets · CLI</span><span>Private / local</span></div>
+          <ul class="tags" style="margin-top:10px"><li>Python</li><li>Polars</li><li>DuckDB</li><li>FastAPI</li><li>React</li></ul>
+        </div>
+      </li>
+      <li>
+        <span class="work-num" aria-hidden="true">04</span>
+        <div>
+          <div class="work-head"><h3>Extracta</h3><span class="status">Demo</span></div>
+          <p class="work-desc"><strong>Documents in, structured data out.</strong> A demo of what document extraction should feel like: drop in an invoice or a resume and watch it become editable, confidence-scored fields. The AI path is mocked on purpose — this one exists to get the product experience right, not the plumbing.</p>
+          <div class="work-meta"><span>2025 · AI · Demo · Docs</span><span>Private / local</span></div>
+          <ul class="tags" style="margin-top:10px"><li>Next.js</li><li>Framer Motion</li><li>Three.js</li><li>Tailwind</li></ul>
+        </div>
+      </li>
+      <li>
+        <span class="work-num" aria-hidden="true">05</span>
+        <div>
+          <div class="work-head"><h3>WA Cleaner</h3><span class="status">Built</span></div>
+          <p class="work-desc"><strong>Duplicate media, safely deleted.</strong> An Android app that finds the duplicate photos and forgotten large files eating your storage, then deletes them safely — with trash and undo. Built on Android's own storage framework, so it only ever touches the folders you pick.</p>
+          <div class="work-meta"><span>2025 · Mobile · Android · Utility</span><span>Private / local</span></div>
+          <ul class="tags" style="margin-top:10px"><li>Expo</li><li>React Native</li><li>Room</li><li>Kotlin module</li></ul>
+        </div>
+      </li>
+      <li>
+        <span class="work-num" aria-hidden="true">06</span>
+        <div>
+          <div class="work-head"><h3>Clenow NSE</h3><span class="status">Research</span></div>
+          <p class="work-desc"><strong>Momentum investing, tested then traded.</strong> Andreas Clenow's momentum rules, adapted for Indian equities: rank the Nifty universe by trend strength, size positions by volatility, rebalance monthly. Backtested across a decade of data, now producing live signals through a broker API.</p>
+          <div class="work-meta"><span>2025–26 · Quant · Backtest · Live</span><span>Private / local</span></div>
+          <ul class="tags" style="margin-top:10px"><li>Python</li><li>yfinance</li><li>Dhan API</li><li>Pandas</li></ul>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="block" id="about" aria-labelledby="about-h">
+    <h2 id="about-h">About</h2>
+    <div class="prose">
+      <p>I'm an engineer who takes ideas all the way from first commit to something people can use — design, build, data, and deployment, solo.</p>
+      <p>Right now that means a scanner for Indian stock markets, a geography game with daily challenges, and a chess coach that runs entirely in the browser. I care about software that does one thing well, says what it does honestly, and respects the user's device and attention.</p>
+    </div>
+  </section>
+
+  <section class="block" id="now" aria-labelledby="now-h">
+    <h2 id="now-h">Now</h2>
+    <p class="sub">What has my attention at the moment.</p>
+    <ul class="now">
+      <li><strong>Multibagger</strong> — running the daily NSE scan and tuning the signal so Telegram stays quiet unless it matters.</li>
+      <li><strong>Flaggo</strong> — daily challenges and spaced-repetition scheduling for the geography game.</li>
+      <li><strong>Coachmate</strong> — mistake-pattern reports from Chess.com games, computed on-device.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="contact" aria-labelledby="contact-h">
+    <h2 id="contact-h">Contact</h2>
+    <div class="contact-card">
+      <p><strong style="color:var(--ink)">Open to interesting work.</strong> The best way to reach me is email — I read everything and reply within a couple of days.</p>
+      <div class="cta-row">
+        <a class="btn btn-solid" href="mailto:rohanahire1607@gmail.com?subject=Project%20inquiry">Email me</a>
+        <a class="btn btn-ghost" href="https://github.com/rohan-ahire1">GitHub</a>
+      </div>
+      <div class="contact-lines">
+        <span>rohanahire1607@gmail.com</span>
+        <span>github.com/rohan-ahire1</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>© <span id="year">2026</span> Rohan Ahire · India · Remote</span>
+    <a class="top" href="#top">Back to top ↑</a>
+  </div>
+</footer>
+
+<style>
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    .hero { padding: 56px 0 48px; }
+    nav.site-nav { display: none; }
+    nav.site-nav.open {
+      display: flex; position: absolute; top: 60px; left: 0; right: 0;
+      flex-direction: column; align-items: stretch; gap: 0;
+      background: var(--paper); border-bottom: 1px solid var(--line); padding: 8px 16px 12px;
+    }
+    nav.site-nav.open a { padding: 12px 8px; font-size: 16px; }
+    .menu-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 8px;
+      background: var(--paper); color: var(--ink); font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    ol.work > li { grid-template-columns: 1fr; gap: 8px; }
+    .work-num { padding-top: 0; }
+    section.block { padding: 44px 0; }
+    .contact-card { padding: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition-duration: .01ms !important; }
+  }
+  @media print {
+    header.site, .cta-row, footer.site .top { display: none; }
+    body { font-size: 12pt; }
+    .hero { padding: 0 0 24px; }
+    section.block { padding: 24px 0; }
+    a { color: var(--ink); }
+    .work-link::after { content: " (" attr(href) ")"; font-size: 10pt; }
+  }
+</style>
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+  (function () {
+    var header = document.querySelector('.site-inner');
+    var nav = document.querySelector('nav.site-nav');
+    var btn = document.createElement('button');
+    btn.className = 'menu-btn';
+    btn.textContent = 'Menu';
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', 'site-nav');
+    nav.id = 'site-nav';
+    btn.addEventListener('click', function () {
+      var open = nav.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(open));
+      btn.textContent = open ? 'Close' : 'Menu';
+    });
+    nav.addEventListener('click', function (e) {
+      if (e.target.closest('a')) { nav.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'Menu'; }
+    });
+    header.appendChild(btn);
+    var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
+    var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    if ('IntersectionObserver' in window) {
+      var current = null;
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            current = '#' + en.target.id;
+            links.forEach(function (a) {
+              if (a.getAttribute('href') === current) a.setAttribute('aria-current', 'true');
+              else a.removeAttribute('aria-current');
+            });
+          }
+        });
+      }, { rootMargin: '-40% 0px -55% 0px' });
+      sections.forEach(function (s) { obs.observe(s); });
+    }
+  })();
+</script>
+</body>
+</html>

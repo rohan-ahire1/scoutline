@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>rohan@markets:~$</title>
+<meta name="description" content="Rohan Ahire — trading systems, games, AI tools. End to end, solo.">
+<style>
+:root {
+  --bg: #0e1113; --panel: #15191d; --ink: #e6e9ec; --dim: #9aa3ab;
+  --faint: #5b636b; --line: #232a30;
+  --green: #3fb950; --amber: #d29922; --blue: #58a6ff; --violet: #bc8cff;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 15px; line-height: 1.7; }
+::selection { background: #1f3a2a; }
+a { color: var(--blue); }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.chrome { border-bottom: 1px solid var(--line); background: var(--panel); }
+.chrome-inner { max-width: 960px; margin: 0 auto; padding: 0 20px; height: 46px; display: flex; align-items: center; gap: 8px; }
+.traffic { display: flex; gap: 7px; margin-right: 12px; }
+.traffic i { width: 11px; height: 11px; border-radius: 50%; }
+.traffic i:nth-child(1) { background: #ff5f57; }
+.traffic i:nth-child(2) { background: #febc2e; }
+.traffic i:nth-child(3) { background: #28c840; }
+.chrome-title { color: var(--faint); font-size: 13px; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+.term { padding: 56px 0 20px; }
+.prompt { color: var(--green); }
+.dim { color: var(--dim); }
+.faint { color: var(--faint); }
+h1.name { font-size: clamp(30px, 4.6vw, 46px); line-height: 1.15; margin: 18px 0 10px; font-weight: 700; letter-spacing: -0.01em; }
+.lede { color: var(--dim); max-width: 60ch; margin: 0 0 6px; }
+.caret::after { content: "▊"; color: var(--green); animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.cmdline { margin-top: 26px; }
+.cmdline a { margin-right: 22px; }
+section { padding: 30px 0; border-top: 1px dashed var(--line); margin-top: 26px; }
+section h2 { font-size: 15px; margin: 0 0 18px; font-weight: 700; }
+section h2 .prompt { margin-right: 10px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.filters button { font: inherit; font-size: 13px; color: var(--dim); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+.filters button:hover { color: var(--ink); border-color: var(--faint); }
+.filters button[aria-pressed="true"] { color: var(--green); border-color: var(--green); }
+table.idx { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.idx th { text-align: left; font-weight: 400; color: var(--faint); font-size: 12px; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+table.idx td { padding: 13px 12px 13px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.idx tr:last-child td { border-bottom: 0; }
+.pname { color: var(--ink); font-weight: 700; white-space: nowrap; }
+.pdesc { color: var(--dim); font-size: 13.5px; max-width: 52ch; }
+.st { font-size: 12px; white-space: nowrap; }
+.st-live { color: var(--green); }
+.st-ship { color: var(--blue); }
+.st-act { color: var(--amber); }
+.st-demo, .st-built { color: var(--dim); }
+.st-res { color: var(--violet); }
+.stack { color: var(--faint); font-size: 12.5px; }
+pre.about { white-space: pre-wrap; margin: 0; color: var(--dim); font-family: inherit; }
+pre.about b { color: var(--ink); }
+ul.now { list-style: none; margin: 0; padding: 0; }
+ul.now li { padding: 7px 0; border-bottom: 1px solid var(--line); color: var(--dim); }
+ul.now li:last-child { border-bottom: 0; }
+ul.now li b { color: var(--ink); }
+ul.now .tick { color: var(--green); margin-right: 10px; }
+.contact-line { margin: 4px 0; }
+footer { border-top: 1px dashed var(--line); margin-top: 26px; padding: 22px 0 46px; color: var(--faint); font-size: 13px; display: flex; gap: 18px; flex-wrap: wrap; }
+footer .spacer { flex: 1; }
+@media (max-width: 680px) {
+  body { font-size: 14px; }
+  table.idx .hide-m, table.idx th.hide-m { display: none; }
+  .pname { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .caret::after { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="chrome"><div class="chrome-inner">
+  <span class="traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+  <span class="chrome-title">rohan@markets: ~/portfolio</span>
+</div></div>
+
+<main class="wrap">
+  <div class="term">
+    <div><span class="prompt">rohan@markets</span><span class="faint">:</span><span class="dim">~</span><span class="faint">$</span> whoami</div>
+    <h1 class="name">Rohan Ahire</h1>
+    <p class="lede">Builder · Systems · Product — trading systems, games, and AI tools, end to end, solo. India · Remote.</p>
+    <div><span class="prompt">rohan@markets</span><span class="faint">:</span><span class="dim">~</span><span class="faint">$</span> <span class="caret" aria-hidden="true"></span><span class="faint">open to interesting work</span></div>
+    <div class="cmdline">
+      <a href="#work">./work</a><a href="#about">./about</a><a href="#now">./now</a><a href="mailto:rohanahire1607@gmail.com?subject=Project%20inquiry">./hire-me</a>
+    </div>
+  </div>
+
+  <section id="work" aria-label="Selected work">
+    <h2><span class="prompt">$</span>ls projects/ <span class="faint">--six-builds</span></h2>
+    <div class="filters" role="group" aria-label="Filter projects">
+      <button aria-pressed="true" data-f="all">all</button>
+      <button aria-pressed="false" data-f="live">live</button>
+      <button aria-pressed="false" data-f="markets">markets</button>
+      <button aria-pressed="false" data-f="games">games</button>
+      <button aria-pressed="false" data-f="ai">ai</button>
+      <button aria-pressed="false" data-f="mobile">mobile</button>
+    </div>
+    <table class="idx">
+      <thead><tr><th>#</th><th>name</th><th class="hide-m">what</th><th>status</th><th class="hide-m">stack</th></tr></thead>
+      <tbody>
+        <tr data-tags="games live">
+          <td class="faint">01</td>
+          <td><span class="pname">flaggo</span><br><a href="https://flaggo.rohanahire.com">live ↗</a></td>
+          <td class="hide-m"><span class="pdesc">Geography game — flag, capital, map, arcade, daily modes. Spaced repetition, offline PWA.</span></td>
+          <td><span class="st st-live">● active</span><br><span class="faint">2025–26</span></td>
+          <td class="hide-m stack">vite · react · ts · supabase</td>
+        </tr>
+        <tr data-tags="ai games">
+          <td class="faint">02</td>
+          <td><span class="pname">coachmate</span><br><span class="faint">private/local</span></td>
+          <td class="hide-m"><span class="pdesc">Chess coach that reads your games — plain-English mistake reports, Stockfish in-browser.</span></td>
+          <td><span class="st st-ship">● shipped</span><br><span class="faint">2026</span></td>
+          <td class="hide-m stack">next.js · stockfish · openrouter</td>
+        </tr>
+        <tr data-tags="markets live">
+          <td class="faint">03</td>
+          <td><span class="pname">multibagger</span><br><span class="faint">private/local</span></td>
+          <td class="hide-m"><span class="pdesc">Daily NSE swing-trade scanner — Minervini setup, Polars signals, Telegram pings.</span></td>
+          <td><span class="st st-act">● active</span><br><span class="faint">2026</span></td>
+          <td class="hide-m stack">python · polars · duckdb · fastapi</td>
+        </tr>
+        <tr data-tags="ai">
+          <td class="faint">04</td>
+          <td><span class="pname">extracta</span><br><span class="faint">private/local</span></td>
+          <td class="hide-m"><span class="pdesc">Documents in, structured data out — extraction UX demo, AI path mocked on purpose.</span></td>
+          <td><span class="st st-demo">● demo</span><br><span class="faint">2025</span></td>
+          <td class="hide-m stack">next.js · framer · three.js</td>
+        </tr>
+        <tr data-tags="mobile">
+          <td class="faint">05</td>
+          <td><span class="pname">wa-cleaner</span><br><span class="faint">private/local</span></td>
+          <td class="hide-m"><span class="pdesc">Android duplicate-media cleaner — trash and undo, only folders you pick.</span></td>
+          <td><span class="st st-built">● built</span><br><span class="faint">2025</span></td>
+          <td class="hide-m stack">expo · react-native · kotlin</td>
+        </tr>
+        <tr data-tags="markets">
+          <td class="faint">06</td>
+          <td><span class="pname">clenow-nse</span><br><span class="faint">private/local</span></td>
+          <td class="hide-m"><span class="pdesc">Clenow momentum for Indian equities — ranked, vol-sized, monthly rebalance.</span></td>
+          <td><span class="st st-res">● research</span><br><span class="faint">2025–26</span></td>
+          <td class="hide-m stack">python · dhan-api · pandas</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="about" aria-label="About">
+    <h2><span class="prompt">$</span>cat about.txt</h2>
+    <pre class="about"><b>Engineer, end to end.</b> First commit to something people can use —
+design, build, data, deployment. Solo.
+One thing well, stated honestly, respectful of device and attention.</pre>
+  </section>
+
+  <section id="now" aria-label="Now">
+    <h2><span class="prompt">$</span>tail -n 3 now.log</h2>
+    <ul class="now">
+      <li><span class="tick">✓</span><b>multibagger</b> — daily scan live, tuning the signal</li>
+      <li><span class="tick">✓</span><b>flaggo</b> — daily challenges + spaced repetition</li>
+      <li><span class="tick">✓</span><b>coachmate</b> — on-device mistake reports</li>
+    </ul>
+  </section>
+
+  <section id="contact" aria-label="Contact">
+    <h2><span class="prompt">$</span>./hire-me</h2>
+    <p class="contact-line"><span class="dim">email</span> &nbsp;<a href="mailto:rohanahire1607@gmail.com?subject=Project%20inquiry">rohanahire1607@gmail.com</a></p>
+    <p class="contact-line"><span class="dim">github</span> <a href="https://github.com/rohan-ahire1">github.com/rohan-ahire1</a></p>
+  </section>
+
+  <footer><span>© 2026 rohan ahire</span><span class="spacer"></span><span>india · remote</span><a href="#top">cd ~ ↑</a></footer>
+</main>
+
+<script>
+(function () {
+  var btns = Array.prototype.slice.call(document.querySelectorAll('.filters button'));
+  var rows = Array.prototype.slice.call(document.querySelectorAll('table.idx tbody tr'));
+  btns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      btns.forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+      btn.setAttribute('aria-pressed', 'true');
+      var f = btn.getAttribute('data-f');
+      rows.forEach(function (r) {
+        r.style.display = (f === 'all' || (r.getAttribute('data-tags') || '').split(' ').indexOf(f) !== -1) ? '' : 'none';
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

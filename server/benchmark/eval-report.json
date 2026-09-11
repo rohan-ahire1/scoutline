@@ -2,9 +2,9 @@
   "format": "scoutline-eval-report",
   "fixtureVersion": 1,
   "fixtureCases": 22,
-  "commit": "d1d90f9",
-  "generatedAt": "2026-09-06T19:57:40.990Z",
-  "latencyMs": 91,
+  "commit": "017826d",
+  "generatedAt": "2026-09-07T17:37:21.488Z",
+  "latencyMs": 97,
   "totals": {
     "ran": 29,
     "passed": 29

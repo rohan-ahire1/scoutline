@@ -255,6 +255,95 @@ function summarizePage(html, url) {
   }
 }
 
+// Sourced contact candidates (M3). Pure extraction at the point fetched page
+// content is available. Same-site pages only; callers enforce page/time/byte,
+// robots, redirect and network limits. Never submits forms, never guesses a
+// decision-maker; values are "observed on the website", not verified ownership.
+export function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+export function normalizePhone(value) {
+  const digits = String(value || '').replace(/[^\d+]/g, '')
+  return digits.length >= 7 ? digits : String(value || '').trim()
+}
+
+function candidateId(kind, normalized, sourceUrl) {
+  return `${kind}:${normalized.toLowerCase()}@${String(sourceUrl || '').toLowerCase()}`
+}
+
+export function extractContactCandidates(html, pageUrl, { observedAt = null } = {}) {
+  const at = observedAt || new Date().toISOString()
+  const $ = load(html || '')
+  const href = pageUrl?.href || String(pageUrl || '')
+  const out = []
+  const push = (kind, value, normalized, extra = {}) => {
+    const clean = String(value || '').trim()
+    if (!clean) return
+    out.push({
+      id: candidateId(kind, normalized || clean, href),
+      kind, value: clean, normalized: normalized || clean,
+      sourceUrl: href, observedAt: at,
+      method: extra.method || 'dom-extract', source: 'website',
+      verification: 'observed',
+      ...extra.meta,
+    })
+  }
+  $('a[href^="mailto:"]').each((_, el) => {
+    const raw = String($(el).attr('href') || '').replace(/^mailto:/i, '').split('?')[0].trim()
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) push('email', raw, normalizeEmail(raw), { method: 'mailto' })
+  })
+  $('a[href^="tel:"]').each((_, el) => {
+    const raw = String($(el).attr('href') || '').replace(/^tel:/i, '').trim()
+    if (raw.replace(/\D/g, '').length >= 7) push('phone', raw, normalizePhone(raw), { method: 'tel' })
+  })
+  // Clearly visible business contact text: homepage footer/header email/phone
+  // strings are recorded as observed text candidates (deduped by normalized).
+  const visible = $('footer, header, address').text() || ''
+  const emailHits = String(visible).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []
+  emailHits.slice(0, 5).forEach((hit) => push('email', hit, normalizeEmail(hit), { method: 'visible-text' }))
+  // Contact / quote / booking page URLs on the same site.
+  $('a[href]').each((_, el) => {
+    const target = String($(el).attr('href') || '')
+    const text = cleanText($(el).text()).toLowerCase()
+    if (/\/(contact|quote|book|booking|estimate|request)(?:\/|$|\?|#)/i.test(target) || /contact us|request (a )?quote|get (an )?estimate|book (now|online|appointment)/i.test(text)) {
+      try {
+        const abs = new URL(target, pageUrl).href
+        if (new URL(abs).origin === new URL(pageUrl).origin) push(/book|booking|estimate|quote|request/i.test(target + ' ' + text) ? 'booking' : 'contactPage', abs, abs, { method: 'link-text' })
+      } catch { /* ignore malformed */ }
+    }
+  })
+  if ($('form').length > 0) {
+    push('form', `${$('form').length} enquiry form${$('form').length === 1 ? '' : 's'} observed on ${href}`, href, { method: 'form-count' })
+  }
+  // Dedupe within this page; cross-page merge keeps first provenance.
+  const seen = new Set()
+  return out.filter((c) => {
+    const key = `${c.kind}:${String(c.normalized).toLowerCase()}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+// Additive merge: manual entries and earlier provenance survive re-audits;
+// repeated extraction never multiplies candidates.
+export function mergeContactCandidates(existing = [], incoming = []) {
+  const byKey = new Map()
+  const keyOf = (c) => `${c.kind}:${String(c.normalized || c.value || '').toLowerCase()}`
+  for (const c of [...(existing || []), ...(incoming || [])]) {
+    if (!c || !c.kind || !c.value) continue
+    const key = keyOf(c)
+    if (!byKey.has(key)) byKey.set(key, { ...c })
+    else {
+      // Retain earliest observation; keep manual source over website.
+      const cur = byKey.get(key)
+      if (cur.source !== 'manual' && c.source === 'manual') byKey.set(key, { ...c, observedAt: cur.observedAt || c.observedAt })
+    }
+  }
+  return [...byKey.values()].slice(0, 50)
+}
+
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))
 
 async function mapConcurrent(values, concurrency, worker) {
@@ -358,6 +447,7 @@ export async function crawlWebsite({ homeHtml, homeUrl, sitemapText = '', robots
   const bounds = createCrawlBounds({ maxAttempts, maxQueue, maxTotalBytes, timeLimitMs })
   const homeOrigin = new URL(homeUrl).origin
   const pages = [summarizePage(homeHtml, homeUrl)]
+  const contactCandidates = extractContactCandidates(homeHtml, homeUrl)
   const errors = []
   const offOrigin = []
   const visited = new Set([homeUrl.href])
@@ -406,6 +496,10 @@ export async function crawlWebsite({ homeHtml, homeUrl, sitemapText = '', robots
       if (!/html|xhtml/i.test(page.contentType) && !/<html[\s>]/i.test(page.text)) continue
       if (!bounds.addPage(page.bytes)) break
       pages.push(summarizePage(page.text, page.url))
+      for (const cand of extractContactCandidates(page.text, page.url)) {
+        if (contactCandidates.length >= 50) break
+        contactCandidates.push(cand)
+      }
       extractInternalLinks(page.text, page.url).forEach((url) => {
         discoveredLinks.set(url.href, url)
         enqueue(pageCandidate(url))
@@ -427,6 +521,7 @@ export async function crawlWebsite({ homeHtml, homeUrl, sitemapText = '', robots
   return {
     pages,
     errors,
+    contactCandidates: mergeContactCandidates([], contactCandidates),
     links,
     offOrigin,
     discoveredPages: visited.size + queue.length,
@@ -957,6 +1052,7 @@ export async function auditWebsite(website, options = {}) {
       auditComponents: componentStatuses,
       crawlPages: crawl.pages,
       crawlErrors: crawl.errors,
+      contactCandidates: crawl.contactCandidates || [],
       brokenLinkDetails: crawl.links.results.filter((result) => result.broken).slice(0, 20),
       lighthouse: lighthouseSummary,
       auditSummary: {
@@ -995,6 +1091,7 @@ export async function auditWebsite(website, options = {}) {
     auditComponents: componentStatuses,
     crawlPages: crawl.pages,
     crawlErrors: crawl.errors,
+    contactCandidates: crawl.contactCandidates || [],
     brokenLinkDetails: crawl.links.results.filter((result) => result.outcome === LINK_OUTCOMES.CONFIRMED_BROKEN).slice(0, 20),
     unverifiedLinkDetails: crawl.links.results.filter((result) => !result.verified).slice(0, 20).map((result) => ({ url: result.url, finalUrl: result.finalUrl, status: result.status, outcome: result.outcome, error: result.error, observedAt: result.observedAt })),
     lighthouse: lighthouseSummary,
