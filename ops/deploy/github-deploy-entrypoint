@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+request=${SSH_ORIGINAL_COMMAND:-}
+
+if [[ "$request" =~ ^sudo[[:space:]]+-n[[:space:]]+/usr/local/sbin/deploy-scoutline[[:space:]]--stdin[[:space:]]([0-9a-f]{40})[[:space:]]([0-9a-f]{64})$ ]]; then
+  exec /usr/bin/sudo -n /usr/local/sbin/deploy-scoutline --stdin "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+fi
+
+if [[ "$request" =~ ^sudo[[:space:]]+-n[[:space:]]+/usr/local/sbin/deploy-goodshigoto[[:space:]]--stdin[[:space:]]([0-9a-f]{40})[[:space:]]([0-9a-f]{64})$ ]]; then
+  exec /usr/bin/sudo -n /usr/local/sbin/deploy-goodshigoto --stdin "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+fi
+
+echo "unsupported deployment command" >&2
+exit 2
