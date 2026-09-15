@@ -34,11 +34,13 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
+      - name: Prepare production dependencies
+        run: npm prune --omit=dev --ignore-scripts --no-audit --no-fund
+
       - name: Package release
         run: |
           tar \
             --exclude=.git \
-            --exclude=node_modules \
             --exclude=data \
             --exclude='.env*' \
             -czf "$RUNNER_TEMP/scoutline-${GITHUB_SHA}.tgz" .
@@ -49,16 +51,16 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_ARTIFACT_KEY: ${{ secrets.DEPLOY_ARTIFACT_KEY }}
         run: |
           set -euo pipefail
+          test -n "$DEPLOY_ARTIFACT_KEY"
           install -d -m 700 "$HOME/.ssh"
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/id_ed25519"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
 
           archive="scoutline-${GITHUB_SHA}.tgz"
-          scp -o IdentitiesOnly=yes \
-            "$RUNNER_TEMP/$archive" \
-            "$DEPLOY_USER@$DEPLOY_HOST:/tmp/$archive"
-          ssh -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" \
-            "sudo -n /usr/local/sbin/deploy-scoutline /tmp/$archive $GITHUB_SHA"
+          signature="$(openssl dgst -sha256 -hmac "$DEPLOY_ARTIFACT_KEY" "$RUNNER_TEMP/$archive" | awk '{print $NF}')"
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            "sudo -n /usr/local/sbin/deploy-scoutline --stdin $GITHUB_SHA $signature" < "$RUNNER_TEMP/$archive"

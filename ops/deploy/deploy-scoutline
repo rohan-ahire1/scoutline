@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-archive=${1:?archive path is required}
-sha=${2:?commit SHA is required}
+mode=${1:-}
+sha=${2:-}
+signature=${3:-}
 
-[[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid commit SHA" >&2; exit 2; }
-[[ "$archive" == /tmp/scoutline-*.tgz && -f "$archive" ]] || {
-  echo "invalid Scoutline archive path" >&2
+[[ "$mode" == "--stdin" ]] || {
+  echo "deploy requires a signed archive stream" >&2
   exit 2
 }
+[[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid commit SHA" >&2; exit 2; }
+[[ "$signature" =~ ^[0-9a-f]{64}$ ]] || { echo "invalid artifact signature" >&2; exit 2; }
+
+hmac_file=/etc/github-deploy/artifact-hmac.key
+[[ -r "$hmac_file" ]] || { echo "artifact verification key is unavailable" >&2; exit 2; }
+
+max_archive_bytes=$((512 * 1024 * 1024))
+archive=$(mktemp /tmp/scoutline-deploy.XXXXXX.tgz)
 
 base=/home/rohan/projects/scoutline
 release_root="$base/releases"
@@ -16,18 +24,37 @@ current="$base/current"
 stage="$release_root/$sha"
 service=scoutline.service
 health_url=http://127.0.0.1:8787/api/auth/config
-npm=/home/rohan/.hermes/node/bin/npm
 export PATH=/home/rohan/.hermes/node/bin:/home/rohan/.hermes/bin:/home/rohan/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 cleanup() { rm -f -- "$archive"; }
 trap cleanup EXIT
 
+if ! /usr/bin/head -c "$((max_archive_bytes + 1))" > "$archive"; then
+  echo "failed to receive release archive" >&2
+  exit 2
+fi
+archive_size=$(stat -c '%s' "$archive")
+(( archive_size > 0 && archive_size <= max_archive_bytes )) || {
+  echo "release archive is empty or too large" >&2
+  exit 2
+}
+
+verification_key=$(<"$hmac_file")
+actual_signature=$(/usr/bin/openssl dgst -sha256 -hmac "$verification_key" "$archive" | /usr/bin/awk '{print $NF}')
+[[ "$actual_signature" == "$signature" ]] || {
+  echo "artifact signature verification failed" >&2
+  exit 2
+}
+
 mkdir -p "$release_root"
+chown root:root "$release_root"
+chmod 755 "$release_root"
 if [[ -e "$stage" ]]; then
   echo "release already exists: $stage" >&2
   exit 2
 fi
 mkdir "$stage"
+chown rohan:rohan "$stage"
 
 if ! tar -tzf "$archive" | LC_ALL=C awk '
   {
@@ -43,20 +70,20 @@ if ! tar -tzf "$archive" | LC_ALL=C awk '
   exit 2
 fi
 
-tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$stage"
-ln -s "$base/data" "$stage/data"
+/usr/sbin/runuser -u rohan -- tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$stage"
 
 test -f "$stage/package.json"
 test -f "$stage/dist/index.html"
-(
-  cd "$stage"
-  "$npm" ci --omit=dev --no-audit --no-fund
-)
-
-previous="$base"
-if [[ -L "$current" ]]; then
-  previous=$(readlink "$current")
+test -d "$stage/node_modules"
+if [[ -e "$stage/data" || -L "$stage/data" ]]; then
+  echo "release archive must not contain data" >&2
+  exit 2
 fi
+ln -s "$base/data" "$stage/data"
+
+[[ -L "$current" ]] || { echo "current release link is missing" >&2; exit 2; }
+previous=$(readlink "$current")
+[[ -d "$previous" ]] || { echo "previous release directory is missing" >&2; exit 2; }
 
 ln -s "$stage" "$current.next.$$"
 mv -Tf "$current.next.$$" "$current"
