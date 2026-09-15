@@ -1,0 +1,28 @@
+[Unit]
+Description=Scoutline production service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rohan
+Group=rohan
+WorkingDirectory=/home/rohan/projects/scoutline/current
+Environment=NODE_ENV=production
+Environment=SCOUTLINE_PORT=8787
+Environment=PATH=/home/rohan/.hermes/node/bin:/home/rohan/.hermes/bin:/home/rohan/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+EnvironmentFile=/home/rohan/.hermes/scoutline.env
+ExecStart=/home/rohan/.hermes/bin/bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- /home/rohan/.hermes/node/bin/npm start
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
