@@ -86,9 +86,9 @@ const NEXT_ACTION_RULES = [
   ['Research job still active', (lead, research) => research.processing, () => 'Research running'],
   ['No audit yet, no website to audit', (lead, research) => !research.analyzed && !lead.website, () => 'Review business fit'],
   ['No audit yet', (lead, research) => !research.analyzed, () => 'Analyze website'],
-  ['Deterministic evidence ready, optional AI skipped', (lead, research) => !research.museComplete && research.museSkipped && !isQualified(lead), () => 'Qualify for outreach'],
+  ['Deterministic evidence ready, optional AI skipped', (lead, research) => !research.museComplete && research.museSkipped && !isQualified(lead), () => 'Review findings'],
   ['Deterministic evidence ready, synthesis pending', (lead, research) => !research.museComplete, () => 'Review research'],
-  ['Not qualified yet', (lead) => !isQualified(lead), () => 'Qualify for outreach'],
+  ['Not qualified yet', (lead) => !isQualified(lead), () => 'Review findings'],
   ['Qualified, draft ready', (lead) => !isContacted(lead) && Boolean(lead.outreachDraft || Object.keys(lead.outreachDrafts || {}).length), () => 'Review outreach draft'],
   ['Qualified, no draft yet', (lead) => !isContacted(lead), () => 'Prepare outreach'],
   ['Open pipeline with an explicit next step', (lead) => isOpenPipeline(lead) && Boolean(lead.nextAction), (lead) => lead.nextAction],
@@ -108,6 +108,7 @@ export function getSidebarCounts(leads = []) {
     Outreach: leads.filter((lead) => getOutreachState(lead) === 'Ready to contact').length,
     Pipeline: leads.filter(isOpenPipeline).length,
     Contracts: leads.filter((lead) => lead.salesStage === 'Won' && !lead.contract).length,
+    Starred: leads.filter((lead) => lead.starred).length,
   }
 }
 
@@ -174,6 +175,15 @@ export function validateSettingsDraft(draft) {
   if (draft.discoveryLongitude !== '' && draft.discoveryLongitude != null) {
     const v = Number(draft.discoveryLongitude)
     if (!Number.isFinite(v) || v < -180 || v > 180) errors.discoveryLongitude = 'Longitude must be -180 to 180'
+  }
+  const offer = draft.offer
+  if (offer != null) {
+    if (typeof offer !== 'object' || Array.isArray(offer)) errors.offer = 'Offer must be an object'
+    else {
+      if (offer.service != null && (typeof offer.service !== 'string' || offer.service.length > 500)) errors['offer.service'] = 'Service must be ≤500 chars'
+      if (offer.callToAction != null && (typeof offer.callToAction !== 'string' || !offer.callToAction.trim() || offer.callToAction.length > 300)) errors['offer.callToAction'] = 'Call to action is required (≤300 chars)'
+      if (offer.channels != null && (!Array.isArray(offer.channels) || !offer.channels.length)) errors['offer.channels'] = 'Pick at least one channel'
+    }
   }
   return { errors, isValid: Object.keys(errors).length === 0 }
 }
@@ -243,4 +253,59 @@ export function getFieldErrorsFromApiError(caught) {
   if (/website|domain/i.test(msg)) return { website: msg }
   if (/location/i.test(msg)) return { location: msg }
   return {}
+}
+
+// Possible duplicates share a normalized business name. The backend already
+// records a shared businessId per group; until collection matches on it,
+// the UI flags every record in a group so conflicting states stay visible.
+export function duplicateLeadGroups(leads = []) {
+  const groups = new Map()
+  for (const lead of leads) {
+    const key = String(lead?.company || '').trim().toLowerCase()
+    if (!key) continue
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(lead)
+  }
+  return [...groups.values()].filter((group) => group.length > 1)
+}
+
+export function duplicateLeadIds(leads = []) {
+  const dupes = new Set()
+  for (const group of duplicateLeadGroups(leads)) for (const lead of group) dupes.add(lead.id)
+  return dupes
+}
+
+// Actual record count per duplicate id, so flags read "3 records" instead of
+// a hardcoded guess. Ids outside a group are absent from the map.
+export function duplicateLeadCounts(leads = []) {
+  const counts = new Map()
+  for (const group of duplicateLeadGroups(leads)) for (const lead of group) counts.set(lead.id, group.length)
+  return counts
+}
+
+// Collection timestamp in milliseconds. The backend stores collectedAt as a
+// locale string; unparseable or missing values rank 0 so unknown dates sort
+// with the oldest instead of breaking the order.
+export function leadCollectedTime(lead = {}) {
+  const raw = lead?.collectedAt
+  if (!raw) return 0
+  const time = new Date(raw).getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+// Short display date for table cells ("Aug 16, 2026"); unknown stays an
+// honest em dash instead of a fabricated date.
+export function formatCollectedDate(lead = {}) {
+  const time = leadCollectedTime(lead)
+  if (!time) return '—'
+  return new Date(time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// Month-level tokens so table search matches "Aug 2026" and "August 2026"
+// as well as full dates and years.
+export function collectedSearchText(lead = {}) {
+  const time = leadCollectedTime(lead)
+  if (!time) return ''
+  const date = new Date(time)
+  return `${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} ${date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
 }

@@ -44,10 +44,10 @@ function significantTokens(text) {
 export function assertOpportunityGrounded(opportunity, observations, { index = 0 } = {}) {
   const refs = Array.isArray(opportunity?.evidenceIds) ? opportunity.evidenceIds : []
   const cited = observations.filter((item) => refs.includes(item.id))
-  if (!refs.length) throw new Error(`Muse opportunity ${index + 1} cites no evidence IDs; every opportunity must reference the observations it is built from`)
+  if (!refs.length) throw new Error(`AI opportunity ${index + 1} cites no evidence IDs; every opportunity must reference the observations it is built from`)
   if (cited.length !== refs.length) {
     const unknown = refs.filter((id) => !observations.some((item) => item.id === id))
-    throw new Error(`Muse opportunity ${index + 1} references unknown or stale evidence IDs (${unknown.join(', ')}); validation failed instead of saving ungrounded prose`)
+    throw new Error(`AI opportunity ${index + 1} references unknown or stale evidence IDs (${unknown.join(', ')}); validation failed instead of saving ungrounded prose`)
   }
   const claimTokens = significantTokens(`${opportunity.title} ${opportunity.evidence}`)
   const citedText = cited.map((item) => item.text).join('\n')
@@ -60,7 +60,7 @@ export function assertOpportunityGrounded(opportunity, observations, { index = 0
     return false
   })
   if (!verbatim && overlap.length < 2) {
-    throw new Error(`Muse opportunity ${index + 1} ("${opportunity.title}") does not match the evidence it cites; shared substance: ${overlap.slice(0, 5).join(', ') || 'none'}`)
+    throw new Error(`AI opportunity ${index + 1} ("${opportunity.title}") does not match the evidence it cites; shared substance: ${overlap.slice(0, 5).join(', ') || 'none'}`)
   }
   return true
 }
@@ -170,35 +170,35 @@ export function buildMuseEvidencePacket(lead, options = {}) {
 }
 
 export function validateMuseAnalysis(result, { observations = null, allowedEvidenceIds = null } = {}) {
-  if (!result || typeof result !== 'object') throw new Error('Muse returned an invalid analysis payload (expected a JSON object)')
-  if (typeof result.summary !== 'string' || !result.summary.trim()) throw new Error('Muse did not return a summary')
-  if (!['Pursue', 'Review', 'Pass'].includes(result.qualificationRecommendation)) throw new Error('Muse returned an invalid qualification recommendation')
-  if (!Array.isArray(result.topOpportunities)) throw new Error('Muse returned malformed opportunities; previous analysis is unchanged — retry synthesis or edit manually')
+  if (!result || typeof result !== 'object') throw new Error('AI returned an invalid analysis payload (expected a JSON object)')
+  if (typeof result.summary !== 'string' || !result.summary.trim()) throw new Error('AI did not return a summary')
+  if (!['Pursue', 'Review', 'Pass'].includes(result.qualificationRecommendation)) throw new Error('AI returned an invalid qualification recommendation')
+  if (!Array.isArray(result.topOpportunities)) throw new Error('AI returned malformed opportunities; previous analysis is unchanged — retry synthesis or edit manually')
   const allowed = allowedEvidenceIds || (observations || []).map((item) => item.id)
   const topOpportunities = result.topOpportunities.slice(0, 5).map((item, index) => {
-    if (!item || !['High', 'Medium', 'Low'].includes(item.severity)) throw new Error('Muse returned an invalid opportunity severity')
+    if (!item || !['High', 'Medium', 'Low'].includes(item.severity)) throw new Error('AI returned an invalid opportunity severity')
     for (const field of ['title', 'evidence', 'whyItMatters', 'recommendation']) {
-      if (typeof item[field] !== 'string' || !item[field].trim()) throw new Error(`Muse returned an opportunity without ${field}`)
+      if (typeof item[field] !== 'string' || !item[field].trim()) throw new Error(`AI returned an opportunity without ${field}`)
     }
     if (!Array.isArray(item.evidenceIds) || !item.evidenceIds.length) {
-      throw new Error(`Muse opportunity ${index + 1} cites no evidence IDs; every opportunity must reference the observations it is built from`)
+      throw new Error(`AI opportunity ${index + 1} cites no evidence IDs; every opportunity must reference the observations it is built from`)
     }
     if (allowed.length) {
       const unknown = item.evidenceIds.filter((id) => !allowed.includes(id))
-      if (unknown.length) throw new Error(`Muse opportunity ${index + 1} references unknown or stale evidence IDs (${unknown.join(', ')}); validation failed instead of saving ungrounded prose`)
+      if (unknown.length) throw new Error(`AI opportunity ${index + 1} references unknown or stale evidence IDs (${unknown.join(', ')}); validation failed instead of saving ungrounded prose`)
     }
     for (const field of ['title', 'evidence', 'whyItMatters', 'recommendation']) {
-      assertNoInventedClaims(item[field], `Muse opportunity ${index + 1} ${field}`)
+      assertNoInventedClaims(item[field], `AI opportunity ${index + 1} ${field}`)
     }
     if (observations) assertOpportunityGrounded(item, observations, { index })
     return Object.fromEntries(['title', 'severity', 'evidence', 'evidenceIds', 'whyItMatters', 'recommendation'].map((field) => field === 'evidenceIds' ? [field, [...item.evidenceIds]] : [field, item[field].trim()]))
   })
   const noSupportedOpportunity = result.noSupportedOpportunity === true
   if (!topOpportunities.length && !noSupportedOpportunity) {
-    throw new Error('Muse returned no opportunities without the explicit no-supported-opportunity outcome; refusing to invent one')
+    throw new Error('AI returned no opportunities without the explicit no-supported-opportunity outcome; refusing to invent one')
   }
   if (noSupportedOpportunity && topOpportunities.length) {
-    throw new Error('Muse declared no supported opportunity while returning opportunities; refusing the contradictory payload')
+    throw new Error('AI declared no supported opportunity while returning opportunities; refusing the contradictory payload')
   }
   const cleanList = (value, limit) => (Array.isArray(value) ? value : []).filter((item) => typeof item === 'string' && item.trim()).slice(0, limit).map((item) => item.trim())
   const outreachAngles = cleanList(result.outreachAngles, 4)
@@ -216,9 +216,9 @@ export function validateMuseAnalysis(result, { observations = null, allowedEvide
 }
 
 export async function generateMuseAnalysis(lead, options = {}) {
-  if (lead.opportunityScore == null) throw new Error('A completed deterministic website audit is required before Muse synthesis')
+  if (lead.opportunityScore == null) throw new Error('A completed deterministic website audit is required before AI synthesis')
   const config = getOutreachConfig(options)
-  if (!config.configured) throw new Error('Muse is not configured')
+  if (!config.configured) throw new Error('AI is not configured')
   const client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: 60_000, maxRetries: 2 })
   const observations = buildObservations(lead)
   const evidencePacket = { ...buildMuseEvidencePacket(lead, options), observations }
@@ -250,12 +250,12 @@ Grounding rules:
       text: { format: { type: 'json_schema', name: 'scoutline_muse_analysis', strict: true, schema: museAnalysisSchema } },
     })
   const responseText = extractResponseText(response)
-  if (!responseText) throw new Error('Muse returned no analysis text; previous analysis is unchanged — retry synthesis or edit manually')
+  if (!responseText) throw new Error('AI returned no analysis text; previous analysis is unchanged — retry synthesis or edit manually')
   let parsed
   try {
     parsed = JSON.parse(responseText)
   } catch {
-    throw new Error('Muse returned malformed analysis JSON; previous analysis is unchanged — retry synthesis or edit manually')
+    throw new Error('AI returned malformed analysis JSON; previous analysis is unchanged — retry synthesis or edit manually')
   }
   const analysis = validateMuseAnalysis(parsed, { observations })
   return {

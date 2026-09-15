@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildMuseEvidencePacket, extractLighthouseEvidence, validateMuseAnalysis } from './insights.js'
 
-test('builds a bounded Muse packet from saved audit evidence', () => {
+test('builds a bounded AI packet from saved audit evidence', () => {
   const lead = {
     company: 'Acme Roofing', category: 'Roofing', location: 'Salt Lake City', website: 'acme.example',
     rating: 4.8, reviews: 125, opportunityScore: 76, confidence: 91, analysisSource: 'Multi-page website audit + Lighthouse',
@@ -64,7 +64,7 @@ const groundedOpportunity = {
   recommendation: 'Rewrite the meta description to state the service, area, and next step.',
 }
 
-test('validates a structured Muse result without changing the deterministic score', () => {
+test('validates a structured AI result without changing the deterministic score', () => {
   const result = validateMuseAnalysis({
     summary: 'The audit shows a clear, measurable mobile performance opportunity.',
     topOpportunities: [{ ...groundedOpportunity }],

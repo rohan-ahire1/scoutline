@@ -100,3 +100,39 @@ test('task buckets handle overdue, today, upcoming and no-date consistently', ()
   assert.equal(taskBucket({ status: 'snoozed', dueAt: '2026-09-01' }, '2026-09-05'), 'none')
   assert.equal(addDaysString('2026-09-05', 7), '2026-09-12')
 })
+
+test('recommended opportunity ranks customer tasks above metadata', async () => {
+  const { describeOpportunity, rankFindingsForOutreach } = await import('./brief.js')
+  const findings = [
+    { detail: 'The homepage title is missing or outside a useful descriptive range.', evidence: 'Homepage title length: 4 characters' },
+    { detail: 'No phone link, email link, or enquiry form was detected in homepage markup.', evidence: 'Direct contact methods detected: 0' },
+  ]
+  const ranked = rankFindingsForOutreach(findings)
+  assert.match(ranked[0].detail, /phone link/)
+  const opp = describeOpportunity(ranked[0], { analysisSource: 'Deterministic website audit', auditedUrl: 'https://acme.example/', auditedAt: '2026-09-01T00:00:00.000Z', auditStatus: 'Partial' })
+  assert.match(opp.relevance, /interpretation, not measured/)
+  assert.ok(opp.evidence.excerpt && opp.evidence.url && opp.evidence.date)
+  assert.ok(opp.limitations.some((l) => /Partial audit/.test(l)))
+  assert.ok(!/revenue|conversion|urgent/i.test(JSON.stringify(opp)))
+})
+
+test('prospect brief is a dated snapshot without internal details', async () => {
+  const { buildProspectBrief, briefFindings } = await import('./brief.js')
+  const lead = {
+    ...audited,
+    notes: 'Internal: looks price-sensitive, call after 5pm.',
+    briefRationale: { text: 'Internal rationale here.', by: 'Rohan' },
+    leadValue: { leadValueScore: 77, coverage: 0.8, version: '1' },
+    opportunityScore: 70,
+    findingReviews: [{ findingKey: briefFindings(audited)[0].key, decision: 'accepted', auditId: 'audit-9', at: '2026-09-05T00:00:00.000Z' }],
+    contactAttempts: [{ id: 'att-1', outcome: 'no-answer' }],
+  }
+  const md = buildProspectBrief(lead, { date: '2026-09-08T00:00:00.000Z' })
+  assert.match(md, /Acme Plumbing/)
+  assert.match(md, /2026-09-08/)
+  assert.match(md, /Snapshot of saved evidence/)
+  assert.ok(md.includes('homepage title is missing'))
+  assert.ok(!md.includes('77/100') && !md.includes('Internal: looks price-sensitive') && !md.includes('Internal rationale'))
+  assert.ok(!md.includes('enquiry form was detected'), 'rejected/unreviewed findings stay out')
+  assert.equal(buildProspectBrief(audited), null, 'no accepted finding means no brief')
+})

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { analyzeHtml, assertPublicUrl, AuditError, checkInternalLinks, classifyCapture, classifyLinkOutcome, composeScoreProvenance, crawlWebsite, extractInternalLinks, fetchPublicStatus, fetchPublicText, isPrivateAddress, LINK_OUTCOMES, normalizeWebsite } from './audit.js'
+import { analyzeHtml, assertPublicUrl, AuditError, checkInternalLinks, classifyCapture, classifyLinkOutcome, composeScoreProvenance, crawlWebsite, extractContactCandidates, extractInternalLinks, fetchPublicStatus, fetchPublicText, isPrivateAddress, LINK_OUTCOMES, mergeContactCandidates, normalizeWebsite } from './audit.js'
 
 test('normalizes public website inputs', () => {
   assert.equal(normalizeWebsite('example.com').href, 'https://example.com/')
@@ -505,4 +505,37 @@ test('a healthy small crawl still completes without a stop reason', async () => 
   } finally {
     mocked.restore()
   }
+})
+
+test('contact extraction collects mailto, tel, contact pages and forms with provenance', () => {
+  const html = `<html><body>
+    <a href="mailto:bid@acme.example">Email</a>
+    <a href="mailto:BID@acme.example">Email again</a>
+    <a href="tel:+1-555-0100">Call</a>
+    <a href="/contact">Contact us</a>
+    <a href="/book-online">Book now</a>
+    <a href="https://other.example/contact">External</a>
+    <form><input name="q"></form>
+  </body></html>`
+  const out = extractContactCandidates(html, new URL('https://acme.example/'), { observedAt: '2026-09-08T00:00:00.000Z' })
+  const kinds = out.map((c) => c.kind).sort()
+  assert.ok(kinds.includes('email'))
+  assert.ok(kinds.includes('phone'))
+  assert.ok(kinds.includes('form'))
+  assert.ok(out.some((c) => c.kind === 'contactPage' && c.value.includes('/contact')))
+  assert.ok(out.some((c) => c.kind === 'booking'))
+  assert.ok(out.every((c) => c.sourceUrl === 'https://acme.example/' && c.observedAt === '2026-09-08T00:00:00.000Z' && c.verification === 'observed'))
+  assert.equal(out.filter((c) => c.kind === 'email').length, 1, 'duplicate mailto deduped by normalized value')
+  assert.ok(!out.some((c) => String(c.value).includes('other.example')), 'off-site links never collected')
+  assert.ok(!JSON.stringify(out).match(/decision|owner|ceo/i), 'no decision-maker inference')
+})
+
+test('contact merge is additive, idempotent and keeps manual entries', () => {
+  const site = extractContactCandidates('<html><body><a href="mailto:a@x.example">a</a></body></html>', new URL('https://x.example/'))
+  const manual = [{ kind: 'email', value: 'A@x.example', normalized: 'a@x.example', sourceUrl: 'manual-entry', observedAt: '2026-09-01', method: 'manual-entry', source: 'manual', verification: 'owner-entered' }]
+  const once = mergeContactCandidates(manual, site)
+  assert.equal(once.filter((c) => c.normalized === 'a@x.example').length, 1)
+  assert.equal(once.find((c) => c.normalized === 'a@x.example').source, 'manual')
+  const twice = mergeContactCandidates(once, site)
+  assert.deepEqual(twice, once, 'repeated extraction does not multiply candidates')
 })
