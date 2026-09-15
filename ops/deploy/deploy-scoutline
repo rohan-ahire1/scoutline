@@ -26,7 +26,14 @@ service=scoutline.service
 health_url=http://127.0.0.1:8787/api/auth/config
 export PATH=/home/rohan/.hermes/node/bin:/home/rohan/.hermes/bin:/home/rohan/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-cleanup() { rm -f -- "$archive"; }
+stage_created=0
+switched=0
+cleanup() {
+  rm -f -- "$archive"
+  if (( stage_created == 1 && switched == 0 )) && [[ -d "$stage" ]]; then
+    rm -rf -- "$stage"
+  fi
+}
 trap cleanup EXIT
 
 if ! /usr/bin/head -c "$((max_archive_bytes + 1))" > "$archive"; then
@@ -45,6 +52,8 @@ actual_signature=$(/usr/bin/openssl dgst -sha256 -hmac "$verification_key" "$arc
   echo "artifact signature verification failed" >&2
   exit 2
 }
+chown rohan:rohan "$archive"
+chmod 600 "$archive"
 
 mkdir -p "$release_root"
 chown root:root "$release_root"
@@ -54,6 +63,7 @@ if [[ -e "$stage" ]]; then
   exit 2
 fi
 mkdir "$stage"
+stage_created=1
 chown rohan:rohan "$stage"
 
 if ! tar -tzf "$archive" | LC_ALL=C awk '
@@ -87,12 +97,14 @@ previous=$(readlink "$current")
 
 ln -s "$stage" "$current.next.$$"
 mv -Tf "$current.next.$$" "$current"
+switched=1
 
 rollback() {
   echo "Scoutline health check failed; rolling back" >&2
   ln -s "$previous" "$current.rollback.$$"
   mv -Tf "$current.rollback.$$" "$current"
   systemctl restart "$service" || true
+  switched=0
 }
 trap rollback ERR
 
