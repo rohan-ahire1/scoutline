@@ -17,6 +17,7 @@ stage="$release_root/$sha"
 service=scoutline.service
 health_url=http://127.0.0.1:8787/api/auth/config
 npm=/home/rohan/.hermes/node/bin/npm
+export PATH=/home/rohan/.hermes/node/bin:/home/rohan/.hermes/bin:/home/rohan/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 cleanup() { rm -f -- "$archive"; }
 trap cleanup EXIT
