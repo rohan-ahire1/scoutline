@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getMuseGuidance, getNextAction, getOutreachState, getResearchState } from './workflow.js'
+import { duplicateLeadCounts, duplicateLeadIds, getMuseGuidance, getNextAction, getOutreachState, getResearchState } from './workflow.js'
 
 // Contract tests for the ROH-25 next-action decision table. Each sales and
 // research state maps to exactly one honest next action; terminal states win
@@ -50,11 +50,11 @@ test('a lead with no website follows the manual review path, not the audit path'
   assert.equal(getNextAction({ company: 'Has Site', website: 'example.com' }), 'Analyze website')
 })
 
-test('skipped AI synthesis does not block deterministic manual review', () => {
+test('skipped AI synthesis asks for review before qualification', () => {
   const lead = { opportunityScore: 70, website: 'example.com', museAnalysis: { status: 'Skipped' } }
   assert.equal(getResearchState(lead).museSkipped, true)
   assert.equal(getResearchState(lead).deterministicReady, true)
-  assert.equal(getNextAction(lead), 'Qualify for outreach')
+  assert.equal(getNextAction(lead), 'Review findings')
 })
 
 test('pending synthesis still asks for review before qualification', () => {
@@ -78,4 +78,53 @@ test('Pass guidance is visible and advisory', () => {
 test('open pipeline stages surface the explicit next step', () => {
   assert.equal(getNextAction({ qualified: true, salesStage: 'Meeting', opportunityScore: 70, analysisSource: 'audit', nextAction: 'Send proposal' }), 'Send proposal')
   assert.equal(getNextAction({ qualified: true, salesStage: 'Proposal', opportunityScore: 70, analysisSource: 'audit' }), 'Set next action')
+})
+
+test('duplicate business names resolve to one flagged id set', () => {
+  const leads = [
+    { id: 'a', company: 'Utah Remodel Works' },
+    { id: 'b', company: 'utah remodel works ' },
+    { id: 'c', company: 'Roof-It' },
+  ]
+  assert.deepEqual([...duplicateLeadIds(leads)].sort(), ['a', 'b'])
+  assert.deepEqual([...duplicateLeadIds([])], [])
+})
+
+test('duplicate flags carry actual group counts', () => {
+  const leads = [
+    { id: 'a', company: 'Utah Remodel Works' },
+    { id: 'b', company: 'utah remodel works ' },
+    { id: 'c', company: 'utah remodel works' },
+    { id: 'd', company: 'Roof-It' },
+  ]
+  const counts = duplicateLeadCounts(leads)
+  assert.equal(counts.get('a'), 3)
+  assert.equal(counts.get('b'), 3)
+  assert.equal(counts.get('c'), 3)
+  assert.equal(counts.has('d'), false)
+  assert.deepEqual([...duplicateLeadCounts([])].length, 0)
+})
+
+test('sidebar counts include starred leads', async () => {
+  const { getSidebarCounts } = await import('./workflow.js')
+  const counts = getSidebarCounts([{ id: 'a', starred: true }, { id: 'b' }, { id: 'c', starred: false }])
+  assert.equal(counts.Starred, 1)
+  assert.equal(getSidebarCounts([]).Starred, 0)
+})
+
+test('collected date helpers rank unknown dates oldest without fabricating', async () => {
+  const { leadCollectedTime, formatCollectedDate, collectedSearchText } = await import('./workflow.js')
+  const dated = { collectedAt: '8/16/2026, 5:23:25 AM' }
+  assert.ok(leadCollectedTime(dated) > 0)
+  assert.equal(formatCollectedDate(dated), 'Aug 16, 2026')
+  assert.equal(leadCollectedTime({}), 0)
+  assert.equal(leadCollectedTime({ collectedAt: 'not a date' }), 0)
+  assert.equal(leadCollectedTime(null), 0)
+  assert.equal(formatCollectedDate({}), '—')
+  assert.equal(formatCollectedDate({ collectedAt: 'not a date' }), '—')
+  const rows = [{ id: 'a' }, { id: 'b', collectedAt: '8/16/2026, 5:23:25 AM' }, { id: 'c', collectedAt: '9/1/2026, 1:00:00 PM' }]
+  const newest = [...rows].sort((a, b) => leadCollectedTime(b) - leadCollectedTime(a)).map((row) => row.id)
+  assert.deepEqual(newest, ['c', 'b', 'a'])
+  assert.equal(collectedSearchText({ collectedAt: '8/16/2026, 5:23:25 AM' }), 'August 2026 Aug 2026')
+  assert.equal(collectedSearchText({}), '')
 })

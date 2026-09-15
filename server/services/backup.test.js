@@ -321,3 +321,41 @@ test('dry-run plan reports counts without changing anything', () => {
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('workflow fields survive json backup round-trip byte-identical', () => {
+  const { root, dataDir, db } = makeJsonSource()
+  try {
+    const enriched = {
+      id: 'lead-1', company: 'Demo', qualified: true, salesStage: 'Qualified',
+      notes: 'Keep me', doNotContact: { status: false, reason: '' },
+      contactAttempts: [{ id: 'att-1', outcome: 'no-answer', channel: 'phone' }],
+      findingReviews: [{ findingKey: 'k', decision: 'accepted', auditId: null }],
+      contactCandidates: [{ id: 'c1', kind: 'email', value: 'a@x.example', normalized: 'a@x.example', sourceUrl: 'manual-entry', observedAt: '2026-09-01', method: 'manual-entry', source: 'manual', verification: 'owner-entered' }],
+      duplicateReviewed: true,
+      leadValue: { leadValueScore: 55, coverage: 0.7, version: '1', scoredAt: '2026-09-07T00:00:00.000Z' },
+      outreachDraft: 'Hello', outreachDrafts: { Concise: 'Hello' },
+      outreachChannels: { email: 'Hello', phone: 'Hi', form: 'Form msg' },
+      outreachProvenance: { opportunityKey: 'k', auditId: null, offerVersion: 1, contactId: 'c1', generatedAt: '2026-09-07T00:00:00.000Z' },
+    }
+    db.prepare('UPDATE leads SET payload = ? WHERE id = ?').run(JSON.stringify(enriched), 'lead-1')
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('offer', JSON.stringify({ version: 2, service: 'S', callToAction: 'CTA?' }))
+    const backup = makeJsonBackup(dataDir, db)
+    assert.equal(validateJsonBackup(backup).ok, true)
+    const target = new Database(':memory:')
+    target.exec(JSON_SCHEMA)
+    const targetDir = join(root, 'target')
+    const result = applyJsonRestore(target, targetDir, backup)
+    assert.equal(result.ok, true)
+    const restored = JSON.parse(target.prepare('SELECT payload FROM leads WHERE id = ?').get('lead-1').payload)
+    assert.deepEqual(restored.contactCandidates, enriched.contactCandidates)
+    assert.deepEqual(restored.outreachChannels, enriched.outreachChannels)
+    assert.deepEqual(restored.outreachProvenance, enriched.outreachProvenance)
+    assert.deepEqual(restored.contactAttempts, enriched.contactAttempts)
+    assert.equal(restored.notes, 'Keep me')
+    assert.equal(JSON.parse(target.prepare('SELECT value FROM settings WHERE key = ?').get('offer').value).version, 2)
+    target.close()
+  } finally {
+    closeAll([db])
+    rmSync(root, { recursive: true, force: true })
+  }
+})

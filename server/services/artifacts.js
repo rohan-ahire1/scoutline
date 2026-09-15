@@ -231,7 +231,7 @@ export function renderLeadReportMarkdown(lead, { manifest = null } = {}) {
   ]
   if (lead.museAnalysis?.status === 'Completed') {
     lines.push(
-      `## Muse synthesis (advisory${lead.museAnalysis.stale ? ' — STALE: a newer audit completed after this synthesis' : ''})`,
+      `## AI synthesis (advisory${lead.museAnalysis.stale ? ' — STALE: a newer audit completed after this synthesis' : ''})`,
       '',
       `- Recommendation: ${lead.museAnalysis.qualificationRecommendation}`,
       `- Rationale: ${lead.museAnalysis.qualificationRationale}`,
