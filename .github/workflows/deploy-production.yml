@@ -1,0 +1,64 @@
+name: Deploy Scoutline production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scoutline-production
+  cancel-in-progress: false
+
+jobs:
+  test-build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Package release
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=data \
+            --exclude='.env*' \
+            -czf "$RUNNER_TEMP/scoutline-${GITHUB_SHA}.tgz" .
+
+      - name: Deploy over restricted SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+          archive="scoutline-${GITHUB_SHA}.tgz"
+          scp -o IdentitiesOnly=yes \
+            "$RUNNER_TEMP/$archive" \
+            "$DEPLOY_USER@$DEPLOY_HOST:/tmp/$archive"
+          ssh -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            "sudo -n /usr/local/sbin/deploy-scoutline /tmp/$archive $GITHUB_SHA"
