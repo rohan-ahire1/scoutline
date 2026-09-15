@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+archive=${1:?archive path is required}
+sha=${2:?commit SHA is required}
+
+[[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid commit SHA" >&2; exit 2; }
+[[ "$archive" == /tmp/scoutline-*.tgz && -f "$archive" ]] || {
+  echo "invalid Scoutline archive path" >&2
+  exit 2
+}
+
+base=/home/rohan/projects/scoutline
+release_root="$base/releases"
+current="$base/current"
+stage="$release_root/$sha"
+service=scoutline.service
+health_url=http://127.0.0.1:8787/api/auth/config
+npm=/home/rohan/.hermes/node/bin/npm
+
+cleanup() { rm -f -- "$archive"; }
+trap cleanup EXIT
+
+mkdir -p "$release_root"
+if [[ -e "$stage" ]]; then
+  echo "release already exists: $stage" >&2
+  exit 2
+fi
+mkdir "$stage"
+
+if ! tar -tzf "$archive" | LC_ALL=C awk '
+  {
+    path = $0
+    sub(/^\.\//, "", path)
+    if (path ~ /^\// || path ~ /(^|\/)\.\.(\/|$)/) {
+      print "unsafe archive path: " path > "/dev/stderr"
+      bad = 1
+    }
+  }
+  END { exit bad }
+'; then
+  exit 2
+fi
+
+tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$stage"
+ln -s "$base/data" "$stage/data"
+
+test -f "$stage/package.json"
+test -f "$stage/dist/index.html"
+(
+  cd "$stage"
+  "$npm" ci --omit=dev --no-audit --no-fund
+)
+
+previous="$base"
+if [[ -L "$current" ]]; then
+  previous=$(readlink "$current")
+fi
+
+ln -s "$stage" "$current.next.$$"
+mv -Tf "$current.next.$$" "$current"
+
+rollback() {
+  echo "Scoutline health check failed; rolling back" >&2
+  ln -s "$previous" "$current.rollback.$$"
+  mv -Tf "$current.rollback.$$" "$current"
+  systemctl restart "$service" || true
+}
+trap rollback ERR
+
+systemctl restart "$service"
+for attempt in $(seq 1 30); do
+  if systemctl is-active --quiet "$service" && curl -fsS --max-time 2 "$health_url" >/dev/null; then
+    trap - ERR
+    echo "Scoutline deployed: $sha"
+    exit 0
+  fi
+  sleep 1
+done
+
+false
