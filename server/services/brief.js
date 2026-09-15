@@ -142,6 +142,98 @@ export function addDaysString(dayString, days) {
   return localDayString(date)
 }
 
+// One reviewable opportunity per prospect (M4). Customer-task impact ranks
+// above metadata hygiene: calling, quoting, booking and understanding the
+// offer beat missing titles or schema. Every part cites saved evidence;
+// relevance is always labelled interpretation, never a measured outcome.
+const TASK_IMPACT = [
+  { pattern: /(phone|call|tel:|contact path|contact method)/i, rank: 0, relevance: 'Visitors who want to call may not find a way to do it.', improvement: 'Add a visible tap-to-call action near the offer and contact points.' },
+  { pattern: /(book|booking|schedule|appointment|quote|estimate|enquiry|form|friction|next step|cta|call to action)/i, rank: 1, relevance: 'Visitors ready to ask for a quote or booking may stall at the first step.', improvement: 'Shorten the enquiry path to one clear primary action with minimal fields.' },
+  { pattern: /(service|offer|h1|hierarchy|content|understand|mobile|navigation|viewport)/i, rank: 2, relevance: 'Visitors may struggle to understand what is offered on their device.', improvement: 'Clarify the service hierarchy with one primary heading and a visible next step.' },
+  { pattern: /(trust|review|testimonial|license|warranty|guarantee|financing)/i, rank: 3, relevance: 'Visitors deciding whether to enquire may miss reassurance.', improvement: 'Move relevant proof closer to the offer and contact action.' },
+  { pattern: /(performance|lighthouse|speed|slow|lcp)/i, rank: 4, relevance: 'A slow first experience can lose mobile visitors before they reach the offer.', improvement: 'Compress heavy media and prioritize above-the-fold content.' },
+]
+
+function taskRank(detail) {
+  const text = String(detail || '')
+  for (const entry of TASK_IMPACT) if (entry.pattern.test(text)) return entry.rank
+  return 5
+}
+
+export function rankFindingsForOutreach(findings = []) {
+  const text = (item) => item?.finding?.detail || item?.detail || item
+  return [...findings].sort((a, b) => taskRank(text(a)) - taskRank(text(b)))
+}
+
+export function describeOpportunity(finding = {}, lead = {}) {
+  const detail = String(finding.detail || '').trim()
+  const entry = TASK_IMPACT.find((item) => item.pattern.test(detail)) || null
+  const performanceMeasured = lead.measureProvenance?.performance?.source === 'lighthouse' || lead.lighthouse?.status === 'Completed'
+  const limitations = []
+  if (!finding.evidence) limitations.push('No directly matched evidence line; the observation stands on the audit finding text.')
+  if (!performanceMeasured) limitations.push('Mobile performance was not measured by Lighthouse; no speed claim is made.')
+  if (lead.auditStatus === 'Partial' || lead.researchStatus === 'Partial') limitations.push('Partial audit: only this evidence-backed claim is used, not the whole site.')
+  if (lead.researchStatus === 'Inconclusive') limitations.push('Latest capture was inconclusive; treat this opportunity as unverified.')
+  return {
+    observation: detail,
+    evidence: {
+      excerpt: finding.evidence || null,
+      source: lead.analysisSource || 'Deterministic website audit',
+      url: lead.auditedUrl || null,
+      date: lead.auditedAt || null,
+    },
+    relevance: entry ? `Possible relevance (interpretation, not measured): ${entry.relevance}` : 'Possible relevance (interpretation, not measured): this adds friction to the customer journey.',
+    improvement: entry?.improvement || 'Clarify the content hierarchy and give visitors one obvious, low-friction next step.',
+    limitations,
+  }
+}
+
+// Prospect-facing one-page opportunity brief (M7). Snapshot with a date and
+// clear provenance. Claims match accepted evidence only; internal scores,
+// rejection notes, contact management, reviewer notes and rationale stay out.
+// Exporting returns markdown — it never sends or publishes anything.
+export function buildProspectBrief(lead = {}, { date = new Date().toISOString() } = {}) {
+  const status = reviewStatus(lead)
+  const ranked = rankFindingsForOutreach(status.accepted)
+  const first = ranked[0] || null
+  if (!first) return null
+  const finding = first.finding || { detail: first.findingKey, evidence: null }
+  const opp = describeOpportunity(finding, lead)
+  const day = String(date).slice(0, 10)
+  const lines = []
+  lines.push(`# ${lead.company || 'Unnamed business'} — website opportunity`)
+  lines.push('')
+  lines.push(`Prepared ${day} from ${opp.evidence.source || 'the website audit'}${lead.currentAuditId ? ` (${lead.currentAuditId})` : ''}${opp.evidence.date ? ` · evidence observed ${String(opp.evidence.date).slice(0, 10)}` : ''}. Snapshot of saved evidence, not a live report.`)
+  lines.push('')
+  lines.push('## The opportunity')
+  lines.push('')
+  lines.push(opp.observation)
+  lines.push('')
+  lines.push('## What we observed')
+  lines.push('')
+  if (opp.evidence.excerpt) lines.push(`- ${opp.evidence.excerpt}`)
+  if (opp.evidence.url) lines.push(`- Page: ${opp.evidence.url}`)
+  else if (lead.website) lines.push(`- Website: https://${lead.website}`)
+  lines.push('')
+  lines.push('## Possible relevance')
+  lines.push('')
+  lines.push(opp.relevance)
+  lines.push('')
+  lines.push('## Proposed improvement')
+  lines.push('')
+  lines.push(opp.improvement)
+  lines.push('')
+  lines.push('## Limitations')
+  lines.push('')
+  if (opp.limitations.length) for (const item of opp.limitations) lines.push(`- ${item}`)
+  else lines.push('- None recorded beyond the evidence above.')
+  lines.push('')
+  lines.push('## Suggested next step')
+  lines.push('')
+  lines.push(lead.nextTask?.status === 'open' && lead.nextTask?.note ? String(lead.nextTask.note) : 'A short conversation about whether this improvement is worth pursuing.')
+  return lines.join('\n')
+}
+
 export function buildBriefMarkdown(lead = {}, readiness = briefReadiness(lead)) {
   const lines = []
   const date = (lead.collectedAt && String(lead.collectedAt)) || 'unknown date'

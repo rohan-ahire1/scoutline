@@ -1,0 +1,2715 @@
+{
+  "version": 1,
+  "exportedAt": "2026-09-15T04:53:11.736Z",
+  "workerId": "sample-data",
+  "dailyLimit": 1000,
+  "historyDays": 30,
+  "summary": {
+    "dailyLimit": 1000,
+    "scheduledToday": 196,
+    "completedToday": 179,
+    "failedToday": 13,
+    "processedToday": 192,
+    "states": {
+      "completed": 8800,
+      "failed": 640,
+      "queued": 4,
+      "crawling": 2,
+      "pending": 120
+    },
+    "qualifications": {
+      "eligible": 2140,
+      "rejected": 6900,
+      "not_evaluated": 526
+    },
+    "databaseBytes": 48234567
+  },
+  "history": [
+    {
+      "date": "2026-08-17",
+      "completed": 249,
+      "failed": 10,
+      "eligible": 79
+    },
+    {
+      "date": "2026-08-18",
+      "completed": 269,
+      "failed": 14,
+      "eligible": 76
+    },
+    {
+      "date": "2026-08-19",
+      "completed": 239,
+      "failed": 4,
+      "eligible": 45
+    },
+    {
+      "date": "2026-08-20",
+      "completed": 188,
+      "failed": 6,
+      "eligible": 62
+    },
+    {
+      "date": "2026-08-21",
+      "completed": 271,
+      "failed": 13,
+      "eligible": 63
+    },
+    {
+      "date": "2026-08-22",
+      "completed": 35,
+      "failed": 3,
+      "eligible": 11
+    },
+    {
+      "date": "2026-08-23",
+      "completed": 71,
+      "failed": 16,
+      "eligible": 18
+    },
+    {
+      "date": "2026-08-24",
+      "completed": 198,
+      "failed": 16,
+      "eligible": 37
+    },
+    {
+      "date": "2026-08-25",
+      "completed": 281,
+      "failed": 18,
+      "eligible": 85
+    },
+    {
+      "date": "2026-08-26",
+      "completed": 169,
+      "failed": 7,
+      "eligible": 47
+    },
+    {
+      "date": "2026-08-27",
+      "completed": 159,
+      "failed": 6,
+      "eligible": 41
+    },
+    {
+      "date": "2026-08-28",
+      "completed": 281,
+      "failed": 6,
+      "eligible": 72
+    },
+    {
+      "date": "2026-08-29",
+      "completed": 20,
+      "failed": 11,
+      "eligible": 5
+    },
+    {
+      "date": "2026-08-30",
+      "completed": 59,
+      "failed": 13,
+      "eligible": 18
+    },
+    {
+      "date": "2026-08-31",
+      "completed": 288,
+      "failed": 5,
+      "eligible": 88
+    },
+    {
+      "date": "2026-09-01",
+      "completed": 223,
+      "failed": 17,
+      "eligible": 45
+    },
+    {
+      "date": "2026-09-02",
+      "completed": 294,
+      "failed": 6,
+      "eligible": 54
+    },
+    {
+      "date": "2026-09-03",
+      "completed": 233,
+      "failed": 2,
+      "eligible": 47
+    },
+    {
+      "date": "2026-09-04",
+      "completed": 310,
+      "failed": 6,
+      "eligible": 71
+    },
+    {
+      "date": "2026-09-05",
+      "completed": 57,
+      "failed": 14,
+      "eligible": 15
+    },
+    {
+      "date": "2026-09-06",
+      "completed": 69,
+      "failed": 12,
+      "eligible": 19
+    },
+    {
+      "date": "2026-09-07",
+      "completed": 165,
+      "failed": 6,
+      "eligible": 32
+    },
+    {
+      "date": "2026-09-08",
+      "completed": 303,
+      "failed": 18,
+      "eligible": 65
+    },
+    {
+      "date": "2026-09-09",
+      "completed": 289,
+      "failed": 5,
+      "eligible": 70
+    },
+    {
+      "date": "2026-09-10",
+      "completed": 162,
+      "failed": 2,
+      "eligible": 33
+    },
+    {
+      "date": "2026-09-11",
+      "completed": 210,
+      "failed": 11,
+      "eligible": 69
+    },
+    {
+      "date": "2026-09-12",
+      "completed": 45,
+      "failed": 8,
+      "eligible": 10
+    },
+    {
+      "date": "2026-09-13",
+      "completed": 58,
+      "failed": 9,
+      "eligible": 11
+    },
+    {
+      "date": "2026-09-14",
+      "completed": 279,
+      "failed": 9,
+      "eligible": 85
+    },
+    {
+      "date": "2026-09-15",
+      "completed": 179,
+      "failed": 13,
+      "eligible": 46
+    }
+  ],
+  "siteTotal": 9566,
+  "siteTruncated": true,
+  "sites": [
+    {
+      "id": 1038,
+      "url": "https://hvac-ogden-27.com/",
+      "host": "hvac-ogden-27.com",
+      "crawl_state": "failed",
+      "qualification_state": "not_evaluated",
+      "website_type": "wordpress",
+      "last_status_code": 500,
+      "last_error": "HTTP 500",
+      "last_duration_ms": 3909,
+      "last_pages_inspected": 0,
+      "last_eligible": null,
+      "last_opportunity_score": null,
+      "last_visual_risk_score": null,
+      "last_result_at": "2026-09-15T17:41:40.000Z",
+      "total_crawls": 5,
+      "title": null,
+      "meta_description": null,
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": null,
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 38
+      },
+      "signals": {}
+    },
+    {
+      "id": 1009,
+      "url": "https://auto-repair-ogden-11.com/",
+      "host": "auto-repair-ogden-11.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "wix",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3123,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 69,
+      "last_visual_risk_score": 62,
+      "last_result_at": "2026-09-15T15:28:20.000Z",
+      "total_crawls": 1,
+      "title": "Auto Repair pros of Ogden",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 62,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 43
+      },
+      "signals": {
+        "https": true,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1018,
+      "url": "https://plumbing-taylorsville-38.com/",
+      "host": "plumbing-taylorsville-38.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "dynamic",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3108,
+      "last_pages_inspected": 5,
+      "last_eligible": false,
+      "last_opportunity_score": 13,
+      "last_visual_risk_score": 22,
+      "last_result_at": "2026-09-15T14:18:20.000Z",
+      "total_crawls": 3,
+      "title": "Plumbing pros of Taylorsville",
+      "meta_description": "Best plumbing services in town. Call today.",
+      "emails": [
+        "hello@plumbing-taylorsville-38.com"
+      ],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 22,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 26
+      },
+      "signals": {
+        "https": false,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1034,
+      "url": "https://landscaping-murray-23.com/",
+      "host": "landscaping-murray-23.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "webflow",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 1690,
+      "last_pages_inspected": 4,
+      "last_eligible": false,
+      "last_opportunity_score": 6,
+      "last_visual_risk_score": 16,
+      "last_result_at": "2026-09-15T12:13:20.000Z",
+      "total_crawls": 1,
+      "title": "Landscaping pros of Murray",
+      "meta_description": "Best landscaping services in town. Call today.",
+      "emails": [
+        "hello@landscaping-murray-23.com"
+      ],
+      "phones": [
+        "+1-801-555-363"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 16,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 26
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1005,
+      "url": "https://roofing-taylorsville-23.com/",
+      "host": "roofing-taylorsville-23.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "wix",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 1789,
+      "last_pages_inspected": 1,
+      "last_eligible": false,
+      "last_opportunity_score": 34,
+      "last_visual_risk_score": 49,
+      "last_result_at": "2026-09-15T09:25:00.000Z",
+      "total_crawls": 3,
+      "title": "Roofing pros of Taylorsville",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [
+        "hello@roofing-taylorsville-23.com"
+      ],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 49,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 44
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1007,
+      "url": "https://auto-repair-sandy-26.com/",
+      "host": "auto-repair-sandy-26.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2270,
+      "last_pages_inspected": 1,
+      "last_eligible": false,
+      "last_opportunity_score": 5,
+      "last_visual_risk_score": 7,
+      "last_result_at": "2026-09-15T08:26:40.000Z",
+      "total_crawls": 5,
+      "title": "Auto Repair pros of Sandy",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [
+        "hello@auto-repair-sandy-26.com"
+      ],
+      "phones": [
+        "+1-801-555-184"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 7,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 46
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1041,
+      "url": "https://fitness-draper-40.com/",
+      "host": "fitness-draper-40.com",
+      "crawl_state": "failed",
+      "qualification_state": "not_evaluated",
+      "website_type": "webflow",
+      "last_status_code": null,
+      "last_error": "HTTP 500",
+      "last_duration_ms": 3047,
+      "last_pages_inspected": 0,
+      "last_eligible": null,
+      "last_opportunity_score": null,
+      "last_visual_risk_score": null,
+      "last_result_at": "2026-09-15T08:10:00.000Z",
+      "total_crawls": 3,
+      "title": null,
+      "meta_description": null,
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": null,
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 22
+      },
+      "signals": {}
+    },
+    {
+      "id": 1003,
+      "url": "https://dental-orem-26.com/",
+      "host": "dental-orem-26.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "shopify",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 905,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 93,
+      "last_visual_risk_score": 45,
+      "last_result_at": "2026-09-15T05:48:20.000Z",
+      "total_crawls": 2,
+      "title": "Dental pros of Orem",
+      "meta_description": "Best dental services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-150"
+      ],
+      "social_links": [
+        "https://facebook.com/dental-orem"
+      ],
+      "eligibility_reasons": [
+        "shopify"
+      ],
+      "visual_risk": {
+        "score": 45,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": true,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 12
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1031,
+      "url": "https://fitness-sandy-11.com/",
+      "host": "fitness-sandy-11.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "webflow",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2613,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 96,
+      "last_visual_risk_score": 46,
+      "last_result_at": "2026-09-15T01:55:00.000Z",
+      "total_crawls": 2,
+      "title": "Fitness pros of Sandy",
+      "meta_description": "Best fitness services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-593"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 46,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 59
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1046,
+      "url": "https://hvac-ogden-9.com/",
+      "host": "hvac-ogden-9.com",
+      "crawl_state": "failed",
+      "qualification_state": "not_evaluated",
+      "website_type": "static",
+      "last_status_code": 503,
+      "last_error": "connection reset",
+      "last_duration_ms": 747,
+      "last_pages_inspected": 0,
+      "last_eligible": null,
+      "last_opportunity_score": null,
+      "last_visual_risk_score": null,
+      "last_result_at": "2026-09-14T17:05:00.000Z",
+      "total_crawls": 6,
+      "title": null,
+      "meta_description": null,
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": null,
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 86
+      },
+      "signals": {}
+    },
+    {
+      "id": 1044,
+      "url": "https://flooring-ogden-13.com/",
+      "host": "flooring-ogden-13.com",
+      "crawl_state": "failed",
+      "qualification_state": "not_evaluated",
+      "website_type": "wordpress",
+      "last_status_code": null,
+      "last_error": "HTTP 500",
+      "last_duration_ms": 774,
+      "last_pages_inspected": 0,
+      "last_eligible": null,
+      "last_opportunity_score": null,
+      "last_visual_risk_score": null,
+      "last_result_at": "2026-09-14T07:35:00.000Z",
+      "total_crawls": 3,
+      "title": null,
+      "meta_description": null,
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": null,
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 12
+      },
+      "signals": {}
+    },
+    {
+      "id": 1037,
+      "url": "https://landscaping-draper-25.com/",
+      "host": "landscaping-draper-25.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2282,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 89,
+      "last_visual_risk_score": 52,
+      "last_result_at": "2026-09-14T05:45:00.000Z",
+      "total_crawls": 5,
+      "title": "Landscaping pros of Draper",
+      "meta_description": "Best landscaping services in town. Call today.",
+      "emails": [
+        "hello@landscaping-draper-25.com"
+      ],
+      "phones": [
+        "+1-801-555-112"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 52,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 14
+      },
+      "signals": {
+        "https": false,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1020,
+      "url": "https://roofing-sandy-18.com/",
+      "host": "roofing-sandy-18.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 948,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 63,
+      "last_visual_risk_score": 53,
+      "last_result_at": "2026-09-14T02:16:40.000Z",
+      "total_crawls": 1,
+      "title": "Roofing pros of Sandy",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [
+        "hello@roofing-sandy-18.com"
+      ],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [
+        "static_candidate"
+      ],
+      "visual_risk": {
+        "score": 53,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 94
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1002,
+      "url": "https://auto-repair-murray-21.com/",
+      "host": "auto-repair-murray-21.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "wordpress",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2730,
+      "last_pages_inspected": 2,
+      "last_eligible": true,
+      "last_opportunity_score": 56,
+      "last_visual_risk_score": 40,
+      "last_result_at": "2026-09-13T23:41:40.000Z",
+      "total_crawls": 5,
+      "title": "Auto Repair pros of Murray",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [
+        "hello@auto-repair-murray-21.com"
+      ],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 40,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 23
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1000,
+      "url": "https://bakery-draper-20.com/",
+      "host": "bakery-draper-20.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "wordpress",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3493,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 62,
+      "last_visual_risk_score": 67,
+      "last_result_at": "2026-09-13T23:36:40.000Z",
+      "total_crawls": 1,
+      "title": "Bakery pros of Draper",
+      "meta_description": "Best bakery services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-635"
+      ],
+      "social_links": [
+        "https://facebook.com/bakery-draper"
+      ],
+      "eligibility_reasons": [
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 67,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 52
+      },
+      "signals": {
+        "https": true,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1013,
+      "url": "https://flooring-provo-10.com/",
+      "host": "flooring-provo-10.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2715,
+      "last_pages_inspected": 2,
+      "last_eligible": true,
+      "last_opportunity_score": 95,
+      "last_visual_risk_score": 50,
+      "last_result_at": "2026-09-13T20:40:00.000Z",
+      "total_crawls": 4,
+      "title": "Flooring pros of Provo",
+      "meta_description": "Best flooring services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-705"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 50,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 39
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1054,
+      "url": "https://dental-orem-19.com/",
+      "host": "dental-orem-19.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "squarespace",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3352,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 60,
+      "last_visual_risk_score": 89,
+      "last_result_at": "2026-09-13T19:21:40.000Z",
+      "total_crawls": 1,
+      "title": "Dental pros of Orem",
+      "meta_description": "Best dental services in town. Call today.",
+      "emails": [
+        "hello@dental-orem-19.com"
+      ],
+      "phones": [],
+      "social_links": [
+        "https://facebook.com/dental-orem"
+      ],
+      "eligibility_reasons": [
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 89,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 20
+      },
+      "signals": {
+        "https": true,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1047,
+      "url": "https://legal-provo-15.com/",
+      "host": "legal-provo-15.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2285,
+      "last_pages_inspected": 1,
+      "last_eligible": false,
+      "last_opportunity_score": 31,
+      "last_visual_risk_score": 19,
+      "last_result_at": "2026-09-13T17:50:00.000Z",
+      "total_crawls": 6,
+      "title": "Legal pros of Provo",
+      "meta_description": "Best legal services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-218"
+      ],
+      "social_links": [
+        "https://facebook.com/legal-provo"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 19,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 13
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1024,
+      "url": "https://plumbing-taylorsville-23.com/",
+      "host": "plumbing-taylorsville-23.com",
+      "crawl_state": "failed",
+      "qualification_state": "not_evaluated",
+      "website_type": "dynamic",
+      "last_status_code": 500,
+      "last_error": "fetch timeout after 15000ms",
+      "last_duration_ms": 3600,
+      "last_pages_inspected": 0,
+      "last_eligible": null,
+      "last_opportunity_score": null,
+      "last_visual_risk_score": null,
+      "last_result_at": "2026-09-13T15:23:20.000Z",
+      "total_crawls": 3,
+      "title": null,
+      "meta_description": null,
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": null,
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 59
+      },
+      "signals": {}
+    },
+    {
+      "id": 1048,
+      "url": "https://roofing-provo-23.com/",
+      "host": "roofing-provo-23.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "webflow",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2130,
+      "last_pages_inspected": 3,
+      "last_eligible": false,
+      "last_opportunity_score": 14,
+      "last_visual_risk_score": 35,
+      "last_result_at": "2026-09-13T10:16:40.000Z",
+      "total_crawls": 2,
+      "title": "Roofing pros of Provo",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [
+        "hello@roofing-provo-23.com"
+      ],
+      "phones": [
+        "+1-801-555-990"
+      ],
+      "social_links": [
+        "https://facebook.com/roofing-provo"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 35,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 39
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1052,
+      "url": "https://auto-repair-murray-15.com/",
+      "host": "auto-repair-murray-15.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "webflow",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3223,
+      "last_pages_inspected": 3,
+      "last_eligible": false,
+      "last_opportunity_score": 21,
+      "last_visual_risk_score": 17,
+      "last_result_at": "2026-09-13T09:45:00.000Z",
+      "total_crawls": 3,
+      "title": "Auto Repair pros of Murray",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [
+        "hello@auto-repair-murray-15.com"
+      ],
+      "phones": [],
+      "social_links": [
+        "https://facebook.com/auto-repair-murray"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 17,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 58
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1056,
+      "url": "https://plumbing-taylorsville-10.com/",
+      "host": "plumbing-taylorsville-10.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "shopify",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3173,
+      "last_pages_inspected": 4,
+      "last_eligible": true,
+      "last_opportunity_score": 48,
+      "last_visual_risk_score": 56,
+      "last_result_at": "2026-09-13T09:11:40.000Z",
+      "total_crawls": 1,
+      "title": "Plumbing pros of Taylorsville",
+      "meta_description": "Best plumbing services in town. Call today.",
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [
+        "shopify"
+      ],
+      "visual_risk": {
+        "score": 56,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": true,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 18
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1012,
+      "url": "https://fitness-sandy-11.com/",
+      "host": "fitness-sandy-11.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 1426,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 73,
+      "last_visual_risk_score": 91,
+      "last_result_at": "2026-09-13T08:15:00.000Z",
+      "total_crawls": 2,
+      "title": "Fitness pros of Sandy",
+      "meta_description": "Best fitness services in town. Call today.",
+      "emails": [
+        "hello@fitness-sandy-11.com"
+      ],
+      "phones": [
+        "+1-801-555-333"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [
+        "static_candidate",
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 91,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 96
+      },
+      "signals": {
+        "https": true,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1042,
+      "url": "https://flooring-taylorsville-26.com/",
+      "host": "flooring-taylorsville-26.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 1231,
+      "last_pages_inspected": 2,
+      "last_eligible": true,
+      "last_opportunity_score": 55,
+      "last_visual_risk_score": 37,
+      "last_result_at": "2026-09-13T05:13:20.000Z",
+      "total_crawls": 1,
+      "title": "Flooring pros of Taylorsville",
+      "meta_description": "Best flooring services in town. Call today.",
+      "emails": [
+        "hello@flooring-taylorsville-26.com"
+      ],
+      "phones": [
+        "+1-801-555-600"
+      ],
+      "social_links": [
+        "https://facebook.com/flooring-taylorsville"
+      ],
+      "eligibility_reasons": [
+        "static_candidate"
+      ],
+      "visual_risk": {
+        "score": 37,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 73
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1043,
+      "url": "https://hvac-murray-11.com/",
+      "host": "hvac-murray-11.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "wordpress",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 439,
+      "last_pages_inspected": 2,
+      "last_eligible": true,
+      "last_opportunity_score": 95,
+      "last_visual_risk_score": 64,
+      "last_result_at": "2026-09-13T03:08:20.000Z",
+      "total_crawls": 1,
+      "title": "Hvac pros of Murray",
+      "meta_description": "Best hvac services in town. Call today.",
+      "emails": [
+        "hello@hvac-murray-11.com"
+      ],
+      "phones": [
+        "+1-801-555-243"
+      ],
+      "social_links": [
+        "https://facebook.com/hvac-murray"
+      ],
+      "eligibility_reasons": [
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 64,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 41
+      },
+      "signals": {
+        "https": true,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1030,
+      "url": "https://auto-repair-salt-lake-city-3.com/",
+      "host": "auto-repair-salt-lake-city-3.com",
+      "crawl_state": "failed",
+      "qualification_state": "not_evaluated",
+      "website_type": "squarespace",
+      "last_status_code": 503,
+      "last_error": "connection reset",
+      "last_duration_ms": 3131,
+      "last_pages_inspected": 0,
+      "last_eligible": null,
+      "last_opportunity_score": null,
+      "last_visual_risk_score": null,
+      "last_result_at": "2026-09-13T02:48:20.000Z",
+      "total_crawls": 3,
+      "title": null,
+      "meta_description": null,
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": null,
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 52
+      },
+      "signals": {}
+    },
+    {
+      "id": 1033,
+      "url": "https://legal-sandy-35.com/",
+      "host": "legal-sandy-35.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3281,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 95,
+      "last_visual_risk_score": 46,
+      "last_result_at": "2026-09-13T02:40:00.000Z",
+      "total_crawls": 4,
+      "title": "Legal pros of Sandy",
+      "meta_description": "Best legal services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-776"
+      ],
+      "social_links": [
+        "https://facebook.com/legal-sandy"
+      ],
+      "eligibility_reasons": [
+        "static_candidate"
+      ],
+      "visual_risk": {
+        "score": 46,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 72
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1057,
+      "url": "https://bakery-taylorsville-27.com/",
+      "host": "bakery-taylorsville-27.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 757,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 48,
+      "last_visual_risk_score": 63,
+      "last_result_at": "2026-09-13T00:38:20.000Z",
+      "total_crawls": 3,
+      "title": "Bakery pros of Taylorsville",
+      "meta_description": "Best bakery services in town. Call today.",
+      "emails": [
+        "hello@bakery-taylorsville-27.com"
+      ],
+      "phones": [],
+      "social_links": [
+        "https://facebook.com/bakery-taylorsville"
+      ],
+      "eligibility_reasons": [
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 63,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 22
+      },
+      "signals": {
+        "https": false,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1035,
+      "url": "https://dental-draper-13.com/",
+      "host": "dental-draper-13.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 464,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 55,
+      "last_visual_risk_score": 59,
+      "last_result_at": "2026-09-13T00:30:00.000Z",
+      "total_crawls": 6,
+      "title": "Dental pros of Draper",
+      "meta_description": "Best dental services in town. Call today.",
+      "emails": [
+        "hello@dental-draper-13.com"
+      ],
+      "phones": [
+        "+1-801-555-186"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [
+        "static_candidate"
+      ],
+      "visual_risk": {
+        "score": 59,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 91
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1021,
+      "url": "https://bakery-orem-11.com/",
+      "host": "bakery-orem-11.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "dynamic",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3214,
+      "last_pages_inspected": 5,
+      "last_eligible": false,
+      "last_opportunity_score": 24,
+      "last_visual_risk_score": 37,
+      "last_result_at": "2026-09-12T21:06:40.000Z",
+      "total_crawls": 5,
+      "title": "Bakery pros of Orem",
+      "meta_description": "Best bakery services in town. Call today.",
+      "emails": [
+        "hello@bakery-orem-11.com"
+      ],
+      "phones": [
+        "+1-801-555-346"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 37,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 57
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1051,
+      "url": "https://hvac-murray-5.com/",
+      "host": "hvac-murray-5.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 4125,
+      "last_pages_inspected": 4,
+      "last_eligible": false,
+      "last_opportunity_score": 39,
+      "last_visual_risk_score": 29,
+      "last_result_at": "2026-09-12T19:11:40.000Z",
+      "total_crawls": 5,
+      "title": "Hvac pros of Murray",
+      "meta_description": "Best hvac services in town. Call today.",
+      "emails": [
+        "hello@hvac-murray-5.com"
+      ],
+      "phones": [
+        "+1-801-555-471"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 29,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 17
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1008,
+      "url": "https://auto-repair-orem-18.com/",
+      "host": "auto-repair-orem-18.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 1404,
+      "last_pages_inspected": 3,
+      "last_eligible": false,
+      "last_opportunity_score": 8,
+      "last_visual_risk_score": 54,
+      "last_result_at": "2026-09-12T17:45:00.000Z",
+      "total_crawls": 5,
+      "title": "Auto Repair pros of Orem",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-159"
+      ],
+      "social_links": [
+        "https://facebook.com/auto-repair-orem"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 54,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 27
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1053,
+      "url": "https://landscaping-ogden-36.com/",
+      "host": "landscaping-ogden-36.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2861,
+      "last_pages_inspected": 1,
+      "last_eligible": true,
+      "last_opportunity_score": 88,
+      "last_visual_risk_score": 43,
+      "last_result_at": "2026-09-12T14:55:00.000Z",
+      "total_crawls": 2,
+      "title": "Landscaping pros of Ogden",
+      "meta_description": "Best landscaping services in town. Call today.",
+      "emails": [
+        "hello@landscaping-ogden-36.com"
+      ],
+      "phones": [],
+      "social_links": [
+        "https://facebook.com/landscaping-ogden"
+      ],
+      "eligibility_reasons": [
+        "static_candidate"
+      ],
+      "visual_risk": {
+        "score": 43,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 92
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1055,
+      "url": "https://roofing-sandy-25.com/",
+      "host": "roofing-sandy-25.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "shopify",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 290,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 51,
+      "last_visual_risk_score": 49,
+      "last_result_at": "2026-09-12T13:03:20.000Z",
+      "total_crawls": 3,
+      "title": "Roofing pros of Sandy",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-829"
+      ],
+      "social_links": [
+        "https://facebook.com/roofing-sandy"
+      ],
+      "eligibility_reasons": [
+        "shopify"
+      ],
+      "visual_risk": {
+        "score": 49,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": true,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 36
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1004,
+      "url": "https://roofing-orem-3.com/",
+      "host": "roofing-orem-3.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "webflow",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2965,
+      "last_pages_inspected": 4,
+      "last_eligible": false,
+      "last_opportunity_score": 16,
+      "last_visual_risk_score": 24,
+      "last_result_at": "2026-09-12T10:11:40.000Z",
+      "total_crawls": 5,
+      "title": "Roofing pros of Orem",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [
+        "hello@roofing-orem-3.com"
+      ],
+      "phones": [
+        "+1-801-555-644"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 24,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 30
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1019,
+      "url": "https://fitness-murray-17.com/",
+      "host": "fitness-murray-17.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "wix",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3944,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 94,
+      "last_visual_risk_score": 52,
+      "last_result_at": "2026-09-12T06:50:00.000Z",
+      "total_crawls": 5,
+      "title": "Fitness pros of Murray",
+      "meta_description": "Best fitness services in town. Call today.",
+      "emails": [
+        "hello@fitness-murray-17.com"
+      ],
+      "phones": [
+        "+1-801-555-571"
+      ],
+      "social_links": [
+        "https://facebook.com/fitness-murray"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 52,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 20
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1025,
+      "url": "https://auto-repair-ogden-18.com/",
+      "host": "auto-repair-ogden-18.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "shopify",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 767,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 85,
+      "last_visual_risk_score": 43,
+      "last_result_at": "2026-09-12T05:10:00.000Z",
+      "total_crawls": 4,
+      "title": "Auto Repair pros of Ogden",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [
+        "hello@auto-repair-ogden-18.com"
+      ],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [
+        "shopify"
+      ],
+      "visual_risk": {
+        "score": 43,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": true,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 55
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1017,
+      "url": "https://auto-repair-draper-16.com/",
+      "host": "auto-repair-draper-16.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "squarespace",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 1368,
+      "last_pages_inspected": 1,
+      "last_eligible": false,
+      "last_opportunity_score": 9,
+      "last_visual_risk_score": 26,
+      "last_result_at": "2026-09-11T20:51:40.000Z",
+      "total_crawls": 6,
+      "title": "Auto Repair pros of Draper",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 26,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 14
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1036,
+      "url": "https://auto-repair-orem-6.com/",
+      "host": "auto-repair-orem-6.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "webflow",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3860,
+      "last_pages_inspected": 2,
+      "last_eligible": true,
+      "last_opportunity_score": 89,
+      "last_visual_risk_score": 38,
+      "last_result_at": "2026-09-11T19:10:00.000Z",
+      "total_crawls": 5,
+      "title": "Auto Repair pros of Orem",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-962"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 38,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 35
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1011,
+      "url": "https://dental-draper-23.com/",
+      "host": "dental-draper-23.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "shopify",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3097,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 77,
+      "last_visual_risk_score": 70,
+      "last_result_at": "2026-09-11T17:53:20.000Z",
+      "total_crawls": 6,
+      "title": "Dental pros of Draper",
+      "meta_description": "Best dental services in town. Call today.",
+      "emails": [
+        "hello@dental-draper-23.com"
+      ],
+      "phones": [],
+      "social_links": [
+        "https://facebook.com/dental-draper"
+      ],
+      "eligibility_reasons": [
+        "shopify",
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 70,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": true,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 60
+      },
+      "signals": {
+        "https": true,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1023,
+      "url": "https://roofing-orem-31.com/",
+      "host": "roofing-orem-31.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "webflow",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3210,
+      "last_pages_inspected": 5,
+      "last_eligible": false,
+      "last_opportunity_score": 21,
+      "last_visual_risk_score": 35,
+      "last_result_at": "2026-09-11T15:33:20.000Z",
+      "total_crawls": 5,
+      "title": "Roofing pros of Orem",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 35,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 19
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1014,
+      "url": "https://fitness-salt-lake-city-8.com/",
+      "host": "fitness-salt-lake-city-8.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 1555,
+      "last_pages_inspected": 2,
+      "last_eligible": true,
+      "last_opportunity_score": 95,
+      "last_visual_risk_score": 55,
+      "last_result_at": "2026-09-11T14:21:40.000Z",
+      "total_crawls": 3,
+      "title": "Fitness pros of Salt Lake City",
+      "meta_description": "Best fitness services in town. Call today.",
+      "emails": [
+        "hello@fitness-salt-lake-city-8.com"
+      ],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 55,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 12
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1050,
+      "url": "https://roofing-draper-4.com/",
+      "host": "roofing-draper-4.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "wordpress",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3000,
+      "last_pages_inspected": 4,
+      "last_eligible": false,
+      "last_opportunity_score": 7,
+      "last_visual_risk_score": 42,
+      "last_result_at": "2026-09-11T14:18:20.000Z",
+      "total_crawls": 4,
+      "title": "Roofing pros of Draper",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [
+        "hello@roofing-draper-4.com"
+      ],
+      "phones": [
+        "+1-801-555-200"
+      ],
+      "social_links": [
+        "https://facebook.com/roofing-draper"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 42,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 29
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1006,
+      "url": "https://roofing-orem-23.com/",
+      "host": "roofing-orem-23.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "wordpress",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 836,
+      "last_pages_inspected": 4,
+      "last_eligible": true,
+      "last_opportunity_score": 45,
+      "last_visual_risk_score": 46,
+      "last_result_at": "2026-09-11T01:48:20.000Z",
+      "total_crawls": 1,
+      "title": "Roofing pros of Orem",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [
+        "hello@roofing-orem-23.com"
+      ],
+      "phones": [
+        "+1-801-555-231"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 46,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 27
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1022,
+      "url": "https://dental-salt-lake-city-19.com/",
+      "host": "dental-salt-lake-city-19.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 865,
+      "last_pages_inspected": 1,
+      "last_eligible": true,
+      "last_opportunity_score": 89,
+      "last_visual_risk_score": 81,
+      "last_result_at": "2026-09-11T00:53:20.000Z",
+      "total_crawls": 6,
+      "title": "Dental pros of Salt Lake City",
+      "meta_description": "Best dental services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-936"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [
+        "static_candidate",
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 81,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 80
+      },
+      "signals": {
+        "https": false,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1010,
+      "url": "https://roofing-taylorsville-25.com/",
+      "host": "roofing-taylorsville-25.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "dynamic",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 424,
+      "last_pages_inspected": 4,
+      "last_eligible": false,
+      "last_opportunity_score": 20,
+      "last_visual_risk_score": 53,
+      "last_result_at": "2026-09-10T14:45:00.000Z",
+      "total_crawls": 6,
+      "title": "Roofing pros of Taylorsville",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [
+        "hello@roofing-taylorsville-25.com"
+      ],
+      "phones": [
+        "+1-801-555-669"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 53,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 23
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1026,
+      "url": "https://hvac-draper-31.com/",
+      "host": "hvac-draper-31.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "webflow",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2674,
+      "last_pages_inspected": 4,
+      "last_eligible": false,
+      "last_opportunity_score": 25,
+      "last_visual_risk_score": 34,
+      "last_result_at": "2026-09-10T08:15:00.000Z",
+      "total_crawls": 3,
+      "title": "Hvac pros of Draper",
+      "meta_description": "Best hvac services in town. Call today.",
+      "emails": [
+        "hello@hvac-draper-31.com"
+      ],
+      "phones": [
+        "+1-801-555-768"
+      ],
+      "social_links": [
+        "https://facebook.com/hvac-draper"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 34,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 20
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1016,
+      "url": "https://fitness-orem-32.com/",
+      "host": "fitness-orem-32.com",
+      "crawl_state": "failed",
+      "qualification_state": "not_evaluated",
+      "website_type": "unknown",
+      "last_status_code": null,
+      "last_error": "HTTP 500",
+      "last_duration_ms": 2019,
+      "last_pages_inspected": 0,
+      "last_eligible": null,
+      "last_opportunity_score": null,
+      "last_visual_risk_score": null,
+      "last_result_at": "2026-09-10T06:50:00.000Z",
+      "total_crawls": 3,
+      "title": null,
+      "meta_description": null,
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": null,
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 10
+      },
+      "signals": {}
+    },
+    {
+      "id": 1032,
+      "url": "https://bakery-provo-18.com/",
+      "host": "bakery-provo-18.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2568,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 70,
+      "last_visual_risk_score": 90,
+      "last_result_at": "2026-09-10T06:13:20.000Z",
+      "total_crawls": 6,
+      "title": "Bakery pros of Provo",
+      "meta_description": "Best bakery services in town. Call today.",
+      "emails": [
+        "hello@bakery-provo-18.com"
+      ],
+      "phones": [
+        "+1-801-555-454"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [
+        "static_candidate",
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 90,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 98
+      },
+      "signals": {
+        "https": true,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1029,
+      "url": "https://landscaping-provo-21.com/",
+      "host": "landscaping-provo-21.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3471,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 86,
+      "last_visual_risk_score": 49,
+      "last_result_at": "2026-09-10T05:20:00.000Z",
+      "total_crawls": 2,
+      "title": "Landscaping pros of Provo",
+      "meta_description": "Best landscaping services in town. Call today.",
+      "emails": [
+        "hello@landscaping-provo-21.com"
+      ],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [
+        "static_candidate"
+      ],
+      "visual_risk": {
+        "score": 49,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 72
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1015,
+      "url": "https://plumbing-ogden-30.com/",
+      "host": "plumbing-ogden-30.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "wordpress",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2168,
+      "last_pages_inspected": 5,
+      "last_eligible": false,
+      "last_opportunity_score": 35,
+      "last_visual_risk_score": 37,
+      "last_result_at": "2026-09-09T23:18:20.000Z",
+      "total_crawls": 1,
+      "title": "Plumbing pros of Ogden",
+      "meta_description": "Best plumbing services in town. Call today.",
+      "emails": [
+        "hello@plumbing-ogden-30.com"
+      ],
+      "phones": [
+        "+1-801-555-389"
+      ],
+      "social_links": [
+        "https://facebook.com/plumbing-ogden"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 37,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 49
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1039,
+      "url": "https://legal-sandy-2.com/",
+      "host": "legal-sandy-2.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "wordpress",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 627,
+      "last_pages_inspected": 4,
+      "last_eligible": false,
+      "last_opportunity_score": 38,
+      "last_visual_risk_score": 35,
+      "last_result_at": "2026-09-09T23:08:20.000Z",
+      "total_crawls": 2,
+      "title": "Legal pros of Sandy",
+      "meta_description": "Best legal services in town. Call today.",
+      "emails": [],
+      "phones": [],
+      "social_links": [
+        "https://facebook.com/legal-sandy"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 35,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": true,
+        "staticCandidate": false,
+        "staticConfidence": 24
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1040,
+      "url": "https://bakery-murray-38.com/",
+      "host": "bakery-murray-38.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3446,
+      "last_pages_inspected": 5,
+      "last_eligible": true,
+      "last_opportunity_score": 53,
+      "last_visual_risk_score": 65,
+      "last_result_at": "2026-09-09T21:48:20.000Z",
+      "total_crawls": 4,
+      "title": "Bakery pros of Murray",
+      "meta_description": "Best bakery services in town. Call today.",
+      "emails": [
+        "hello@bakery-murray-38.com"
+      ],
+      "phones": [
+        "+1-801-555-910"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [
+        "static_candidate",
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 65,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 85
+      },
+      "signals": {
+        "https": false,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1058,
+      "url": "https://flooring-ogden-20.com/",
+      "host": "flooring-ogden-20.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "squarespace",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 861,
+      "last_pages_inspected": 4,
+      "last_eligible": false,
+      "last_opportunity_score": 38,
+      "last_visual_risk_score": 46,
+      "last_result_at": "2026-09-09T20:36:40.000Z",
+      "total_crawls": 1,
+      "title": "Flooring pros of Ogden",
+      "meta_description": "Best flooring services in town. Call today.",
+      "emails": [
+        "hello@flooring-ogden-20.com"
+      ],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 46,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 44
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1059,
+      "url": "https://landscaping-ogden-25.com/",
+      "host": "landscaping-ogden-25.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3587,
+      "last_pages_inspected": 1,
+      "last_eligible": true,
+      "last_opportunity_score": 75,
+      "last_visual_risk_score": 87,
+      "last_result_at": "2026-09-09T15:21:40.000Z",
+      "total_crawls": 5,
+      "title": "Landscaping pros of Ogden",
+      "meta_description": "Best landscaping services in town. Call today.",
+      "emails": [
+        "hello@landscaping-ogden-25.com"
+      ],
+      "phones": [
+        "+1-801-555-711"
+      ],
+      "social_links": [
+        "https://facebook.com/landscaping-ogden"
+      ],
+      "eligibility_reasons": [
+        "static_candidate",
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 87,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 70
+      },
+      "signals": {
+        "https": true,
+        "viewport": false,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1001,
+      "url": "https://landscaping-orem-26.com/",
+      "host": "landscaping-orem-26.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "unknown",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3027,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 68,
+      "last_visual_risk_score": 39,
+      "last_result_at": "2026-09-09T08:10:00.000Z",
+      "total_crawls": 1,
+      "title": "Landscaping pros of Orem",
+      "meta_description": "Best landscaping services in town. Call today.",
+      "emails": [
+        "hello@landscaping-orem-26.com"
+      ],
+      "phones": [
+        "+1-801-555-503"
+      ],
+      "social_links": [
+        "https://facebook.com/landscaping-orem"
+      ],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 39,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 58
+      },
+      "signals": {
+        "https": false,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1049,
+      "url": "https://hvac-salt-lake-city-30.com/",
+      "host": "hvac-salt-lake-city-30.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "shopify",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 1648,
+      "last_pages_inspected": 4,
+      "last_eligible": true,
+      "last_opportunity_score": 73,
+      "last_visual_risk_score": 39,
+      "last_result_at": "2026-09-09T05:18:20.000Z",
+      "total_crawls": 6,
+      "title": "Hvac pros of Salt Lake City",
+      "meta_description": "Best hvac services in town. Call today.",
+      "emails": [],
+      "phones": [],
+      "social_links": [],
+      "eligibility_reasons": [
+        "shopify"
+      ],
+      "visual_risk": {
+        "score": 39,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": true,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 10
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1028,
+      "url": "https://landscaping-murray-28.com/",
+      "host": "landscaping-murray-28.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "wix",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2993,
+      "last_pages_inspected": 3,
+      "last_eligible": false,
+      "last_opportunity_score": 11,
+      "last_visual_risk_score": 13,
+      "last_result_at": "2026-09-09T03:23:20.000Z",
+      "total_crawls": 5,
+      "title": "Landscaping pros of Murray",
+      "meta_description": "Best landscaping services in town. Call today.",
+      "emails": [
+        "hello@landscaping-murray-28.com"
+      ],
+      "phones": [
+        "+1-801-555-430"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 13,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 37
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1045,
+      "url": "https://auto-repair-salt-lake-city-34.com/",
+      "host": "auto-repair-salt-lake-city-34.com",
+      "crawl_state": "completed",
+      "qualification_state": "rejected",
+      "website_type": "dynamic",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 2315,
+      "last_pages_inspected": 1,
+      "last_eligible": false,
+      "last_opportunity_score": 8,
+      "last_visual_risk_score": 45,
+      "last_result_at": "2026-09-09T02:18:20.000Z",
+      "total_crawls": 3,
+      "title": "Auto Repair pros of Salt Lake City",
+      "meta_description": "Best auto-repair services in town. Call today.",
+      "emails": [],
+      "phones": [
+        "+1-801-555-127"
+      ],
+      "social_links": [],
+      "eligibility_reasons": [],
+      "visual_risk": {
+        "score": 45,
+        "reasons": []
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": false,
+        "staticConfidence": 56
+      },
+      "signals": {
+        "https": true,
+        "viewport": true,
+        "hasTitle": true
+      }
+    },
+    {
+      "id": 1027,
+      "url": "https://roofing-sandy-4.com/",
+      "host": "roofing-sandy-4.com",
+      "crawl_state": "completed",
+      "qualification_state": "eligible",
+      "website_type": "static",
+      "last_status_code": 200,
+      "last_error": null,
+      "last_duration_ms": 3306,
+      "last_pages_inspected": 3,
+      "last_eligible": true,
+      "last_opportunity_score": 92,
+      "last_visual_risk_score": 63,
+      "last_result_at": "2026-09-09T00:06:40.000Z",
+      "total_crawls": 2,
+      "title": "Roofing pros of Sandy",
+      "meta_description": "Best roofing services in town. Call today.",
+      "emails": [
+        "hello@roofing-sandy-4.com"
+      ],
+      "phones": [],
+      "social_links": [
+        "https://facebook.com/roofing-sandy"
+      ],
+      "eligibility_reasons": [
+        "static_candidate",
+        "high_visual_risk"
+      ],
+      "visual_risk": {
+        "score": 63,
+        "reasons": [
+          "missing_mobile_viewport",
+          "deprecated_layout_elements"
+        ]
+      },
+      "tech": {
+        "shopify": false,
+        "wordpress": false,
+        "staticCandidate": true,
+        "staticConfidence": 84
+      },
+      "signals": {
+        "https": false,
+        "viewport": false,
+        "hasTitle": true
+      }
+    }
+  ]
+}

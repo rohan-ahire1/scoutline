@@ -1,0 +1,247 @@
+/* ============================================================================
+   SCOUTLINE THEME — single source of truth for every UI default.
+   Vibrant-categorical palette, authored in OKLCH (see /tmp/palette.mjs)
+   and shipped as hex. Color story: INDIGO owns human action + selection
+   (buttons, active nav/tabs, links); each pipeline stage and category owns
+   a distinct hue (indigo/blue/cyan/amber/pink/green progression through
+   the funnel); VIOLET owns machine/advisory surfaces (AI); ORANGE is
+   LIVE machine activity only. Canvas is quiet parchment, text is espresso.
+   Every text pair clears WCAG AA (verified tables in palette sessions).
+   NOTE: --lav / --lav-ink are the SELECTION tokens and now hold indigo
+   values; the name is legacy. --navy-* likewise hold the action indigo.
+   Imported first (see main.jsx); styles.css consumes these tokens and must
+   not hardcode palette, type-stack, radius, shadow, ring, or z values.
+   Rules for new code:
+   - Colors: semantic tokens only (var(--text), var(--primary) …), never hex.
+   - Type: --fs-* roles only (see role scale below). Labels at meta..ui.
+   - Radii: --r-* steps only. Pills use --r-pill, circles --r-full.
+   - Elevation: --shadow-* only. Focus rings: --ring-brand / --ring-danger.
+   - Layering: --z-* only. Breakpoints: 1180 / 1050 / 767.
+   ========================================================================== */
+:root {
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "cv01", "ss03";
+  font-synthesis: none;
+  color-scheme: light;
+  /* ---- Font stacks ---- */
+  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ---- Type scale: 28-32px page titles, 18-22px sections, 13-14px working
+     text, 12px secondary metadata. Dense steps shifted up one for readability;
+     new code must use this scale, not raw px. ---- */
+  /* Role scale: one size per job. display = product hero; page = page and
+     record titles; section = section/card/modal heads (weight 700);
+     brand = wordmark; body = reading text and card heads (weight decides);
+     ui = buttons, nav, tabs, labels; secondary = secondary text;
+     meta = headers, counts, eyebrows; mark = mono micro-glyphs (8px floor,
+     never for reading); stat = mono data numerals. */
+  --fs-display: 32px;
+  --fs-page: 28px;
+  --fs-section: 16px;
+  --fs-brand: 20px;
+  --fs-body: 14px;
+  --fs-ui: 12px;
+  --fs-secondary: 11px;
+  --fs-meta: 10px;
+  --fs-mark: 8px;
+  --fs-stat: 22px;
+
+  /* ---- Radius scale ---- */
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 10px;
+  --r-2xl: 12px;
+  --r-3xl: 14px;
+  --r-4xl: 16px;
+  --r-5xl: 18px;
+  --r-pill: 999px;
+  --r-full: 50%;
+
+  /* ---- Spacing scale (new code; legacy px stays until its component is touched) ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 28px;
+
+  /* ---- Elevation (warm-tinted via --ink-line) ---- */
+  --shadow-card: 0 1px 2px rgba(var(--ink-line), 0.06), 0 10px 30px rgba(var(--ink-line), 0.07);
+  --shadow-xs: 0 1px 2px rgba(var(--ink-line), 0.2);
+  --shadow-sm: 0 1px 3px rgba(var(--ink-line), 0.08);
+  --shadow-md: 0 7px 20px rgba(var(--ink-line), 0.07);
+  --shadow-lg: 0 8px 25px rgba(var(--ink-line), 0.14);
+  --shadow-xl: 0 9px 28px rgba(var(--ink-line), 0.09);
+  --shadow-2xl: 0 14px 38px rgba(var(--ink-line), 0.17);
+  --shadow-pop: 0 18px 46px rgba(var(--ink-line), 0.17);
+  --shadow-drawer: -28px 0 80px rgba(0, 0, 0, 0.28);
+  --shadow-bar: 18px 0 60px rgba(0, 0, 0, 0.25);
+
+  /* ---- Focus / status rings ---- */
+  --ring-brand: 0 0 0 3px var(--lav);
+  --ring-brand-lg: 0 0 0 5px var(--lav);
+  --ring-danger: 0 0 0 3px rgba(204, 0, 0, 0.08);
+  --ring-error: 0 0 0 5px rgba(197, 71, 61, 0.1);
+
+  /* ---- Layering ---- */
+  --z-rail: 0;
+  --z-raise: 1;
+  --z-sticky: 10;
+  --z-drawer-foot: 11;
+  --z-card-focus: 25;
+  --z-notice: 29;
+  --z-topbar: 30;
+  --z-tooltip: 31;
+  --z-scrim: 39;
+  --z-sidebar: 40;
+  --z-popover: 50;
+  --z-menu: 60;
+  --z-popover-top: 70;
+  --z-overlay: 80;
+  --z-toast: 120;
+
+  /* ---- Primitive palette (raw values live ONLY here) ----
+     Cool blue-gray system (see reference screenshot): BLUE owns human
+     action + selection; status hues code stages/categories; ORANGE is LIVE
+     activity only; violet carries machine/advisory (AI). */
+  --ink-950: #1f2a38;
+  --ink-700: #424e5e;
+  --ink-500: #626d7a;
+  --ink-400: #6b7480;
+  --navy-900: #3e6fc2;
+  --navy-700: #315ea9;
+  --lav-100: #dbe5f9;
+  --lav-50: #e8edf3;
+  --lav-700: #315ea9;
+  --cream-50: #e2e9f0;
+  --paper: #fbfeff;
+  --white: #ffffff;
+  --ink-line: 31, 42, 56;
+  --brand-orange: #d76034;
+  --brand-orange-hover: #b74e24;
+  --ok-green: #337250;
+  --info-blue: #3e6fc2;
+  --violet: #5b54b5;
+  --hue-cyan: #246e7e;
+  --hue-amber: #b88513;
+  --hue-red: #9a463a;
+  --hue-pink: #8d4a6b;
+  --hue-indigo: #5f5c8f;
+  --slate: #606a74;
+  --brown: #775e45;
+  --tile-ink: #101418;
+
+  /* ---- Semantic palette: the ONLY tokens components may use ----
+     Roles: --primary = actions + selection + current-step. --lav = selection
+     surfaces. --green = success/won. --red/--danger = failure/errors.
+     --amber = attention/not-connected. --orange = LIVE activity only (running
+     jobs, active runs, score highlights). Stage dots use status tones.
+     Neutral surfaces/icons whenever nothing is being signaled. ---- */
+  --bg: var(--cream-50);
+  --sidebar: #f0f4f9;
+  --surface: var(--paper);
+  --surface-raised: #ffffff;
+  --surface-muted: var(--lav-50);
+  --surface-hover: rgba(var(--ink-line), 0.05);
+  --text: var(--ink-950);
+  --text-soft: var(--ink-700);
+  --muted: var(--ink-500);
+  --subtle: var(--ink-400);
+  --border: rgba(var(--ink-line), 0.14);
+  --border-soft: rgba(var(--ink-line), 0.08);
+  --border-strong: rgba(var(--ink-line), 0.24);
+  --primary: var(--navy-900);
+  --primary-hover: var(--navy-700);
+  --lav: var(--lav-100);
+  --lav-ink: var(--lav-700);
+  --orange: var(--brand-orange);
+  --orange-hover: var(--brand-orange-hover);
+  --orange-soft: #fcd9c9;
+  --orange-ink: #c2431f;
+  --amber-ink: #886108;
+  --blue: var(--info-blue);
+  --green: var(--ok-green);
+  --purple: var(--violet);
+  --cyan: var(--hue-cyan);
+  --amber: var(--hue-amber);
+  --red: var(--hue-red);
+  --pink: var(--hue-pink);
+  --indigo: var(--hue-indigo);
+  --overlay: rgba(13, 20, 30, 0.55);
+  --shadow: 0 18px 60px rgba(var(--ink-line), 0.16);
+
+  /* ---- Form validation ---- */
+  --danger: #9a463a;
+  --danger-ring: rgba(154, 70, 58, 0.1);
+  --ok-strong: #337250;
+
+  /* ---- Home stat tints (pastel data-viz surfaces) ---- */
+  --tint-blue: #dbe7fa;
+  --tint-lavender: #e5e6fd;
+  --tint-peach: #fce2d4;
+  --tint-green: #d9eedf;
+  --tint-amber: #f4e6ce;
+  --amber-deep: #886108;
+
+  /* ---- Breakpoints (documented; media queries stay literal) ----
+     1180px sidebar-adjacent grids · 1050px two-col stacks · 767px mobile */
+  --sidebar-width: 238px;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --ink-line: 214, 226, 240;
+  --bg: #10171f;
+  --sidebar: #171f28;
+  --surface: #1b222c;
+  --surface-raised: #212a35;
+  --surface-muted: #252f3b;
+  --surface-hover: rgba(220, 232, 245, 0.06);
+  --text: #dee5ef;
+  --text-soft: #c2ccd8;
+  --muted: #9aa6b4;
+  --subtle: #838d9a;
+  --border: rgba(214, 226, 240, 0.13);
+  --border-soft: rgba(214, 226, 240, 0.07);
+  --border-strong: rgba(214, 226, 240, 0.22);
+  --primary: #446fc0;
+  --primary-hover: #3f68b5;
+  --green: #78bc95;
+  --blue: #88aed9;
+  --purple: #ab9ddb;
+  --cyan: #6eb4c5;
+  --amber: #d3aa64;
+  --red: #dc8c7f;
+  --pink: #d08dac;
+  --indigo: #9f9ed2;
+  --slate: #a9a497;
+  --brown: #bea287;
+  --lav: #243251;
+  --lav-ink: #9db6e8;
+  --orange: #df7752;
+  --orange-hover: #e8855f;
+  --orange-soft: rgba(223, 119, 82, 0.16);
+  --blue: #88aed9;
+  --green: #78bc95;
+  --purple: #ab9ddb;
+  --cyan: #6eb4c5;
+  --amber: #d3aa64;
+  --red: #dc8c7f;
+  --pink: #d08dac;
+  --indigo: #9f9ed2;
+  --overlay: rgba(0, 0, 0, 0.72);
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.5);
+  --danger: #dc8c7f;
+  --ok-strong: #78bc95;
+  --amber-deep: #d3aa64;
+  --tint-blue: #1e2c3d;
+  --tint-lavender: #262c4e;
+  --tint-peach: #4c271a;
+  --tint-green: #20382c;
+  --tint-amber: #4a3620;
+  --orange-ink: #e89a7a;
+  --amber-ink: #d3aa64;
+}

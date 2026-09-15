@@ -48,7 +48,7 @@ test('provider polling failures resume the same snapshot (ROH-23)', () => {
 })
 
 test('validation failures are terminal with no retry', () => {
-  for (const message of ['Lead not found', 'Unsupported job type: fax', 'A completed website audit is required before Muse synthesis']) {
+  for (const message of ['Lead not found', 'Unsupported job type: fax', 'A completed website audit is required before AI synthesis']) {
     const outcome = classifyJobError(new Error(message))
     assert.equal(outcome.status, 'Failed')
     assert.equal(outcome.retryable, false)

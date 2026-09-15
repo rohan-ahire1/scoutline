@@ -40,11 +40,11 @@ A founder, independent studio, or small sales/research team looking for local se
 | Principle | Requirement |
 |---|---|
 | Evidence before opinion | Scores, findings, and outreach angles are grounded in observable business or website evidence. |
-| Deterministic score, advisory AI | The opportunity score is calculated from measured signals. Muse explains and synthesizes; it does not replace or silently alter the score. |
+| Deterministic score, advisory AI | The opportunity score is calculated from measured signals. AI explains and synthesizes; it does not replace or silently alter the score. |
 | Human approval at consequential steps | The user decides which clients become qualified, which email version to use, when to change a relationship stage, and when a contract is recorded. |
 | Truthful uncertainty | Revenue, profit, employee count, branches, decision makers, and similar metrics remain unknown unless a named source supplies them. |
 | Traceability over novelty | A user should be able to answer where a client came from, when it was collected, what was observed, and which run produced the result. |
-| Operational failure is not rejection | A timeout, blocked crawl, provider failure, or Muse failure is a recoverable operational state, not a negative judgment about the business. |
+| Operational failure is not rejection | A timeout, blocked crawl, provider failure, or AI failure is a recoverable operational state, not a negative judgment about the business. |
 | No spam machine | The product supports draft creation and manual review. It does not automatically send cold emails or continue after an opt-out. |
 
 ## 3. End-to-end product flow
@@ -55,7 +55,7 @@ The core workflow moves a business from a raw discovery record to a human-review
 2. **Collect business records** — Collect public business information such as name, category, address, website, contact paths, ratings, reviews, and provider-supplied business signals.
 3. **Normalize and identify provenance** — Deduplicate businesses primarily by website/domain and record whether each client was new to the workspace, matched from a previous run, or audited again.
 4. **Analyze websites** — Run a bounded website audit that combines HTML observations, limited crawling, internal-link checks, and Lighthouse measurements where available.
-5. **Prepare a recommendation** — Save the measured opportunity score and evidence. Optionally ask Muse to synthesize the evidence into priorities, recommendations, strengths, unknowns, and qualification guidance.
+5. **Prepare a recommendation** — Save the measured opportunity score and evidence. Optionally ask AI to synthesize the evidence into priorities, recommendations, strengths, unknowns, and qualification guidance.
 6. **Qualify manually** — The user decides whether the client is worth pursuing. Qualifying a client adds it to the sales pipeline.
 7. **Prepare outreach** — Generate three materially different email lengths from the saved findings, then edit, copy, and review the selected version before sending it manually.
 8. **Manage the relationship** — Move the client through sales stages. If the client is won, record the agreed amount, scope, terms, dates, conditions, and next step.
@@ -65,7 +65,7 @@ The core workflow moves a business from a raw discovery record to a human-review
 - **Approved** is not a research checkpoint.
 - **Qualified** is the user’s sales decision and places the client in the pipeline.
 - **Ranked** is not a separate stage; the opportunity score is a prioritization signal.
-- **LLM insights** is not a separate checkpoint; Muse is an optional advisory layer inside the analyzed/recommendation experience.
+- **LLM insights** is not a separate checkpoint; AI is an optional advisory layer inside the analyzed/recommendation experience.
 
 ## 4. Core domain concepts
 
@@ -76,7 +76,7 @@ The core workflow moves a business from a raw discovery record to a human-review
 | Finding / evidence | An observed website or business fact, such as a Lighthouse metric, page-structure observation, broken-link result, form friction, CTA issue, technology signal, review signal, or source-backed profile field. |
 | Opportunity score | A deterministic 0–100 signal used to prioritize review. It is not a guarantee of commercial value. |
 | Confidence | A measure of how complete and reliable the evidence is. A high score with low confidence should invite investigation rather than certainty. |
-| Muse synthesis | An optional evidence-grounded explanation that summarizes opportunities, recommendations, strengths, unknowns, and qualification guidance. It does not change the deterministic score. |
+| AI synthesis | An optional evidence-grounded explanation that summarizes opportunities, recommendations, strengths, unknowns, and qualification guidance. It does not change the deterministic score. |
 | Outreach draft | A generated or fallback email subject/body tied to the client’s findings. Three length levels are available and each can be edited before copying. |
 | Sales stage | The manual relationship state: Qualified, Contacted, Replied, Meeting, Proposal, Won, or Lost. |
 | Contract record | A manual post-win record containing amount, currency, scope, payment terms, signed date, start date, conditions, and next step. |
@@ -92,7 +92,7 @@ Research progress answers **“how much do we know about this client?”** It is
 | **Analyzed** | Website evidence and the opportunity score are saved. | The deterministic audit can be complete even if a component such as Lighthouse is partial or failed. |
 | **Recommended** | A recommendation is ready for the user’s decision. | It does not mean the user has qualified the client. |
 
-Recommended can use completed deterministic analysis and may include Muse’s optional advisory synthesis.
+Recommended can use completed deterministic analysis and may include AI’s optional advisory synthesis.
 
 ### Operational statuses
 
@@ -181,24 +181,24 @@ The opportunity score is a prioritization aid for deciding which clients deserve
 - Use measured business fit, website/conversion gaps, technical pain, rebuild feasibility, and contactability signals where available.
 - Keep confidence separate from opportunity. An exciting lead with thin evidence should be clearly marked as uncertain.
 - Every scored issue should be explainable through an evidence point, metric, URL, or saved observation.
-- Muse may prioritize or explain findings but must not silently change the deterministic score.
+- AI may prioritize or explain findings but must not silently change the deterministic score.
 
 ### Recommendation semantics
 
 **Recommended** means “ready for a human decision based on the available evidence.” It is not the same as qualified, contacted, or won. The user must explicitly qualify a client before it enters the pipeline.
 
-## 9. Muse synthesis requirements
+## 9. AI synthesis requirements
 
-Muse is the optional reasoning layer that turns saved evidence into a compact decision brief. It is a collaborator that organizes evidence, not the authority that invents facts or owns the score.
+AI is the optional reasoning layer that turns saved evidence into a compact decision brief. It is a collaborator that organizes evidence, not the authority that invents facts or owns the score.
 
-### Muse inputs
+### AI inputs
 
 - Saved client profile and source-backed business signals.
 - Deterministic opportunity score and confidence.
 - Website crawl summary, page observations, broken-link evidence, and Lighthouse metrics or selected failures.
 - User’s configured outreach-length preference when drafting outreach.
 
-### Muse outputs
+### AI outputs
 
 - A concise summary of the business and the most important opportunity.
 - Prioritized opportunities with severity, observed evidence, and a recommended improvement.
@@ -207,7 +207,7 @@ Muse is the optional reasoning layer that turns saved evidence into a compact de
 - Qualification guidance such as pursue, review, or deprioritize, with rationale.
 - Outreach angles grounded in actual findings.
 
-Muse does not create a separate “LLM insights” stage. The underlying website analysis remains useful without Muse.
+AI does not create a separate “LLM insights” stage. The underlying website analysis remains useful without AI.
 
 ## 10. Screen-by-screen functional requirements
 
@@ -240,7 +240,7 @@ Muse does not create a separate “LLM insights” stage. The underlying website
 - Research progress across Scraped, Analyzed, and Recommended.
 - Summary of the main opportunity, findings, business intelligence, score, confidence, crawl metrics, Lighthouse metrics, and unknowns.
 - Manual notes and editable operational context.
-- Manual actions: refresh business data, run website audit, run Muse analysis, generate outreach, or run the full workflow.
+- Manual actions: refresh business data, run website audit, run AI analysis, generate outreach, or run the full workflow.
 - Sales context with relationship stage, outreach draft, and contract details after a win.
 
 ### 10.4 Outreach — the review-before-send workspace
@@ -324,7 +324,7 @@ The user should not need to rerun a full batch to fix or refresh one client. Eve
 |---|---|---|
 | **Refresh business data** | Re-fetch the provider record for a client with a saved source URL. | Provider data is refreshed and missing fields can be enriched. |
 | **Run website audit** | Repeat the bounded website analysis for one client. | Research evidence and score are refreshed. |
-| **Run Muse analysis** | Synthesize saved audit evidence for one client. | Muse recommendation, opportunities, strengths, and unknowns are refreshed. |
+| **Run AI analysis** | Synthesize saved audit evidence for one client. | AI recommendation, opportunities, strengths, and unknowns are refreshed. |
 | **Generate outreach** | Create the three evidence-based drafts for one qualified or analyzed client. | Subject and drafts are saved for review. |
 | **Run full workflow** | Refresh business data, audit, synthesize, and generate outreach in sequence where prerequisites are available. | The client receives a visible multi-step manual run state. |
 
@@ -339,7 +339,7 @@ The product should make failure understandable without turning the workspace int
 | Discovery/provider failure | The collection provider cannot start, returns an error, or never completes. | Mark the run as failed or waiting with provider context; preserve the run record and allow retry. |
 | Website fetch failure | A site cannot be reached, resolves to a blocked/private target, times out, or returns an unusable response. | Mark the audit stage failed; keep the client record and source data; allow retry or manual review. |
 | Partial crawl or Lighthouse failure | Some pages or a measurement component cannot be collected. | Keep the analyzed result with a visible partial component state and never substitute a fabricated metric. |
-| Muse failure | The model returns an error, invalid structure, or cannot be reached. | Keep deterministic analysis and score; mark Muse failed and offer retry. |
+| AI failure | The model returns an error, invalid structure, or cannot be reached. | Keep deterministic analysis and score; mark AI failed and offer retry. |
 | Outreach generation failure | The selected provider or fallback cannot produce a draft. | Keep findings available; explain the failure; allow retry or manual editing. |
 | Manual run failure | A multi-step client workflow stops after one phase. | Preserve completed phases, identify the failed phase, and let the user rerun that action. |
 
@@ -348,7 +348,7 @@ The product should make failure understandable without turning the workspace int
 - Preserve source and observed-at context for important business and website fields.
 - Keep repeated run history instead of overwriting the fact that a client was seen or audited before.
 - Deduplicate repeated provider results without losing the client’s original origin run or later matched runs.
-- Keep deterministic score, confidence, Muse synthesis, findings, outreach drafts, sales stage, and contract record conceptually separate.
+- Keep deterministic score, confidence, AI synthesis, findings, outreach drafts, sales stage, and contract record conceptually separate.
 - Do not let a model invent metrics, customer value, decision-makers, outcomes, or contract terms.
 - Do not send outreach automatically; design for human review and future suppression/opt-out handling.
 - Treat website data as potentially hostile or incomplete input; preserve safe, bounded, and partial results.
@@ -362,7 +362,7 @@ The product should make failure understandable without turning the workspace int
 - Source-backed profile enrichment and explicit unknown values.
 - Website HTML inspection, bounded crawl, internal-link checks, Lighthouse measurements, and saved evidence.
 - Deterministic opportunity score and confidence.
-- Optional Muse synthesis grounded in saved evidence.
+- Optional AI synthesis grounded in saved evidence.
 - Three outreach draft lengths with edit/copy/review workflow.
 - Manual qualification, Kanban-style sales stages, and contract recording after a win.
 - Per-client manual actions, retryable job states, failures, and run provenance.
@@ -407,7 +407,7 @@ The product should make failure understandable without turning the workspace int
 | Sales stages | Qualified · Contacted · Replied · Meeting · Proposal · Won · Lost |
 | Run relationships | New · Matched · Audited |
 | Score concepts | Opportunity score · Confidence · Evidence · Unknowns |
-| AI concept | Muse synthesis — advisory, evidence-grounded, and separate from the deterministic score |
+| AI concept | AI synthesis — advisory, evidence-grounded, and separate from the deterministic score |
 
 ## Final product definition
 
