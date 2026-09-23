@@ -98,7 +98,9 @@ export async function captureScreenshots(input, options = {}) {
           clip: { x: 0, y: 0, width: viewport.width, height: Math.min(height, MAX_FULL_HEIGHT) },
           captureBeyondViewport: true,
         })
-        shots[name] = { fold, full, status: response?.status() ?? null, finalUrl: page.url(), pageHeight: height, overlays }
+        // Puppeteer returns a plain Uint8Array, whose toString() ignores the
+        // 'base64' argument and yields "255,216,…"; normalise to Buffer.
+        shots[name] = { fold: Buffer.from(fold), full: Buffer.from(full), status: response?.status() ?? null, finalUrl: page.url(), pageHeight: height, overlays }
       } finally {
         await page.close().catch(() => {})
       }
@@ -214,7 +216,7 @@ export async function reviewScreenshots(shots, { company = '', category = '', we
   const client = options.client || new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: 120_000, maxRetries: 2 })
   const prompt = `${REVIEW_PROMPT}\n\nBusiness: ${company} (${category}). Website: ${website}.${overlayNote(shots)}`
   const images = [shots.desktop.fold, shots.desktop.full, shots.mobile.fold, shots.mobile.full]
-    .map((buffer) => `data:image/jpeg;base64,${buffer.toString('base64')}`)
+    .map((buffer) => `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`)
   let text
   if (config.provider === 'meta') {
     const response = await client.chat.completions.create({
