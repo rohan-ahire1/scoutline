@@ -23,6 +23,10 @@ import { applyJsonRestore, BACKUP_RESTORE_COLUMNS, BACKUP_TABLES, buildJsonBacku
 import { buildLocalRunId, createJevUsage, crawlSiteToLeadRow, describeCrawlSite, findLeadByWebsite, isLocalRunId, sanitizeJevUsage, summarizeCrawlSites, validateCrawlExport, validateLocalScrapeRequest } from './services/crawl.js'
 import { LOCAL_RUN_ACTIVE, LOCAL_RUN_VERSION, readLocalRunFile, runLocalScrape, writeLocalRunFile } from './services/crawlRunner.js'
 import { getJevConfig } from './services/jev.js'
+import { findMarket, resolveMarkets } from './services/markets.js'
+import { PLAYS } from './services/qualify.js'
+import { requalify, scanAndQualify, visualReviewLead } from './services/prospect.js'
+import { getVisionConfig } from './services/visual.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
@@ -675,6 +679,7 @@ function syncRun(runId) {
     audited: audits.filter((job) => job.status === 'Completed').length,
     failed: jobs.filter((job) => job.status === 'Failed').length,
     datasets: audits.filter((job) => job.status === 'Completed').length,
+    qualified: jobs.filter((job) => job.type === 'qualify' && job.status === 'Completed').length,
     duration: completed ? formatDuration(run.startedAt || run.createdAt, run.completedAt || nowIso()) : status,
     completedAt: completed ? (run.completedAt || nowIso()) : null,
   }
@@ -1305,13 +1310,16 @@ async function runDiscoveryJob(job) {
   const uniqueLeads = [...new Map(leads.map((lead) => [lead.id, lead])).values()]
   const newClientIds = [...new Set(uniqueLeads.filter((lead) => lead._runImport?.created).map((lead) => lead.id))]
   const matchedClientIds = [...new Set(uniqueLeads.filter((lead) => !lead._runImport?.created).map((lead) => lead.id))]
-  // Website-less leads are retained but never queued for website audits.
-  const auditable = uniqueLeads.filter((lead) => lead.website)
-  const skippedNoWebsite = uniqueLeads.filter((lead) => !lead.website)
-  skippedNoWebsite.forEach((lead) => recordEvent('lead', lead.id, 'audit_skipped', { runId: run.id, reason: 'no-website' }))
-  auditable.slice(0, Math.max(1, Number(run.deepAuditLimit || 10))).forEach((lead) => queueJob({ type: 'audit', runId: run.id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
+  if (run.market) uniqueLeads.forEach((lead) => { if (!lead.market) scopedLeadUpdate(lead.id, { market: run.market }) })
+  // Every discovered business is qualified, including ones with no website:
+  // those are the best free-redesign candidates. Deep Lighthouse audits run
+  // on demand for shortlisted leads, or here when the run asks for them.
+  uniqueLeads.forEach((lead) => queueJob({ type: 'qualify', runId: run.id, leadId: lead.id, payload: {}, maxAttempts: 2 }))
+  if (run.options?.deepAudit) {
+    uniqueLeads.filter((lead) => lead.website).slice(0, Math.max(1, Number(run.deepAuditLimit || 10))).forEach((lead) => queueJob({ type: 'audit', runId: run.id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
+  }
   const geography = describeGeographyCoverage(search, reconciled.retained)
-  saveRun({ ...readRun(run.id), searchDefinition: search, discovered: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id), newClientIds, matchedClientIds, providerSnapshotId: job.payload.snapshotId, duration: 'Auditing discovered websites',
+  saveRun({ ...readRun(run.id), searchDefinition: search, discovered: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id), newClientIds, matchedClientIds, providerSnapshotId: job.payload.snapshotId, duration: 'Qualifying discovered businesses',
     reconciliation: {
       returned: reconciled.returned, mapped: reconciled.mapped, retained: reconciled.retained.length,
       rejected: reconciled.rejectedCount, duplicates: reconciled.duplicates, unusable: reconciled.unusable,
@@ -1323,6 +1331,40 @@ async function runDiscoveryJob(job) {
   })
   updateJob(job.id, { status: 'Completed', progress: 100, result: { records: reconciled.returned, retained: reconciled.retained.length, rejected: reconciled.rejectedCount, imported: uniqueLeads.length }, error: null })
   recordEvent('run', run.id, 'discovery_completed', { records: reconciled.returned, retained: reconciled.retained.length, rejected: reconciled.rejectedCount, imported: uniqueLeads.length, newClients: newClientIds.length, matchedClients: matchedClientIds.length, clientIds: uniqueLeads.map((lead) => lead.id) })
+}
+
+// Qualification (lead-quality pipeline): scan the site with the crawler
+// engine, find contacts, score business worth and site weakness, pick a
+// play. Leads without a website qualify straight away.
+async function runQualifyJob(job) {
+  const lead = readLead(job.leadId)
+  if (!lead) throw Object.assign(new Error('Lead no longer exists'), { code: 'NOT_FOUND' })
+  updateJob(job.id, { progress: 20 })
+  const leadDir = join(dataDir, 'leads', lead.id)
+  const { siteScan, qualification, patch } = await scanAndQualify(lead, { allLeads: readRows('leads'), leadDir })
+  throwIfJobCancelled(job.id)
+  if (!claimJobCompletion(job.id)) return
+  scopedLeadUpdate(lead.id, { ...patch, siteScan, qualification, updated: 'Just now' })
+  updateJob(job.id, { status: 'Completed', progress: 100, result: { play: qualification.play, priority: qualification.priority, email: qualification.contact.email }, error: null })
+  recordEvent('lead', lead.id, 'qualified', { jobId: job.id, play: qualification.play, priority: qualification.priority, presence: qualification.presence, emailFound: Boolean(patch.email) })
+  const settings = readSettings()
+  if (job.payload?.autoVisual !== false && settings.autoVisualReview !== false && qualification.needsVisualReview && getVisionConfig().configured) {
+    queueJob({ type: 'visual', runId: job.runId, leadId: lead.id, payload: {}, maxAttempts: 2 })
+  }
+}
+
+async function runVisualJob(job) {
+  const lead = readLead(job.leadId)
+  if (!lead) throw Object.assign(new Error('Lead no longer exists'), { code: 'NOT_FOUND' })
+  updateJob(job.id, { progress: 15 })
+  const visualReview = await visualReviewLead(lead, { leadDir: join(dataDir, 'leads', lead.id) })
+  throwIfJobCancelled(job.id)
+  if (!claimJobCompletion(job.id)) return
+  const current = readLead(lead.id)
+  const qualification = requalify({ ...current, visualReview }, readRows('leads'))
+  scopedLeadUpdate(lead.id, { visualReview, qualification, updated: 'Just now' })
+  updateJob(job.id, { status: 'Completed', progress: 100, result: { status: visualReview.status, verdict: visualReview.verdict || null, play: qualification.play }, error: null })
+  recordEvent('lead', lead.id, 'visual_reviewed', { jobId: job.id, status: visualReview.status, verdict: visualReview.verdict || null, score: visualReview.score })
 }
 
 let workerBusy = false
@@ -1408,6 +1450,8 @@ async function processNextJob() {
     else if (job.type === 'synthesize') await runSynthesisJob({ ...job, attempts: attempt })
     else if (job.type === 'discover') await runDiscoveryJob({ ...job, attempts: attempt })
     else if (job.type === 'refresh') await runRefreshJob({ ...job, attempts: attempt })
+    else if (job.type === 'qualify') await runQualifyJob({ ...job, attempts: attempt })
+    else if (job.type === 'visual') await runVisualJob({ ...job, attempts: attempt })
     else throw new Error(`Unsupported job type: ${job.type}`)
   } catch (error) {
     const current = readJob(job.id)
@@ -1870,8 +1914,9 @@ app.post('/api/crawl/import', express.json({ limit: '60mb' }), (req, res) => {
 function addCrawledSiteAsLead(site, { company = '', source = 'Crawl import', evidenceSuffix = '' } = {}) {
   const row = crawlSiteToLeadRow(site, { company })
   if (!isStringWithLength(row.company, 2, 120)) return { ok: false, field: 'company', message: 'Company name must be 2-120 characters' }
-  if (!isValidDomain(row.website)) return { ok: false, field: 'website', message: 'Crawled host is not a valid domain' }
-  const existingByDomain = findLeadByWebsite(readRows('leads'), row.website)
+  const noWebsiteBusiness = !row.website && Boolean(site.business)
+  if (!noWebsiteBusiness && !isValidDomain(row.website)) return { ok: false, field: 'website', message: 'Crawled host is not a valid domain' }
+  const existingByDomain = noWebsiteBusiness ? null : findLeadByWebsite(readRows('leads'), row.website)
   if (existingByDomain) {
     recordEvent('lead', existingByDomain.id, 'crawl_promoted', { siteId: site.id, host: site.host, matched: true })
     return { ok: true, created: false, lead: existingByDomain }
@@ -1886,6 +1931,8 @@ function addCrawledSiteAsLead(site, { company = '', source = 'Crawl import', evi
   }
   const annotated = {
     ...lead,
+    ...(site.site_scan !== undefined ? { siteScan: site.site_scan } : {}),
+    ...(site.qualification ? { qualification: site.qualification } : {}),
     evidence: [...(lead.evidence || []), `Crawl import: ${describeCrawlSite(site)}${evidenceSuffix}`],
     mainIssue: site.last_eligible ? 'Crawl flagged as eligible' : lead.mainIssue,
   }
@@ -2302,6 +2349,158 @@ app.get('/api/leads/:id/audits', (req, res) => {
   res.json({ currentAuditId: lead.currentAuditId || null, audits: manifests })
 })
 
+// Lead-quality pipeline --------------------------------------------------
+
+function activeJobFor(leadId, type) {
+  return db.prepare("SELECT id FROM jobs WHERE lead_id = ? AND type = ? AND status IN ('Queued', 'Running', 'Waiting')").get(leadId, type) || null
+}
+
+function queueQualify(lead, { triggeredBy = 'user', autoVisual = true } = {}) {
+  const active = activeJobFor(lead.id, 'qualify')
+  if (active) return { queued: false, jobId: active.id }
+  const job = queueJob({ type: 'qualify', leadId: lead.id, payload: { autoVisual }, maxAttempts: 2, triggeredBy })
+  return { queued: true, jobId: job.id }
+}
+
+app.post('/api/leads/:id/qualify', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  res.status(202).json(queueQualify(lead, { autoVisual: req.body?.visual !== false }))
+})
+
+app.post('/api/leads/:id/visual-review', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (!lead.website) return unprocessable(res, 'Lead has no website to review', 'website')
+  const active = activeJobFor(lead.id, 'visual')
+  if (active) return res.status(202).json({ queued: false, jobId: active.id })
+  const job = queueJob({ type: 'visual', leadId: lead.id, payload: {}, maxAttempts: 2, triggeredBy: 'user' })
+  res.status(202).json({ queued: true, jobId: job.id, visionConfigured: getVisionConfig().configured })
+})
+
+// Qualify every lead. rescan=false re-scores saved scans without touching
+// the network (fast, use after tuning rules); rescan=true crawls again.
+app.post('/api/qualify/backfill', (req, res) => {
+  const rescan = req.body?.rescan === true
+  const leads = readRows('leads')
+  let queued = 0
+  let rescored = 0
+  for (const lead of leads) {
+    if (rescan || (lead.website && !lead.siteScan)) {
+      if (queueQualify(lead, { triggeredBy: 'backfill', autoVisual: req.body?.visual === true }).queued) queued += 1
+    } else {
+      scopedLeadUpdate(lead.id, { qualification: requalify(lead, leads) })
+      rescored += 1
+    }
+  }
+  recordEvent('qualify', 'backfill', 'started', { rescan, queued, rescored })
+  res.status(202).json({ queued, rescored, total: leads.length })
+})
+
+function prospectRow(lead) {
+  const q = lead.qualification
+  const screens = lead.visualReview?.files
+    ? Object.fromEntries(Object.entries(lead.visualReview.files).map(([k, file]) => [k, `/api/leads/${lead.id}/screens/${file}`]))
+    : null
+  return {
+    id: lead.id,
+    company: lead.company,
+    category: lead.category,
+    market: lead.market || null,
+    location: lead.location,
+    website: lead.website || null,
+    rating: lead.rating,
+    reviews: lead.reviews,
+    stage: lead.stage || null,
+    play: q.play,
+    playReason: q.playReason,
+    confidence: q.confidence,
+    priority: q.priority,
+    presence: q.presence,
+    businessWorth: q.businessWorth.score,
+    siteWeakness: q.siteWeakness.score,
+    weaknessBasis: q.siteWeakness.basis,
+    contact: q.contact,
+    pitchHooks: q.pitchHooks,
+    flags: q.flags,
+    needsVisualReview: q.needsVisualReview,
+    visualReview: lead.visualReview ? { status: lead.visualReview.status, verdict: lead.visualReview.verdict || null, eraGuess: lead.visualReview.eraGuess || null, summary: lead.visualReview.summary || null, issues: lead.visualReview.issues || [] } : null,
+    screens,
+    qualifiedAt: q.qualifiedAt,
+  }
+}
+
+// The shortlist: qualified leads ranked by priority, one row per business.
+app.get('/api/prospects', (req, res) => {
+  const play = String(req.query.play || 'active')
+  if (!['active', 'all', ...PLAYS].includes(play)) return badRequest(res, 'play', `play must be one of active, all, ${PLAYS.join(', ')}`)
+  const market = req.query.market ? String(req.query.market) : null
+  const withEmail = req.query.contact === 'email'
+  const limit = clampInt(req.query.limit ?? 100, 1, 1000) ?? 100
+  const seen = new Map()
+  for (const lead of readRows('leads')) {
+    if (!lead.qualification) continue
+    const key = lead.businessId && !String(lead.businessId).startsWith('manual:') ? lead.businessId : `${String(lead.company).toLowerCase()}|${lead.website || ''}`
+    const prior = seen.get(key)
+    if (!prior || (lead.qualification.priority > prior.qualification.priority)) seen.set(key, lead)
+  }
+  const rows = [...seen.values()]
+    .filter((lead) => play === 'all' || (play === 'active' ? lead.qualification.play !== 'skip' : lead.qualification.play === play))
+    .filter((lead) => !market || lead.market === market)
+    .filter((lead) => !withEmail || Boolean(lead.qualification.contact?.email))
+    .sort((a, b) => b.qualification.priority - a.qualification.priority)
+  const counts = { redesign: 0, audit: 0, skip: 0, withEmail: 0 }
+  for (const lead of seen.values()) {
+    counts[lead.qualification.play] = (counts[lead.qualification.play] || 0) + 1
+    if (lead.qualification.play !== 'skip' && lead.qualification.contact?.email) counts.withEmail += 1
+  }
+  res.json({ counts, total: rows.length, prospects: rows.slice(0, limit).map(prospectRow) })
+})
+
+app.get('/api/leads/:id/screens/:file', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  if (!/^(desktop|mobile)-(fold|full)\.jpg$/.test(req.params.file)) return notFound(res, 'Screenshot not found')
+  const file = join(dataDir, 'leads', req.params.id, 'screens', req.params.file)
+  if (!existsSync(file)) return notFound(res, 'Screenshot not found')
+  res.type('image/jpeg').sendFile(file)
+})
+
+app.get('/api/markets', (_req, res) => {
+  const leads = readRows('leads')
+  res.json({
+    markets: resolveMarkets(readSettings()).map((market) => ({
+      ...market,
+      leads: leads.filter((lead) => lead.market === market.id).length,
+    })),
+  })
+})
+
+// One discovery run per area in the market. Bright Data bills per record, so
+// the caller picks areas, categories and a per-area limit explicitly.
+app.post('/api/markets/:id/discover', (req, res) => {
+  const settings = readSettings()
+  const market = findMarket(settings, String(req.params.id))
+  if (!market) return notFound(res, 'Market not found', 'id')
+  if (!getBrightDataConfig(settings).ready) return unprocessable(res, 'Bright Data is not configured, so discovery cannot run', 'provider')
+  const body = req.body && typeof req.body === 'object' ? req.body : {}
+  const areaNames = Array.isArray(body.areas) && body.areas.length ? body.areas.map(String) : null
+  const areas = areaNames ? market.areas.filter((area) => areaNames.includes(area.name)) : market.areas
+  if (!areas.length) return badRequest(res, 'areas', `No matching areas. Available: ${market.areas.map((a) => a.name).join('; ')}`)
+  const categories = Array.isArray(body.categories) && body.categories.length ? body.categories.map((c) => String(c).trim()).slice(0, 20) : market.categories
+  const limit = clampInt(body.limit ?? 25, 1, 50) ?? 25
+  const runs = []
+  const errors = []
+  areas.forEach((area, index) => {
+    const result = startRun({ location: area.name, latitude: area.latitude, longitude: area.longitude, zoom: market.zoom, country: market.country, categories, limit }, settings, { market: market.id, idSuffix: `-${market.id}${index}` })
+    if (result.error) errors.push({ area: area.name, error: result.error })
+    else runs.push(result.id)
+  })
+  recordEvent('market', market.id, 'discovery_started', { areas: areas.map((a) => a.name), categories, limit, runs })
+  res.status(202).json({ market: market.id, runs, errors, estimatedRecords: runs.length * limit })
+})
+
 app.post('/api/leads/:id/analyze', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   if (req.body && Object.keys(req.body).length > 20) return payloadTooLarge(res, 'Request body too large')
@@ -2638,6 +2837,69 @@ app.post('/api/leads/:id/outreach/generate', async (req, res) => {
   }
 })
 
+// Creates a discovery run (Bright Data when configured, otherwise saved
+// clients). Shared by POST /api/runs and market discovery.
+function startRun(body, settings, extra = {}) {
+  const now = new Date()
+  const id = `run-${now.getTime().toString(36)}${extra.idSuffix || ''}`
+  const categories = Array.isArray(body.categories) && body.categories.length ? body.categories.map(c=>String(c).trim()) : settings.categories
+  const brightData = getBrightDataConfig(settings)
+  const requestedLimit = clampInt(body.limit ?? settings.resultLimit ?? 25, 1, 50) ?? 25
+  const limit = brightData.ready ? Math.min(requestedLimit, brightData.maxRecords) : requestedLimit
+  const requestedDeep = clampInt(body.deepAuditLimit ?? settings.deepAuditLimit ?? 10, 1, 50) ?? 10
+  const deepAuditLimit = Math.max(1, Math.min(limit, requestedDeep))
+  const location = isStringWithLength(String(body.location || ''), 1, 120) ? String(body.location).trim() : settings.defaultLocation
+  let searchDefinition
+  try {
+    searchDefinition = resolveSearchDefinition({
+      location,
+      latitude: body.latitude ?? null,
+      longitude: body.longitude ?? null,
+      country: body.country ?? null,
+      zoom: body.zoom ?? null,
+      categories,
+      settings,
+    })
+  } catch (error) {
+    return { error: error.message }
+  }
+  const run = {
+    id,
+    createdAt: now.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·'),
+    startedAt: now.toISOString(),
+    location: searchDefinition.displayLocation,
+    categories,
+    searchDefinition,
+    source: brightData.ready ? 'Bright Data Google Maps' : 'Existing client websites',
+    status: 'Running', progress: 0, discovered: 0, crawled: 0, audited: 0, failed: 0, datasets: 0, duration: 'Starting',
+    deadlineAt: new Date(now.getTime() + (Number(readSettings().runTimeoutMs) || 7200000)).toISOString(),
+    limit, deepAuditLimit, options: (body.options && typeof body.options === 'object' && !Array.isArray(body.options)) ? body.options : {},
+    ...(extra.market ? { market: extra.market } : {}),
+  }
+  db.prepare('INSERT INTO runs (id, payload) VALUES (?, ?)').run(id, JSON.stringify(run))
+  recordEvent('run', id, 'started', { source: run.source, categories, location: run.location, searchDefinition })
+  if (brightData.ready) {
+    queueJob({ type: 'discover', runId: id, payload: {}, maxAttempts: 3 })
+  } else {
+    const normalizedCategories = new Set(categories.map((value) => String(value).toLowerCase()))
+    const candidates = readRows('leads')
+      .filter((lead) => lead.website && (normalizedCategories.size === 0 || normalizedCategories.has(String(lead.category).toLowerCase())))
+    const geoFilter = filterSavedClientsByLocation(candidates, searchDefinition.displayLocation)
+    const leads = geoFilter.matched
+      .sort((a, b) => Number(a.opportunityScore != null) - Number(b.opportunityScore != null) || Number(b.prelimScore || 0) - Number(a.prelimScore || 0))
+      .slice(0, deepAuditLimit)
+    leads.forEach((lead) => queueJob({ type: 'audit', runId: id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
+    saveRun({
+      ...run,
+      discovered: leads.length,
+      savedClientFilter: { mode: 'city-text', city: geoFilter.city, scanned: geoFilter.scanned, matched: geoFilter.matched.length, audited: leads.length },
+      duration: leads.length ? `Auditing ${leads.length} saved websites near ${geoFilter.city || searchDefinition.displayLocation}` : 'No matching saved websites in this location',
+    })
+    if (!leads.length) saveRun({ ...readRun(id), status: 'Completed', progress: 100, duration: '0s', completedAt: nowIso() })
+  }
+  return { id }
+}
+
 app.post('/api/runs', (req, res) => {
   const body = req.body
   if (!body || typeof body !== 'object' || Array.isArray(body)) return badRequest(res, null, 'Request body must be a JSON object')
@@ -2685,63 +2947,9 @@ app.post('/api/runs', (req, res) => {
     if (Number(body.deepAuditLimit) > Number(body.limit)) return badRequest(res, 'deepAuditLimit', 'deepAuditLimit must be <= limit', [{ field: 'deepAuditLimit', message: 'Must be <= limit' }])
   }
 
-  const now = new Date()
-  const id = `run-${now.getTime().toString(36)}`
-  const categories = Array.isArray(body.categories) && body.categories.length ? body.categories.map(c=>String(c).trim()) : settings.categories
-  const brightData = getBrightDataConfig(settings)
-  const requestedLimit = clampInt(body.limit ?? settings.resultLimit ?? 25, 1, 50) ?? 25
-  const limit = brightData.ready ? Math.min(requestedLimit, brightData.maxRecords) : requestedLimit
-  const requestedDeep = clampInt(body.deepAuditLimit ?? settings.deepAuditLimit ?? 10, 1, 50) ?? 10
-  const deepAuditLimit = Math.max(1, Math.min(limit, requestedDeep))
-  const location = isStringWithLength(String(body.location || ''), 1, 120) ? String(body.location).trim() : settings.defaultLocation
-  let searchDefinition
-  try {
-    searchDefinition = resolveSearchDefinition({
-      location,
-      latitude: body.latitude ?? null,
-      longitude: body.longitude ?? null,
-      country: body.country ?? null,
-      zoom: body.zoom ?? null,
-      categories,
-      settings,
-    })
-  } catch (error) {
-    return badRequest(res, 'location', error.message, [{ field: 'location', message: error.message }])
-  }
-  const run = {
-    id,
-    createdAt: now.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·'),
-    startedAt: now.toISOString(),
-    location: searchDefinition.displayLocation,
-    categories,
-    searchDefinition,
-    source: brightData.ready ? 'Bright Data Google Maps' : 'Existing client websites',
-    status: 'Running', progress: 0, discovered: 0, crawled: 0, audited: 0, failed: 0, datasets: 0, duration: 'Starting',
-    deadlineAt: new Date(now.getTime() + (Number(readSettings().runTimeoutMs) || 7200000)).toISOString(),
-    limit, deepAuditLimit, options: (body.options && typeof body.options === 'object' && !Array.isArray(body.options)) ? body.options : {},
-  }
-  db.prepare('INSERT INTO runs (id, payload) VALUES (?, ?)').run(id, JSON.stringify(run))
-  recordEvent('run', id, 'started', { source: run.source, categories, location: run.location, searchDefinition })
-  if (brightData.ready) {
-    queueJob({ type: 'discover', runId: id, payload: {}, maxAttempts: 3 })
-  } else {
-    const normalizedCategories = new Set(categories.map((value) => String(value).toLowerCase()))
-    const candidates = readRows('leads')
-      .filter((lead) => lead.website && (normalizedCategories.size === 0 || normalizedCategories.has(String(lead.category).toLowerCase())))
-    const geoFilter = filterSavedClientsByLocation(candidates, searchDefinition.displayLocation)
-    const leads = geoFilter.matched
-      .sort((a, b) => Number(a.opportunityScore != null) - Number(b.opportunityScore != null) || Number(b.prelimScore || 0) - Number(a.prelimScore || 0))
-      .slice(0, deepAuditLimit)
-    leads.forEach((lead) => queueJob({ type: 'audit', runId: id, leadId: lead.id, payload: { respectRobots: settings.respectRobots, workflow: 'analysis' }, maxAttempts: 2 }))
-    saveRun({
-      ...run,
-      discovered: leads.length,
-      savedClientFilter: { mode: 'city-text', city: geoFilter.city, scanned: geoFilter.scanned, matched: geoFilter.matched.length, audited: leads.length },
-      duration: leads.length ? `Auditing ${leads.length} saved websites near ${geoFilter.city || searchDefinition.displayLocation}` : 'No matching saved websites in this location',
-    })
-    if (!leads.length) saveRun({ ...readRun(id), status: 'Completed', progress: 100, duration: '0s', completedAt: nowIso() })
-  }
-  res.status(201).json(decorateRun(syncRun(id) || readRun(id)))
+  const result = startRun(body, settings)
+  if (result.error) return badRequest(res, 'location', result.error, [{ field: 'location', message: result.error }])
+  res.status(201).json(decorateRun(syncRun(result.id) || readRun(result.id)))
 })
 
 app.patch('/api/runs/:id', (req, res) => {

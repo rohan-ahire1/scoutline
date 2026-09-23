@@ -5,6 +5,9 @@ import { aggregateSite, crawlSite } from '../../crawler/src/siteCrawler.js'
 import { DiscoveryError, downloadDiscovery, mapDiscoveryRecord, pollDiscovery, resolveSearchDefinition, triggerDiscovery } from './discovery.js'
 import { createJevUsage, mapEngineFailureToSite, mapEngineResultToSite, recordJevUsageEvent, sanitizeJevUsage } from './crawl.js'
 import { evaluateJev, getJevConfig, jevFailure } from './jev.js'
+import { verifyEmails } from '../../crawler/src/contacts.js'
+import { domainCounts, qualifyLead } from './qualify.js'
+import { compactScan } from './prospect.js'
 
 export const LOCAL_RUN_VERSION = 1
 export const LOCAL_RUN_ACTIVE = ['queued', 'discovering', 'scraping']
@@ -36,23 +39,23 @@ async function waitForSnapshot(snapshotId, settings) {
   }
 }
 
+// Keeps the full Google business record with each target: review count and
+// rating decide whether a business is worth pitching. Businesses without a
+// website are kept too, since they are the free-redesign candidates.
 function scrapeTargetsFromRecords(records, { category, location, limit }) {
   const mapped = records.map((record) => mapDiscoveryRecord(record, category, location)).filter(Boolean)
   const seen = new Set()
   const targets = []
-  let skippedNoWebsite = 0
+  let noWebsite = 0
   for (const lead of mapped) {
-    if (!lead.website) {
-      skippedNoWebsite += 1
-      continue
-    }
-    const domain = String(lead.website).split('/')[0].toLowerCase()
-    if (!domain || seen.has(domain)) continue
-    seen.add(domain)
-    targets.push({ url: `https://${domain}`, company: lead.company })
+    const key = lead.website ? String(lead.website).split('/')[0].toLowerCase() : `name:${lead.company.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    if (!lead.website) noWebsite += 1
+    targets.push({ url: lead.website ? `https://${lead.website}` : null, company: lead.company, business: lead })
     if (targets.length >= limit) break
   }
-  return { targets, discoveredTotal: mapped.length, skippedNoWebsite }
+  return { targets, discoveredTotal: mapped.length, noWebsite }
 }
 
 export async function runLocalScrape({ runPath, settings = {} }) {
@@ -95,20 +98,26 @@ export async function runLocalScrape({ runPath, settings = {} }) {
         status: 'scraping',
         progress: { discovered: targets.length, scraped: 0, total: targets.length },
         discoveredTotal: resolved.discoveredTotal,
-        skippedNoWebsite: resolved.skippedNoWebsite,
+        noWebsite: resolved.noWebsite,
       })
       if (!targets.length) {
-        return persist({ status: 'done', finishedAt: new Date().toISOString(), note: 'Discovery found no businesses with websites to scrape.' })
+        return persist({ status: 'done', finishedAt: new Date().toISOString(), note: 'Discovery found no businesses.' })
       }
     }
+    const knownDomains = domainCounts(targets.map((target) => target.business).filter(Boolean))
     for (let index = 0; index < targets.length; index++) {
       const target = targets[index]
       const scrapedAt = new Date().toISOString()
-      const base = { url: target.url, runId: run.id, index, company: target.company, scrapedAt }
+      const base = { url: target.url, runId: run.id, index, company: target.company, scrapedAt, business: target.business || null }
       let site
-      try {
+      let aggregateForQualify = null
+      if (!target.url) {
+        site = mapEngineFailureToSite({ ...base, url: '', error: 'No website listed on Google' })
+      } else try {
         const pages = await crawlSite(target.url)
         const aggregate = aggregateSite(pages)
+        if (aggregate) aggregate.rankedEmails = await verifyEmails(aggregate.rankedEmails || [])
+        aggregateForQualify = aggregate ? { ...aggregate, scannedAt: scrapedAt } : { failed: true, kind: pages[0]?.fetched?.blockedByRobots ? 'robots' : 'no-html', error: 'No analyzable HTML' }
         if (aggregate) {
           site = mapEngineResultToSite(aggregate, base)
           if (jevConfig.configured) {
@@ -132,7 +141,14 @@ export async function runLocalScrape({ runPath, settings = {} }) {
         }
       } catch (error) {
         site = mapEngineFailureToSite({ ...base, error: error?.message || 'Scrape failed' })
+        aggregateForQualify = { failed: true, kind: error?.kind || 'network', error: String(error?.message || 'Scrape failed').slice(0, 400) }
       }
+      site.site_scan = compactScan(aggregateForQualify)
+      site.qualification = qualifyLead({
+        business: target.business || { company: target.company, website: target.url },
+        site: aggregateForQualify,
+        knownDomains,
+      })
       const current = readLocalRunFile(runPath)
       const sites = [...(current.sites || []), site]
       persist({

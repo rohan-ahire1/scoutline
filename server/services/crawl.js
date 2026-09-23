@@ -359,6 +359,16 @@ export function prettifyHost(host) {
 
 // Maps a crawled site onto an Scoutline lead row (see importedLead/insertUniqueLead).
 export function crawlSiteToLeadRow(site, { company = '' } = {}) {
+  // Discovery-backed sites carry the full Google record: keep it.
+  if (site.business?.company) {
+    const best = site.qualification?.contact?.email
+    return {
+      ...site.business,
+      company: String(company || '').trim() || site.business.company,
+      email: String(site.business.email || '').includes('@') ? site.business.email : (best || site.emails?.[0] || 'Not collected'),
+      phone: site.business.phone && site.business.phone !== 'Not collected' ? site.business.phone : (site.phones?.[0] || 'Not collected'),
+    }
+  }
   const name = String(company || '').trim() || site.title || prettifyHost(site.host)
   return {
     company: name.slice(0, 120),
@@ -480,7 +490,7 @@ function hostOf(url) {
 
 // Maps the engine's aggregateSite() output onto the snapshot site shape so
 // local results render through the same UI and lead promotion.
-export function mapEngineResultToSite(aggregate, { url, runId, index, company = '', scrapedAt = new Date().toISOString(), jev_triage = null } = {}) {
+export function mapEngineResultToSite(aggregate, { url, runId, index, company = '', scrapedAt = new Date().toISOString(), jev_triage = null, business = null } = {}) {
   const host = hostOf(url) || String(url || '').slice(0, 253)
   const home = aggregate?.pages?.[0] || {}
   const eligible = Boolean(aggregate?.eligible)
@@ -517,11 +527,12 @@ export function mapEngineResultToSite(aggregate, { url, runId, index, company = 
     tech: aggregate?.tech && typeof aggregate.tech === 'object' ? aggregate.tech : {},
     signals: aggregate?.signals && typeof aggregate.signals === 'object' ? aggregate.signals : {},
     source: 'local',
+    ...(business ? { business } : {}),
     ...(jevTriage ? { jev_triage: jevTriage } : {}),
   }
 }
 
-export function mapEngineFailureToSite({ url, error, runId, index, company = '', scrapedAt = new Date().toISOString() } = {}) {
+export function mapEngineFailureToSite({ url, error, runId, index, company = '', scrapedAt = new Date().toISOString(), business = null } = {}) {
   const host = hostOf(url) || String(url || '').slice(0, 253)
   return {
     id: `${runId}-s${index}`,
@@ -550,6 +561,7 @@ export function mapEngineFailureToSite({ url, error, runId, index, company = '',
     tech: {},
     signals: {},
     source: 'local',
+    ...(business ? { business } : {}),
   }
 }
 

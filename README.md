@@ -18,6 +18,47 @@ Bright Data discovery or CSV import
 
 “Analyzed” remains one complete website-analysis stage. There is no separate LLM-insights checkpoint or ranking checkpoint: the audit evidence and deterministic opportunity score are produced together. When AI is configured, it adds a grounded advisory synthesis inside that stage—priorities, recommendations, strengths, unknowns, qualification guidance, and outreach angles—without changing the score.
 
+## Lead quality: who to pitch, and how
+
+Scoutline qualifies every discovered business for GoodShigoto outreach and
+sorts it into one **play**:
+
+- **redesign**: a business worth pitching (reviews, rating, ticket size) whose web presence is missing or weak: no website, a Facebook/Yelp link, a free builder subdomain, a dead domain, a parked page, broken HTTPS, or a clearly dated site. Build a concept and send it.
+- **audit**: a decent business with a fixable site. Send 2–3 specific pointers.
+- **skip**: franchises and national brands, utilities and suppliers, chain location pages, very large operations (1,500+ reviews), weak reputations (<4.0★), closed businesses, thin businesses, and sites that already look good.
+
+Pipeline (runs on the VPS inside `scoutline.service`, or locally with `npm run dev`):
+
+```text
+Market discovery (Bright Data, one run per area)
+→ qualify job per business: crawl up to 5 pages (crawler engine) → emails
+  (mailto, Cloudflare-protected, obfuscated, JSON-LD) ranked + MX-checked
+  → owner names → dated-site signals → business worth + site weakness → play
+→ visual job (own sites that are not skipped): desktop + mobile screenshots,
+  popups removed; with OPENAI_API_KEY a vision model rates them on a fixed
+  rubric and the play is re-scored
+→ GET /api/prospects: the ranked shortlist
+```
+
+Markup alone cannot tell a tidy modern template from a tired one, so an
+own-site lead without a visual review stays an `audit` with `confidence: low`.
+
+Endpoints:
+
+- `GET /api/prospects?play=redesign|audit|skip|active|all&market=slc&contact=email`
+- `POST /api/leads/:id/qualify`, `POST /api/leads/:id/visual-review`
+- `POST /api/qualify/backfill` with `{"rescan": false}` re-scores saved scans offline (after tuning rules); `{"rescan": true}` crawls again
+- `GET /api/markets`, `POST /api/markets/:id/discover` with `{"areas": ["Murray, UT"], "categories": ["HVAC contractor"], "limit": 25}`. Bright Data bills per record, so choose areas and limits deliberately.
+- `GET /api/leads/:id/screens/{desktop|mobile}-{fold|full}.jpg`
+
+Markets live in `server/services/markets.js`: Salt Lake City is on, and New York
+City (outer boroughs plus Hempstead) is present but off. Rules live in
+`server/services/qualify.js`, dated-site signals in `crawler/src/dated.js`,
+contact extraction in `crawler/src/contacts.js`.
+
+Discovery runs no longer queue Lighthouse audits automatically. Run the deep
+audit on shortlisted leads, or pass `options: { deepAudit: true }` to a run.
+
 ## Backend now included
 
 - SQLite persistence for leads, runs, jobs, settings, and audit events
@@ -94,6 +135,7 @@ cp .env.example .env
 - `META_MODEL_API_BASE_URL` optionally overrides Meta's `https://api.meta.ai/v1` endpoint.
 - `OPENAI_API_KEY` enables the optional OpenAI fallback when no Meta key is present.
 - `OPENAI_MODEL` overrides the default OpenAI model.
+- `OPENAI_VISION_MODEL` sets the model for screenshot reviews (defaults to `OPENAI_MODEL`, then `gpt-5.4-mini`). The visual review needs `OPENAI_API_KEY`; without it, screenshots are still captured for manual review.
 - `TYPESAFE_API_KEY` enables Jev semantic triage for local scrapes. When configured, each successfully crawled site is classified with advisory routing metadata (archetype, primary opportunity, semantic scores, route). The deterministic opportunity/eligibility scores remain authoritative; Jev is advisory only and never stored as sales evidence.
 - `JEV_MODEL` defaults to `jev-latest`.
 - `JEV_API_URL` defaults to `https://api.typesafe.ai/v1/systemone`.
