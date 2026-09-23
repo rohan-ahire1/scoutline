@@ -120,3 +120,21 @@ test('scanAndQualify fills a missing email and keeps its source', async () => {
   assert.deepEqual(contactPatch({ ...lead, email: 'owner@joshuasons.com', ownerName: 'X' }, result.qualification), {})
   assert.equal(compactScan({ failed: true, kind: 'dns' }).kind, 'dns')
 })
+
+test('visual review sends screenshots to Meta via chat completions and maps the rubric', async () => {
+  const { reviewScreenshots } = await import('./visual.js')
+  const buf = Buffer.from('jpeg')
+  const shots = { desktop: { fold: buf, full: buf, overlays: [] }, mobile: { fold: buf, full: buf, overlays: [{ kind: 'popup', text: 'Best of SLC' }] } }
+  let request
+  const client = { chat: { completions: { create: async (body) => {
+    request = body
+    return { choices: [{ message: { content: JSON.stringify({ looksDated: 5, visualPolish: 1, mobileExperience: 2, clarity: 2, trust: 2, eraGuess: '2012 WordPress theme', verdict: 'redesign', issues: [{ view: 'mobile', issue: 'The phone number is not tappable' }], strengths: [], summary: 'Old.' }) } }] }
+  } } } }
+  const review = await reviewScreenshots(shots, { company: 'X', category: 'Roofer', website: 'x.com' }, { metaApiKey: 'k', client })
+  assert.equal(review.provider, 'meta')
+  assert.equal(request.messages[0].content.filter((part) => part.type === 'image_url').length, 4)
+  assert.match(request.messages[0].content[0].text, /Best of SLC/)
+  assert.equal(review.verdict, 'redesign')
+  assert.ok(review.score >= 80, `score ${review.score}`)
+  assert.deepEqual(review.issues, ['The phone number is not tappable (mobile)'])
+})

@@ -18,10 +18,20 @@ const VIEWPORTS = {
 const MOBILE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
 const MAX_FULL_HEIGHT = 5000
 
+// Same provider order as outreach: Meta Model API (Muse Spark) first, then
+// OpenAI. Keys usually arrive at runtime via `npm run secrets:dev` (bws run).
 export function getVisionConfig(options = {}) {
+  const metaKey = options.metaApiKey || process.env.MODEL_API_KEY || process.env.META_MODEL_API_KEY
+  if (metaKey && !options.forceOpenAI) return {
+    configured: true,
+    provider: 'meta',
+    apiKey: metaKey,
+    baseURL: process.env.META_MODEL_API_BASE_URL || 'https://api.meta.ai/v1',
+    model: options.model || process.env.META_VISION_MODEL || process.env.META_MODEL || 'muse-spark-1.2-contributor',
+  }
   const apiKey = options.apiKey || process.env.OPENAI_API_KEY
-  if (!apiKey) return { configured: false }
-  return { configured: true, provider: 'openai', apiKey, model: options.model || process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || 'gpt-5.4-mini' }
+  if (apiKey) return { configured: true, provider: 'openai', apiKey, baseURL: undefined, model: options.model || process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || 'gpt-5.4-mini' }
+  return { configured: false }
 }
 
 // Captures above-the-fold and (capped) full-page screenshots per viewport.
@@ -179,21 +189,31 @@ export function weaknessFromReview(review) {
 
 export async function reviewScreenshots(shots, { company = '', category = '', website = '' } = {}, options = {}) {
   const config = getVisionConfig(options)
-  if (!config.configured) throw new Error('Visual review needs OPENAI_API_KEY')
-  const client = options.client || new OpenAI({ apiKey: config.apiKey, timeout: 90_000, maxRetries: 2 })
-  const image = (buffer) => ({ type: 'input_image', image_url: `data:image/jpeg;base64,${buffer.toString('base64')}`, detail: 'high' })
-  const response = await client.responses.create({
-    model: config.model,
-    input: [{
-      role: 'user',
-      content: [
-        { type: 'input_text', text: `${REVIEW_PROMPT}\n\nBusiness: ${company} (${category}). Website: ${website}.${overlayNote(shots)}` },
-        image(shots.desktop.fold), image(shots.desktop.full), image(shots.mobile.fold), image(shots.mobile.full),
-      ],
-    }],
-    text: { format: { type: 'json_schema', name: 'scoutline_visual_review', strict: true, schema: reviewSchema } },
-  })
-  const review = JSON.parse(response.output_text)
+  if (!config.configured) throw new Error('Visual review needs MODEL_API_KEY (Meta) or OPENAI_API_KEY')
+  const client = options.client || new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: 120_000, maxRetries: 2 })
+  const prompt = `${REVIEW_PROMPT}\n\nBusiness: ${company} (${category}). Website: ${website}.${overlayNote(shots)}`
+  const images = [shots.desktop.fold, shots.desktop.full, shots.mobile.fold, shots.mobile.full]
+    .map((buffer) => `data:image/jpeg;base64,${buffer.toString('base64')}`)
+  let text
+  if (config.provider === 'meta') {
+    const response = await client.chat.completions.create({
+      model: config.model,
+      max_completion_tokens: 3000,
+      reasoning_effort: process.env.META_REASONING_EFFORT || 'minimal',
+      messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, ...images.map((url) => ({ type: 'image_url', image_url: { url } }))] }],
+      response_format: { type: 'json_schema', json_schema: { name: 'scoutline_visual_review', strict: true, schema: reviewSchema } },
+    })
+    text = response.choices?.[0]?.message?.content
+  } else {
+    const response = await client.responses.create({
+      model: config.model,
+      input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }, ...images.map((url) => ({ type: 'input_image', image_url: url, detail: 'high' }))] }],
+      text: { format: { type: 'json_schema', name: 'scoutline_visual_review', strict: true, schema: reviewSchema } },
+    })
+    text = response.output_text
+  }
+  if (!text) throw new Error(`${config.provider} returned no visual review`)
+  const review = JSON.parse(text)
   return {
     version: VISUAL_REVIEW_VERSION,
     reviewedAt: new Date().toISOString(),
