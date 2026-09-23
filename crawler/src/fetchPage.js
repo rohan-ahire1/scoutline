@@ -51,6 +51,7 @@ export async function fetchPage(targetUrl) {
       finalUrl: res.url,
       statusCode: res.status,
       contentType,
+      headers: { 'last-modified': res.headers.get('last-modified') || null },
       latencyMs: Date.now() - started,
       responseBytes: body.length,
       sha256: crypto.createHash('sha256').update(body).digest('hex'),

@@ -29,11 +29,11 @@ export async function storeSnapshot(job, fetched, analysis = null) {
         canonical, lang, text_length, links_count, internal_links_count, external_links_count,
         emails, phones, social_links, addresses, structured_types, tech, signals,
         visual_risk, eligible, eligibility_reasons, opportunity_score, pages_inspected, pages,
-        website_type
+        website_type, dated, ranked_emails, owners, family_owned, home_fallback
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
         $20::jsonb,$21::jsonb,$22::jsonb,$23::jsonb,$24::jsonb,$25::jsonb,$26::jsonb,$27::jsonb,
-        $28,$29::jsonb,$30,$31,$32::jsonb,$33
+        $28,$29::jsonb,$30,$31,$32::jsonb,$33,$34::jsonb,$35::jsonb,$36::jsonb,$37,$38::jsonb
       )
     `, [
       job.target_id,
@@ -68,7 +68,12 @@ export async function storeSnapshot(job, fetched, analysis = null) {
       a.opportunityScore || 0,
       a.pagesInspected || 1,
       JSON.stringify(a.pages || []),
-      websiteType
+      websiteType,
+      JSON.stringify(a.dated || {}),
+      JSON.stringify(a.rankedEmails || []),
+      JSON.stringify(a.owners || []),
+      Boolean(a.familyOwned),
+      a.homeFallback ? JSON.stringify(a.homeFallback) : null
     ]);
 
     await client.query(`
@@ -84,6 +89,7 @@ export async function storeSnapshot(job, fetched, analysis = null) {
           last_eligible=$8,
           last_opportunity_score=$9,
           last_visual_risk_score=$10,
+          last_dated_score=$11,
           last_result_at=NOW(),
           total_crawls=total_crawls+1,
           updated_at=NOW()
@@ -98,7 +104,8 @@ export async function storeSnapshot(job, fetched, analysis = null) {
       a.pagesInspected || 1,
       evaluated ? Boolean(a.eligible) : null,
       evaluated ? (a.opportunityScore || 0) : null,
-      evaluated ? (a.visualRisk?.score || 0) : null
+      evaluated ? (a.visualRisk?.score || 0) : null,
+      evaluated ? (a.dated?.score ?? null) : null
     ]);
     await client.query('COMMIT');
   } catch (error) {
