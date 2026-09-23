@@ -4,7 +4,8 @@
 // vision model to rate them on a fixed rubric. The screenshots are kept as
 // evidence and double as the "before" image in outreach.
 import OpenAI from 'openai'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { assertPublicUrl } from './audit.js'
 import { CHROME_SAFETY_FLAGS } from './crawlPolicy.js'
@@ -34,13 +35,33 @@ export function getVisionConfig(options = {}) {
   return { configured: false }
 }
 
+// CHROME_PATH, then any Chrome chrome-launcher can find, then a Playwright
+// Chromium in ~/.cache (what the VPS has; there is no system Chrome there).
+export function resolveChromePath(chromeLauncher, { env = process.env, home = homedir() } = {}) {
+  if (env.CHROME_PATH) return env.CHROME_PATH
+  try {
+    const found = chromeLauncher?.Launcher?.getInstallations?.() || []
+    if (found.length) return found[0]
+  } catch { /* none installed */ }
+  const root = join(home, '.cache', 'ms-playwright')
+  if (!existsSync(root)) return undefined
+  const builds = readdirSync(root).filter((name) => /^chromium-\d+$/.test(name)).sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]))
+  for (const build of builds) {
+    for (const sub of ['chrome-linux64/chrome', 'chrome-linux/chrome', 'chrome-mac/Chromium.app/Contents/MacOS/Chromium']) {
+      const candidate = join(root, build, sub)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return undefined
+}
+
 // Captures above-the-fold and (capped) full-page screenshots per viewport.
 // Returns { desktop: { fold, full }, mobile: { fold, full } } as JPEG buffers.
 export async function captureScreenshots(input, options = {}) {
   const url = await assertPublicUrl(input)
   const [{ default: puppeteer }, chromeLauncher] = await Promise.all([import('puppeteer-core'), import('chrome-launcher')])
   const chrome = await chromeLauncher.launch({
-    chromePath: options.chromePath || process.env.CHROME_PATH || undefined,
+    chromePath: options.chromePath || resolveChromePath(chromeLauncher),
     chromeFlags: [...CHROME_SAFETY_FLAGS],
   })
   let browser

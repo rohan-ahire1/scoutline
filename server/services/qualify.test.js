@@ -138,3 +138,17 @@ test('visual review sends screenshots to Meta via chat completions and maps the 
   assert.ok(review.score >= 80, `score ${review.score}`)
   assert.deepEqual(review.issues, ['The phone number is not tappable (mobile)'])
 })
+
+test('screenshots fall back to a Playwright Chromium when no Chrome is installed', async () => {
+  const { resolveChromePath } = await import('./visual.js')
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const home = mkdtempSync(join(tmpdir(), 'chrome-home-'))
+  const noChrome = { Launcher: { getInstallations: () => [] } }
+  assert.equal(resolveChromePath(noChrome, { env: {}, home }), undefined)
+  mkdirSync(join(home, '.cache/ms-playwright/chromium-1234/chrome-linux64'), { recursive: true })
+  writeFileSync(join(home, '.cache/ms-playwright/chromium-1234/chrome-linux64/chrome'), '')
+  assert.equal(resolveChromePath(noChrome, { env: {}, home }), join(home, '.cache/ms-playwright/chromium-1234/chrome-linux64/chrome'))
+  assert.equal(resolveChromePath(noChrome, { env: { CHROME_PATH: '/x' }, home }), '/x')
+})
