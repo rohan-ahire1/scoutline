@@ -36,7 +36,7 @@ Market discovery (Bright Data, one run per area)
   → owner names → dated-site signals → business worth + site weakness → play
 → visual job (own sites that are not skipped): desktop + mobile screenshots,
   popups removed; with OPENAI_API_KEY a vision model rates them on a fixed
-  rubric and the play is re-scored
+  rubric and the play is re-scored (with MODEL_API_KEY or OPENAI_API_KEY)
 → GET /api/prospects: the ranked shortlist
 ```
 
@@ -135,7 +135,7 @@ cp .env.example .env
 - `META_MODEL_API_BASE_URL` optionally overrides Meta's `https://api.meta.ai/v1` endpoint.
 - `OPENAI_API_KEY` enables the optional OpenAI fallback when no Meta key is present.
 - `OPENAI_MODEL` overrides the default OpenAI model.
-- `OPENAI_VISION_MODEL` sets the model for screenshot reviews (defaults to `OPENAI_MODEL`, then `gpt-5.4-mini`). The visual review needs `OPENAI_API_KEY`; without it, screenshots are still captured for manual review.
+- Screenshot reviews use the same provider order: Meta (`MODEL_API_KEY`, model `META_VISION_MODEL` or `META_MODEL`) first, then OpenAI (`OPENAI_VISION_MODEL` or `OPENAI_MODEL`). With no key, screenshots are still captured for manual review. Try it on one site: `node scripts/visual-probe.mjs https://example.com`.
 - `TYPESAFE_API_KEY` enables Jev semantic triage for local scrapes. When configured, each successfully crawled site is classified with advisory routing metadata (archetype, primary opportunity, semantic scores, route). The deterministic opportunity/eligibility scores remain authoritative; Jev is advisory only and never stored as sales evidence.
 - `JEV_MODEL` defaults to `jev-latest`.
 - `JEV_API_URL` defaults to `https://api.typesafe.ai/v1/systemone`.
