@@ -1469,6 +1469,7 @@ async function processNextJob() {
       // The raw cause is kept next to the plain-language outcome so a failure
       // stays actionable for the user and debuggable for support.
       const cause = String(error?.message || '').trim() || null
+      console.error(`job ${job.id} (${job.type}) failed${retry ? ', retrying' : ''}`, error)
       updateJob(job.id, {
         status: retry ? 'Queued' : outcome.status,
         progress: retry ? Math.max(5, current.progress) : 100,
