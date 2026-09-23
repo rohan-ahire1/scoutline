@@ -1,5 +1,7 @@
 import * as cheerio from 'cheerio';
 import { config } from './config.js';
+import { extractEmails, extractOwnerNames, isFamilyOwned } from './contacts.js';
+import { detectDated } from './dated.js';
 
 function uniq(values) {
   return [...new Set(values.filter(Boolean))];
@@ -182,16 +184,19 @@ export function analyzeHtml(fetchResult) {
   bodyClone('a,p,li,div,h1,h2,h3,h4,h5,h6,br,tr,td,section,article,header,footer,nav,span').after(' ');
   const visibleText = bodyClone('body').text().replace(/\s+/g, ' ').trim();
 
-  const emails = uniq([
-    ...[...visibleText.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)].map(m => m[0].toLowerCase()),
-    ...$('a[href^="mailto:"]').map((_, el) => ($(el).attr('href') || '').replace(/^mailto:/i, '').split('?')[0].toLowerCase()).get()
-  ]).slice(0, 30);
-
   const phones = uniq(
     $('a[href^="tel:"]').map((_, el) => ($(el).attr('href') || '').replace(/^tel:/i, '').trim()).get()
   ).slice(0, 30);
 
   const jsonLd = parseJsonLd($);
+  const emailEntries = extractEmails($, visibleText, jsonLd).slice(0, 30);
+  const emails = emailEntries.map(entry => entry.email);
+  const owners = extractOwnerNames(visibleText);
+  const dated = detectDated({
+    rawHtml: html, $, visibleText,
+    finalUrl: fetchResult.finalUrl || fetchResult.requestedUrl,
+    headers: fetchResult.headers || {}
+  });
   const structuredTypes = uniq(jsonLd.flatMap(row => {
     const t = row?.['@type'];
     return Array.isArray(t) ? t : [t];
@@ -208,6 +213,7 @@ export function analyzeHtml(fetchResult) {
     hasEmail: emails.length > 0,
     hasPhone: phones.length > 0,
     hasAddress: Boolean(address),
+    hasForm: $('form').filter((_, el) => $(el).find('input:not([type=hidden]), textarea').length >= 2).length > 0,
     statusOk: (fetchResult.statusCode || 0) >= 200 && (fetchResult.statusCode || 0) < 400
   };
 
@@ -249,6 +255,10 @@ export function analyzeHtml(fetchResult) {
     internalLinksCount: internal,
     externalLinksCount: external,
     emails,
+    emailEntries,
+    owners,
+    familyOwned: isFamilyOwned(visibleText),
+    dated,
     phones,
     socialLinks: uniq(socialLinks).slice(0, 30),
     address,

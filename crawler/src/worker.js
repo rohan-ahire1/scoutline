@@ -1,6 +1,7 @@
 import { claimJob, markJobDone, markJobFailed } from './jobs.js';
 import { crawlSite, aggregateSite } from './siteCrawler.js';
 import { storeSnapshot } from './store.js';
+import { verifyEmails } from './contacts.js';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -12,6 +13,7 @@ async function processOne() {
     const pages = await crawlSite(job.url);
     const home = pages[0]?.fetched || { requestedUrl: job.url };
     const analysis = aggregateSite(pages);
+    if (analysis) analysis.rankedEmails = await verifyEmails(analysis.rankedEmails || []);
     await storeSnapshot(job, home, analysis);
     await markJobDone(job.id);
     console.log(JSON.stringify({
