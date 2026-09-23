@@ -119,11 +119,18 @@ async function getSites(limit) {
       s.visual_risk,
       s.tech,
       s.signals,
-      s.pages_inspected
+      s.pages_inspected,
+      s.dated,
+      s.ranked_emails,
+      s.owners,
+      s.family_owned,
+      s.home_fallback,
+      t.lead_id
     FROM crawl_targets t
     LEFT JOIN LATERAL (
       SELECT title, meta_description, emails, phones, social_links,
-             eligibility_reasons, visual_risk, tech, signals, pages_inspected
+             eligibility_reasons, visual_risk, tech, signals, pages_inspected,
+             dated, ranked_emails, owners, family_owned, home_fallback
       FROM crawl_snapshots
       WHERE target_id=t.id
       ORDER BY fetched_at DESC
