@@ -1,0 +1,1950 @@
+<!DOCTYPE html><html class="scroll-smooth" lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://api.fontshare.com/v2/css?f[]=satoshi@700,600,500,400&amp;f[]=general-sans@700,600,500,400&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; overflow-x: clip; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } }
+  /* Custom Motion Styles */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fadeInUp {
+    animation: fadeInUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+
+  /* Scroll Reveal State */
+  .reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+  }
+  .reveal-on-scroll.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Nav Link Underline Slide-in */
+  .nav-link {
+    position: relative;
+  }
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0%;
+    height: 2px;
+    background-color: #c84b31;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .nav-link:hover::after {
+    width: 100%;
+  }
+
+  .font-mono-code {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .field-error {
+    border-color: #ba1a1a !important;
+    box-shadow: 0 0 0 2px rgba(186, 26, 26, 0.15) !important;
+    background-color: #fff !important;
+  }
+
+  [data-counter] {
+    white-space: nowrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .reveal-on-scroll {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "on-error-container": "#93000a",
+        "on-secondary-container": "#55524e",
+        "on-primary-fixed-variant": "#881f10",
+        "tertiary": "#00636c",
+        "inverse-primary": "#ffb4a6",
+        "outline": "#89837c",
+        "surface-container-lowest": "#ffffff",
+        "surface-bright": "#fbfaf7",
+        "primary": "#b33d26",
+        "on-primary": "#ffffff",
+        "surface-variant": "#e7e4dc",
+        "secondary-container": "#eae7df",
+        "on-tertiary": "#ffffff",
+        "surface-dim": "#dedad2",
+        "sand-border": "#e4dfd5",
+        "on-secondary-fixed": "#161618",
+        "on-surface": "#161618",
+        "primary-fixed-dim": "#ffb4a6",
+        "washi-canvas": "#fbfaf7",
+        "error": "#ba1a1a",
+        "on-primary-fixed": "#3f0300",
+        "secondary": "#57534e",
+        "surface-container": "#f2efe9",
+        "inverse-surface": "#2c2b2a",
+        "on-tertiary-container": "#e7fcff",
+        "inverse-on-surface": "#f5f3ee",
+        "on-background": "#161618",
+        "on-secondary-fixed-variant": "#44403c",
+        "tertiary-fixed": "#95f1fd",
+        "secondary-fixed-dim": "#c6c2b9",
+        "muted-charcoal": "#524f4b",
+        "on-error": "#ffffff",
+        "primary-fixed": "#ffdad4",
+        "tertiary-container": "#007e89",
+        "on-secondary": "#ffffff",
+        "tertiary-fixed-dim": "#78d4e0",
+        "vermilion-accent": "#c84b31",
+        "on-tertiary-fixed-variant": "#004f56",
+        "charcoal-ink": "#161618",
+        "on-primary-container": "#ffffff",
+        "error-container": "#ffdad6",
+        "surface-container-highest": "#dedad2",
+        "secondary-fixed": "#e7e4db",
+        "surface-tint": "#b33d26",
+        "on-surface-variant": "#524b48",
+        "surface": "#fbfaf7",
+        "primary-container": "#c84b31",
+        "surface-container-high": "#eae6de",
+        "on-tertiary-fixed": "#001f23",
+        "outline-variant": "#d8d3c7",
+        "background": "#fbfaf7",
+        "surface-container-low": "#f6f4ee"
+      },
+      borderRadius: {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      spacing: {
+        "space-md": "1rem",
+        "margin": "3rem",
+        "space-2xl": "4rem",
+        "gutter-mobile": "1.25rem",
+        "space-xs": "0.25rem",
+        "margin-mobile": "1.25rem",
+        "space-sm": "0.5rem",
+        "space-lg": "1.5rem",
+        "space-xl": "2.5rem",
+        "gutter": "1.5rem"
+      },
+      fontFamily: {
+        "label-sm": ["JetBrains Mono", "monospace"],
+        "body-md": ["Satoshi", "Manrope", "sans-serif"],
+        "label-md": ["Satoshi", "General Sans", "Manrope", "sans-serif"],
+        "body-sm": ["Satoshi", "Manrope", "sans-serif"],
+        "body-lg": ["Satoshi", "Manrope", "sans-serif"],
+        "headline-lg": ["General Sans", "Satoshi", "Manrope", "sans-serif"],
+        "display": ["General Sans", "Satoshi", "Manrope", "sans-serif"],
+        "headline-md": ["General Sans", "Satoshi", "Manrope", "sans-serif"],
+        "headline-sm": ["General Sans", "Satoshi", "Manrope", "sans-serif"],
+        "headline-lg-mobile": ["General Sans", "Satoshi", "Manrope", "sans-serif"],
+        "metric-mono": ["JetBrains Mono", "monospace"]
+      },
+      fontSize: {
+        "label-sm": ["11.5px", { lineHeight: "16px", letterSpacing: "0.06em", fontWeight: "600" }],
+        "body-md": ["16px", { lineHeight: "26px", letterSpacing: "0.01em", fontWeight: "400" }],
+        "label-md": ["13.5px", { lineHeight: "20px", letterSpacing: "0.03em", fontWeight: "600" }],
+        "body-sm": ["14px", { lineHeight: "22px", letterSpacing: "0.01em", fontWeight: "400" }],
+        "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "400" }],
+        "headline-lg": ["38px", { lineHeight: "46px", letterSpacing: "-0.025em", fontWeight: "600" }],
+        "display": ["54px", { lineHeight: "62px", letterSpacing: "-0.035em", fontWeight: "700" }],
+        "headline-md": ["26px", { lineHeight: "34px", letterSpacing: "-0.02em", fontWeight: "600" }],
+        "headline-sm": ["21px", { lineHeight: "28px", letterSpacing: "-0.015em", fontWeight: "600" }],
+        "headline-lg-mobile": ["29px", { lineHeight: "36px", letterSpacing: "-0.02em", fontWeight: "600" }]
+      }
+    }
+  }
+};</script><script>function __imgFallback(el){el.onerror=null;el.src='data:image/svg+xml;utf8,'+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%' height='100%' fill='#eae6de'/><text x='50%' y='52%' font-family='sans-serif' font-size='72' fill='#c84b31' text-anchor='middle'>好</text><text x='50%' y='62%' font-family='monospace' font-size='20' letter-spacing='4' fill='#57534e' text-anchor='middle'>GOODSHIGOTO</text></svg>");}</script><style>:focus-visible { outline: 2px solid #c34a36 !important; outline-offset: 2px !important; } .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }</style><script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script><script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased selection:bg-primary-container selection:text-white"><a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-stone-900 focus:text-white focus:rounded focus:shadow-lg focus:font-mono focus:text-xs">Skip to main content</a><header class="fixed top-0 w-full z-50 bg-[#fbfaf7]/90 backdrop-blur-xl border-b border-sand-border/70 shadow-[0_1px_12px_rgba(22,22,24,0.03)] transition-all duration-300"><div class="h-20 max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin flex items-center justify-between"><a class="flex items-center gap-space-sm group transition-transform duration-300 hover:scale-[1.01]" data-path="home" href="#"><img onerror="__imgFallback(this)" alt="GoodShigoto Logo" class="w-9 h-9 object-contain rounded transition-transform duration-300 group-hover:rotate-[-4deg]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCV4Cf_nzsukCcvAqJAKtTWQZt7sGdINdqfFRx-9ngGCZj_84Lkbj2zoMNvK7rAAuKDrF3KEPNcUMCmiMbR2rxl5bq1WOzfTBui1rHrbqQPhdqqqzr2peK290TPGgo6sJSROekKaHC1zcAhFvrtdimhpd12w18vuLbWdUol8k9QvKf0bRlwJTe_JUXldYSTmOCdaDFeJqrMI4WkQFu75UyYe22naqTMBAgfb73dvVrz2Agu7hfLp_0G9H2mnqNZoXD3P48"><div class="flex flex-col"><span class="font-headline-sm text-[20px] font-bold text-charcoal-ink tracking-tight transition-colors group-hover:text-primary">GoodShigoto</span><span class="font-mono-code text-[11px] text-muted-charcoal tracking-wider uppercase font-medium">Kyoto Atelier &amp; Systems Craft</span></div></a><nav class="hidden md:flex items-center gap-space-lg" data-active-classes="text-primary font-bold"><a class="nav-link font-label-md text-label-md text-on-surface-variant hover:text-charcoal-ink transition-colors duration-200" data-path="services" href="#services">Services</a><a class="nav-link font-label-md text-label-md text-on-surface-variant hover:text-charcoal-ink transition-colors duration-200" data-path="case-studies" href="#case-studies-section">Case Studies</a><a class="nav-link font-label-md text-label-md text-on-surface-variant hover:text-charcoal-ink transition-colors duration-200" data-path="approach" href="#approach">Approach</a><a class="nav-link font-label-md text-label-md text-on-surface-variant hover:text-charcoal-ink transition-colors duration-200" data-path="about" href="#testimonials">About</a></nav><div class="flex items-center gap-space-md"><a class="hidden sm:inline-flex items-center justify-center px-space-md py-space-sm rounded-lg bg-primary-container text-white font-label-md text-label-md hover:bg-primary hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] transition-all duration-300 shadow-[0_2px_8px_rgba(200,75,49,0.22)]" data-path="contact" href="#inquiry-module">Start a Project</a><a class="w-8 h-8 rounded-full bg-charcoal-ink flex items-center justify-center transition-transform hover:rotate-12 duration-300 shadow-sm" href="#inquiry-module" aria-label="Book a consultation"><span class="material-symbols-outlined text-washi-canvas text-[17px]">person</span></a><button id="menu-btn" class="md:hidden w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-charcoal-ink hover:bg-surface-container active:bg-surface-container transition-colors" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu"><span class="material-symbols-outlined text-[26px]" id="menu-icon">menu</span></button></div></div><nav id="mobile-menu" class="md:hidden hidden border-t border-sand-border/70 bg-[#fbfaf7]/95 backdrop-blur-xl" aria-label="Mobile"><div class="px-gutter-mobile py-space-sm flex flex-col gap-1"><a class="px-space-sm py-3 rounded-lg font-label-md text-label-md text-charcoal-ink hover:bg-surface-container active:bg-surface-container transition-colors" href="#services">Services</a><a class="px-space-sm py-3 rounded-lg font-label-md text-label-md text-charcoal-ink hover:bg-surface-container active:bg-surface-container transition-colors" href="#case-studies-section">Case Studies</a><a class="px-space-sm py-3 rounded-lg font-label-md text-label-md text-charcoal-ink hover:bg-surface-container active:bg-surface-container transition-colors" href="#approach">Approach</a><a class="px-space-sm py-3 rounded-lg font-label-md text-label-md text-charcoal-ink hover:bg-surface-container active:bg-surface-container transition-colors" href="#testimonials">About</a><a class="mt-space-xs inline-flex items-center justify-center px-space-md py-3 rounded-lg bg-primary-container text-white font-label-md text-label-md hover:bg-primary active:scale-[0.99] transition-all duration-200 shadow-[0_2px_8px_rgba(200,75,49,0.22)]" href="#inquiry-module">Start a Project</a></div></nav></header><main class="w-full pt-20 bg-surface" id="main-content"><div class="flex flex-col w-full">
+<!-- SECTION 1: HERO & PROOF STRIP -->
+<section class="relative w-full max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin pt-space-xl pb-space-2xl">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-center">
+<!-- Left Editorial Column (7 cols) -->
+<div class="lg:col-span-7 min-w-0 flex flex-col gap-space-md animate-fadeInUp">
+<div class="inline-flex items-center gap-space-xs self-start px-space-sm py-1 rounded-full bg-primary-container/10 border border-primary-container/25 transition-all hover:bg-primary-container/15">
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary-container"></span>
+<span class="font-mono-code text-[11px] text-primary-container uppercase tracking-widest font-semibold">Artisanal Engineering &amp; Pragmatic Systems</span>
+</div>
+<h1 class="font-display text-headline-lg-mobile sm:text-headline-lg lg:text-display text-charcoal-ink font-bold tracking-tight leading-[1.08] text-balance">
+          Thoughtful digital craft for growing enterprises.
+        </h1>
+<p class="font-body-lg text-body-lg text-muted-charcoal max-w-xl leading-relaxed">
+          We design and build bespoke modern websites, practical custom software, and resilient business automation that streamline operations with zero bloat.
+        </p>
+<div class="flex flex-wrap items-center gap-space-md pt-space-xs">
+<a class="group inline-flex items-center justify-center gap-space-xs px-space-lg py-space-sm rounded-lg bg-primary-container text-white font-label-md text-label-md hover:bg-primary hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] transition-all duration-300 shadow-[0_2px_10px_rgba(200,75,49,0.25)]" href="#inquiry-module">
+<span class="">Start a Project</span>
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform duration-200">arrow_forward</span>
+</a>
+<a class="group inline-flex items-center justify-center gap-space-xs px-space-lg py-space-sm rounded-lg bg-surface-container-low text-charcoal-ink font-label-md text-label-md hover:bg-surface-container border border-sand-border hover:shadow-sm transition-all duration-200" href="#case-studies-section">
+<span class="">Explore Our Work</span>
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200">north_east</span>
+</a>
+</div>
+<div class="pt-space-md flex items-center gap-space-sm">
+<div class="flex -space-x-2">
+<span class="w-8 h-8 rounded-full bg-primary-container/15 flex items-center justify-center font-mono-code text-[11px] text-primary font-bold shadow-sm transition-transform hover:-translate-y-0.5 hover:z-10 duration-200 border border-primary/20">KT</span>
+<span class="w-8 h-8 rounded-full bg-charcoal-ink text-washi-canvas flex items-center justify-center font-mono-code text-[11px] font-bold shadow-sm transition-transform hover:-translate-y-0.5 hover:z-10 duration-200">MS</span>
+<span class="w-8 h-8 rounded-full bg-secondary-container text-charcoal-ink flex items-center justify-center font-mono-code text-[11px] font-bold shadow-sm transition-transform hover:-translate-y-0.5 hover:z-10 duration-200 border border-sand-border">AL</span>
+</div>
+<p class="font-body-sm text-body-sm text-muted-charcoal">
+<strong class="font-semibold text-charcoal-ink">Trusted by 40+ founders</strong> across Tokyo, Kyoto, and international markets.
+          </p>
+</div>
+</div>
+<!-- Right Showcase Artifact (5 cols) -->
+<div class="lg:col-span-5 min-w-0 relative animate-fadeInUp delay-200">
+<div class="relative rounded-xl overflow-hidden bg-surface-container-lowest p-space-md shadow-xl flex flex-col gap-space-md transition-all duration-500 hover:shadow-2xl border border-sand-border">
+<div class="flex items-center justify-between pb-space-xs border-b border-sand-border/50">
+<div class="flex items-center gap-space-xs">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-container/70 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-container"></span>
+</span>
+<span class="w-2.5 h-2.5 rounded-full bg-surface-container-highest"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-surface-container-highest"></span>
+</div>
+<span class="font-mono-code text-[11px] px-space-xs py-0.5 rounded bg-surface-container text-secondary uppercase flex items-center gap-1.5 border border-sand-border/60">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+  LIVE PRODUCTION CLUSTER
+</span>
+</div>
+<div class="relative rounded-lg overflow-hidden h-64 bg-surface-container-low group border border-sand-border/60">
+<img onerror="__imgFallback(this)" decoding="async" fetchpriority="high" class="w-full h-full object-cover" data-alt="Minimalist operational ERP and commerce dashboard interface displayed on an elegant display, clean warm tones with terracotta data highlights, Japanese typographic precision, soft diffused morning light, high aesthetic craft digital product design" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNQcszeg_0vfrrprEOGdzB56gHPN48xYm1zGMdLL11Rl04gmHL00rrT8seC1wd1aie-TY-FZLbLL3ZT05tv53z3-wJ0VzLzkj-P7ptowEzaTcKujV9hAw-iNgvZetgHubN22arS521A4Iqy_8SiIqboFy9Z7kmbEv37plAG5on9BTsjSd83j5UVeR526XxphEBhuSHKJbCFjmpbVVO3eyKfNEC87MfexnVKes2Yg6D-x_NLHO57zb9Qw">
+<canvas id="hero-3d" class="absolute inset-0 w-full h-full block cursor-grab touch-pan-y" role="img" aria-label="Interactive 3D model of a live operations cluster. Drag to rotate, or use left and right arrow keys." tabindex="0"></canvas><div class="absolute bottom-3 left-3 right-3 bg-surface-container-lowest/95 backdrop-blur-md p-space-sm rounded-lg flex items-center justify-between shadow-sm border border-sand-border/60 transition-transform duration-300 group-hover:translate-y-[-2px]">
+<div class="flex flex-col">
+<span class="font-headline-sm text-[15px] font-bold text-charcoal-ink">Kikuchi Logistics Core</span>
+<span class="font-body-sm text-[13px] text-muted-charcoal font-mono-code">Warehouse Sync • Auto Invoicing</span>
+</div>
+<span class="inline-flex items-center shrink-0 whitespace-nowrap px-2 py-0.5 rounded bg-primary-container/10 text-primary-container font-mono-code text-[11px] font-semibold border border-primary-container/20">99.98% Synced</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-xs pt-space-xs border-t border-sand-border/60 mt-space-xs">
+<div class="pt-space-sm pr-space-sm flex flex-col">
+<span class="font-mono-code text-[11px] text-secondary uppercase tracking-wider">Order Throughput</span>
+<span class="font-mono-code text-headline-sm text-charcoal-ink font-bold mt-1">4.2x faster</span>
+<span class="font-mono-code text-body-sm text-primary-container mt-0.5 font-medium">↑ 34% avg. cart size</span>
+</div>
+<div class="pt-space-sm pl-space-sm flex flex-col border-l border-sand-border/60">
+<span class="font-mono-code text-[11px] text-secondary uppercase tracking-wider">Manual Steps</span>
+<span class="font-mono-code text-headline-sm text-charcoal-ink font-bold mt-1">0 sheets</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal mt-0.5">Replaced 14 Google sheets</span>
+</div>
+</div>
+<div class="flex items-center justify-between gap-space-xs flex-wrap pt-space-xs">
+<span class="font-mono-code text-[11px] text-secondary tracking-wider">STACK: NEXT.JS • SHOPIFY • GO</span>
+<a class="font-label-md text-label-md text-primary-container font-semibold flex items-center gap-1 group/link hover:underline" href="#case-studies-section">Case Study 01 <span class="material-symbols-outlined text-[14px] group-hover/link:translate-x-1 transition-transform">arrow_forward</span></a>
+</div>
+</div>
+<!-- Floating Decorative Stamp -->
+<div class="absolute -bottom-14 left-4 bg-charcoal-ink text-washi-canvas px-space-md py-space-xs rounded-lg shadow-xl hidden sm:flex items-center gap-space-xs transition-transform duration-300 hover:scale-105 border border-white/10">
+<span class="font-headline-sm text-headline-sm text-primary-container font-bold">好</span>
+<div class="flex flex-col">
+<span class="font-mono-code text-[11px] uppercase tracking-wider text-[#d8d3c7]">Craft Certified</span>
+<span class="font-body-sm text-body-sm text-washi-canvas">Zero bloat guarantee</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Proof Points Bento Strip -->
+<div class="mt-space-2xl grid grid-cols-2 md:grid-cols-4 gap-px bg-sand-border rounded-xl overflow-hidden shadow-sm border border-sand-border reveal-on-scroll is-visible">
+<div class="flex flex-col gap-1 p-space-lg bg-surface-container-lowest hover:bg-surface-container-low transition-colors group">
+<span class="font-mono-code text-headline-lg text-charcoal-ink font-bold tracking-tight transition-colors group-hover:text-primary-container" data-counter="40" data-suffix="+">40+</span>
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Custom Systems Delivered</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal">From high-conversion web to logistics backbones</span>
+</div>
+<div class="flex flex-col gap-1 p-space-lg bg-surface-container-lowest hover:bg-surface-container-low transition-colors group">
+<span class="font-mono-code text-headline-lg text-primary-container font-bold tracking-tight transition-transform group-hover:scale-105 origin-left duration-300" data-counter="99.8" data-decimals="1" data-suffix="%">99.8%</span>
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Uptime &amp; Reliability</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal">Resilient architecture with zero dropouts</span>
+</div>
+<div class="flex flex-col gap-1 p-space-lg bg-surface-container-lowest hover:bg-surface-container-low transition-colors group">
+<span class="font-mono-code text-headline-lg text-charcoal-ink font-bold tracking-tight transition-colors group-hover:text-primary-container" data-counter="12" data-prefix="" data-suffix="-Day">12-Day</span>
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Avg. Working Prototype</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal">Rapid validation so you never pay for assumptions</span>
+</div>
+<div class="flex flex-col gap-1 p-space-lg bg-surface-container-lowest hover:bg-surface-container-low transition-colors group">
+<span class="font-mono-code text-headline-lg text-charcoal-ink font-bold tracking-tight transition-colors group-hover:text-primary-container" data-counter="100" data-suffix="%">100%</span>
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">On-Time Releases</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal">Rigorous sprint scopes and transparent delivery</span>
+</div>
+</div>
+</section>
+<!-- SECTION 2: THE THREE CORE PILLARS -->
+<section class="w-full bg-surface-container-lowest py-space-2xl border-y border-sand-border/70 reveal-on-scroll is-visible" id="services">
+<div class="max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin flex flex-col gap-space-xl">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs max-w-2xl">
+<span class="font-mono-code text-[11px] text-primary-container uppercase tracking-wider font-semibold">Our Three Disciplines</span>
+<h2 class="font-headline-lg text-headline-lg text-charcoal-ink font-bold">
+            Deliberate systems built to serve your business, not the other way around.
+          </h2>
+</div>
+<p class="font-body-md text-body-md text-muted-charcoal max-w-md">
+          We combine contemporary aesthetic sensitivity with pragmatic engineering to solve expensive business bottlenecks.
+        </p>
+</div>
+<!-- 3 Pillar Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-lg">
+<!-- Pillar 1: Modern Websites -->
+<div class="flex flex-col justify-between p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container-lowest border border-sand-border/60 hover:border-sand-border hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl group">
+<div class="flex flex-col gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary-container shadow-sm border border-sand-border/60 group-hover:scale-110 group-hover:bg-primary-container group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-[26px] transition-transform duration-300 group-hover:rotate-6">web</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<span class="font-mono-code text-[11px] text-secondary uppercase tracking-wider">01 • Digital Flagships</span>
+<h3 class="font-headline-md text-headline-md text-charcoal-ink font-semibold group-hover:text-primary transition-colors">Modern Web Platforms</h3>
+<p class="font-body-sm text-body-sm text-muted-charcoal leading-relaxed">
+                Brand-defining web experiences, headless e-commerce, and high-conversion editorial platforms built on Next.js, Remix, and Tailwind CSS.
+              </p>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Standard Deliverables:</span>
+<ul class="flex flex-col gap-1.5 text-body-sm font-body-sm text-muted-charcoal">
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Sub-second load times &amp; 98+ Lighthouse</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Headless CMS architecture (Sanity / Strapi)</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Custom interactive micro-components</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Bespoke SEO metadata &amp; multi-locale setup</span>
+</li>
+</ul>
+</div>
+</div>
+<div class="pt-space-lg flex flex-col gap-space-sm">
+<div class="flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">Next.js</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">Tailwind</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">TypeScript</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">Vercel</span>
+</div>
+<a class="inline-flex items-center gap-space-xs font-label-md text-label-md text-charcoal-ink font-semibold group-hover:text-primary-container transition-colors" href="#inquiry-module" data-scope="Modern Website">
+<span class="">Discuss Web Platform</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-1.5 transition-transform duration-300">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Pillar 2: Custom Software -->
+<div class="flex flex-col justify-between p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container-lowest border border-sand-border/60 hover:border-sand-border hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl group">
+<div class="flex flex-col gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary-container shadow-sm border border-sand-border/60 group-hover:scale-110 group-hover:bg-primary-container group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-[26px] transition-transform duration-300 group-hover:rotate-6">terminal</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<span class="font-mono-code text-[11px] text-secondary uppercase tracking-wider">02 • Operational Backbone</span>
+<h3 class="font-headline-md text-headline-md text-charcoal-ink font-semibold group-hover:text-primary transition-colors">Practical Custom Software</h3>
+<p class="font-body-sm text-body-sm text-muted-charcoal leading-relaxed">
+                Tailored internal tools, client portals, inventory management, and specialized SaaS built precisely for your unique operational rhythms.
+              </p>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Standard Deliverables:</span>
+<ul class="flex flex-col gap-1.5 text-body-sm font-body-sm text-muted-charcoal">
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Role-based access &amp; team management</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Real-time warehouse &amp; order management</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Private client billing &amp; asset portals</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Automated audit trails &amp; PDF reports</span>
+</li>
+</ul>
+</div>
+</div>
+<div class="pt-space-lg flex flex-col gap-space-sm">
+<div class="flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">PostgreSQL</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">Node / Go</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">Prisma</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">AWS / Supabase</span>
+</div>
+<a class="inline-flex items-center gap-space-xs font-label-md text-label-md text-charcoal-ink font-semibold group-hover:text-primary-container transition-colors" href="#inquiry-module" data-scope="Custom Software">
+<span class="">Explore Custom Software</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-1.5 transition-transform duration-300">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Pillar 3: Business Automation -->
+<div class="flex flex-col justify-between p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container-lowest border border-sand-border/60 hover:border-sand-border hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl group">
+<div class="flex flex-col gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary-container shadow-sm border border-sand-border/60 group-hover:scale-110 group-hover:bg-primary-container group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-[26px] transition-transform duration-300 group-hover:rotate-6">hub</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<span class="font-mono-code text-[11px] text-secondary uppercase tracking-wider">03 • Frictionless Flow</span>
+<h3 class="font-headline-md text-headline-md text-charcoal-ink font-semibold group-hover:text-primary transition-colors">Business Automation &amp; AI</h3>
+<p class="font-body-sm text-body-sm text-muted-charcoal leading-relaxed">
+                Connecting disparate software, CRM synchronization, automatic billing pipelines, and AI-assisted triage to eliminate repetitive labor.
+              </p>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Standard Deliverables:</span>
+<ul class="flex flex-col gap-1.5 text-body-sm font-body-sm text-muted-charcoal">
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Stripe • QuickBooks • Xero auto-reconciliation</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Automated quote-to-contract generation</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Intelligent inbox categorization &amp; slack alerts</span>
+</li>
+<li class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+<span class="">Custom webhook infrastructure &amp; fail-safes</span>
+</li>
+</ul>
+</div>
+</div>
+<div class="pt-space-lg flex flex-col gap-space-sm">
+<div class="flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">n8n / Make</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">REST APIs</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">LLM Workflows</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono-code bg-surface-container-lowest text-secondary border border-sand-border/70 group-hover:border-primary/30 transition-colors">Webhooks</span>
+</div>
+<a class="inline-flex items-center gap-space-xs font-label-md text-label-md text-charcoal-ink font-semibold group-hover:text-primary-container transition-colors" href="#inquiry-module" data-scope="Business Automation">
+<span class="">Automate Operations</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-1.5 transition-transform duration-300">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 3: SELECTED CASE STUDIES -->
+<section class="w-full max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin py-space-2xl flex flex-col gap-space-xl reveal-on-scroll is-visible" id="case-studies-section">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm pb-space-sm">
+<div class="flex flex-col gap-space-xs">
+<span class="font-mono-code text-[11px] text-primary-container uppercase tracking-wider font-semibold">Evidence of Craft</span>
+<h2 class="font-headline-lg text-headline-lg text-charcoal-ink font-bold">Selected Case Studies</h2>
+</div>
+<span class="font-body-md text-body-md text-muted-charcoal">Real business transformations delivered on schedule.</span>
+</div>
+<!-- Case Study 1: Kikuchi Living -->
+<div class="group p-space-lg lg:p-space-xl rounded-xl bg-surface-container-lowest shadow-md flex flex-col lg:flex-row gap-space-xl items-center border border-sand-border hover:border-sand-border/90 transition-all duration-300 hover:shadow-xl">
+<div class="w-full lg:w-1/2 flex flex-col gap-space-md">
+<div class="flex flex-wrap items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-primary-container/10 text-primary-container font-mono-code text-[11px] font-semibold border border-primary-container/20">Headless E-Commerce</span>
+<span class="px-2.5 py-1 rounded-full bg-surface-container text-secondary font-mono-code text-[11px] border border-sand-border">Logistics Sync</span>
+<span class="text-secondary font-mono-code text-[11px] ml-auto">CASE 01 · TOKYO, JP</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-charcoal-ink font-bold group-hover:text-primary transition-colors">
+          Kikuchi Living — Direct-to-Consumer Flagship &amp; Global Supply Sync
+        </h3>
+<p class="font-body-md text-body-md text-muted-charcoal leading-relaxed">
+          Kikuchi was losing sales due to delayed stock updates across three international warehouses and an archaic monolithic storefront. We engineered a headless Next.js flagship synchronized directly to their physical ERP.
+        </p>
+<!-- Metric Badges -->
+<div class="grid grid-cols-2 gap-space-sm pt-space-xs">
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-sand-border/60 transition-colors hover:bg-surface-container">
+<span class="font-mono-code text-headline-sm text-primary-container font-bold">+145%</span>
+<p class="font-body-sm text-body-sm text-charcoal-ink mt-0.5">Online Revenue Growth</p>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-sand-border/60 transition-colors hover:bg-surface-container">
+<span class="font-mono-code text-headline-sm text-charcoal-ink font-bold">0</span>
+<p class="font-body-sm text-body-sm text-charcoal-ink mt-0.5">Inventory Discrepancies</p>
+</div>
+</div>
+<!-- Testimonial Quote -->
+<div class="flex flex-col gap-space-xs border-t border-sand-border pt-space-sm">
+<p class="font-body-sm text-body-sm text-charcoal-ink italic">
+            “GoodShigoto replaced months of technical friction with an intuitive system that simply never breaks. Our team finally focuses on customer delight rather than manual stock fixes.”
+          </p>
+<span class="font-mono-code text-[11px] text-muted-charcoal">— Kenzo Kikuchi, Managing Director</span>
+</div>
+<div class="pt-space-xs flex items-center justify-between">
+<span class="font-mono-code text-[11px] text-secondary">NEXT.JS • SHOPIFY STOREFRONT • POSTGRES</span>
+<a class="font-label-md text-label-md text-primary-container font-semibold hover:underline flex items-center gap-1 group/link" href="#inquiry-module">
+            Start a similar build <span class="material-symbols-outlined text-[16px] group-hover/link:translate-x-1.5 transition-transform duration-200">arrow_forward</span>
+</a>
+</div>
+</div>
+<div class="w-full lg:w-1/2 rounded-xl overflow-hidden shadow-sm bg-surface-container border border-sand-border/70">
+<img onerror="__imgFallback(this)" loading="lazy" decoding="async" class="w-full h-80 lg:h-[420px] object-cover" data-alt="High quality editorial product page for Japanese home furniture on a desktop display, warm linen textures, clean typography, neutral pottery aesthetics, flawless layout grid" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfH5IZvFPA8qWQKhuE6DhSO4pM857OSZz7SIHO00jWC6RddJONHd9cOTk1En9QU1J_Mdq1mQ8PV-Lu-Us_dfbmRA0WyqkHl3YDHlTtSO_9SyCdGm4cPeWH1_Q0Afifn0yHBcOeO4p51THRkFcrHnaVMtTSCv_rWrdxRlBzxtberwHzOfxFqkmolZQIw_TBpgBeJSFjAsAECQ4H3Ps2fDzHF_RtLQsO3EbZbQu6IdxsTVurr7t8w8XJpw" alt="Kikuchi Living headless desktop interface showing real-time inventory synchronization across Tokyo warehouses">
+</div>
+</div>
+<!-- Case Study 2: Nihon Craft Logix -->
+<div class="group p-space-lg lg:p-space-xl rounded-xl bg-surface-container-lowest shadow-md flex flex-col lg:flex-row-reverse gap-space-xl items-center border border-sand-border hover:border-sand-border/90 transition-all duration-300 hover:shadow-xl">
+<div class="w-full lg:w-1/2 flex flex-col gap-space-md">
+<div class="flex flex-wrap items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-primary-container/10 text-primary-container font-mono-code text-[11px] font-semibold border border-primary-container/20">Custom ERP Web App</span>
+<span class="px-2.5 py-1 rounded-full bg-surface-container text-secondary font-mono-code text-[11px] border border-sand-border">Dispatch Automation</span>
+<span class="text-secondary font-mono-code text-[11px] ml-auto">CASE 02 · KYOTO, JP</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-charcoal-ink font-bold group-hover:text-primary transition-colors">
+          Nihon Craft Logix — Operational Dispatch &amp; Automated Invoicing
+        </h3>
+<p class="font-body-md text-body-md text-muted-charcoal leading-relaxed">
+          Managing regional artisan logistics with 14 disconnected spreadsheets caused dispatch errors and delayed billing. GoodShigoto delivered a lightweight, high-speed web application with real-time driver tracking and one-click billing.
+        </p>
+<!-- Metric Badges -->
+<div class="grid grid-cols-2 gap-space-sm pt-space-xs">
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-sand-border/60 transition-colors hover:bg-surface-container">
+<span class="font-mono-code text-headline-sm text-primary-container font-bold">28 hrs</span>
+<p class="font-body-sm text-body-sm text-charcoal-ink mt-0.5">Saved Weekly per Dispatcher</p>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-sand-border/60 transition-colors hover:bg-surface-container">
+<span class="font-mono-code text-headline-sm text-charcoal-ink font-bold">99.4%</span>
+<p class="font-body-sm text-body-sm text-charcoal-ink mt-0.5">Same-Day Invoicing Rate</p>
+</div>
+</div>
+<!-- Testimonial Quote -->
+<div class="flex flex-col gap-space-xs border-t border-sand-border pt-space-sm">
+<p class="font-body-sm text-body-sm text-charcoal-ink italic">
+            “We avoided a bloated $100k enterprise software contract. GoodShigoto gave us exactly what our dispatchers needed in four weeks flat.”
+          </p>
+<span class="font-mono-code text-[11px] text-muted-charcoal">— Ayaka Mori, Head of Operations</span>
+</div>
+<div class="pt-space-xs flex items-center justify-between">
+<span class="font-mono-code text-[11px] text-secondary">SUPABASE • REACT • TAILWIND • STRIPE</span>
+<a class="font-label-md text-label-md text-primary-container font-semibold hover:underline flex items-center gap-1 group/link" href="#inquiry-module">
+            Start a similar build <span class="material-symbols-outlined text-[16px] group-hover/link:translate-x-1.5 transition-transform duration-200">arrow_forward</span>
+</a>
+</div>
+</div>
+<div class="w-full lg:w-1/2 rounded-xl overflow-hidden shadow-sm bg-surface-container border border-sand-border/70">
+<img onerror="__imgFallback(this)" loading="lazy" decoding="async" class="w-full h-80 lg:h-[420px] object-cover" data-alt="Modern logistics web application interface showing live dispatch routes, carrier schedules, clean table layouts, warm muted status indicators, minimalist data visualization" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkAfHwNHrVkbzQGRuDcLFLXPhlCQSoaHxSFIBTLULg9zJkGRt-z-LaIl5_K0d6_PNaBKgpQvr-e7a-UWMWerq9-edp3vq7CYiDQnxjPyktuC0khbs37mnx5ZUlLLmDh3ZAPCLgg099xfhxeW4ctC0_bynl4tnDHpM316Jo38wRyCXGD80ceAwQgacpHy7zlJ8_oxvf3ibkV1NCGX4GUCj4sIMQRtC8e32XKfurii2Ta-FR88ToZaCCAA" alt="Nihon Craft Logix operational dispatch console with interactive route telemetry and same-day invoicing">
+</div>
+</div>
+<!-- Case Study 3: Sora Atelier -->
+<div class="group p-space-lg lg:p-space-xl rounded-xl bg-surface-container-lowest shadow-md flex flex-col gap-space-xl border border-sand-border hover:border-sand-border/90 transition-all duration-300 hover:shadow-xl">
+<div class="w-full flex flex-col gap-space-md">
+<div class="flex flex-wrap items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-primary-container/10 text-primary-container font-mono-code text-[11px] font-semibold border border-primary-container/20">Client Portal &amp; Scheduler</span>
+<span class="px-2.5 py-1 rounded-full bg-surface-container text-secondary font-mono-code text-[11px] border border-sand-border">Contract Workflow</span>
+<span class="text-secondary font-mono-code text-[11px] ml-auto">CASE 03 · SAN FRANCISCO &amp; TOKYO</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-charcoal-ink font-bold group-hover:text-primary transition-colors">
+          Sora Atelier — Custom Booking Engine &amp; Deposit Reconciliation
+        </h3>
+<p class="font-body-md text-body-md text-muted-charcoal leading-relaxed">
+          High-end bespoke architectural photography agency needed seamless scheduling, deposit reconciliation, and contract signing without endless email tag.
+        </p>
+<!-- Metric Badges -->
+<div class="grid grid-cols-2 gap-space-sm pt-space-xs">
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-sand-border/60 transition-colors hover:bg-surface-container">
+<span class="font-mono-code text-headline-sm text-primary-container font-bold">3.2x</span>
+<p class="font-body-sm text-body-sm text-charcoal-ink mt-0.5">Booking Pipeline Velocity</p>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-sand-border/60 transition-colors hover:bg-surface-container">
+<span class="font-mono-code text-headline-sm text-charcoal-ink font-bold">&lt; 4 min</span>
+<p class="font-body-sm text-body-sm text-charcoal-ink mt-0.5">Avg. Client Sign-to-Deposit</p>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs border-t border-sand-border pt-space-sm">
+<p class="font-body-sm text-body-sm text-charcoal-ink italic">
+            “Our clients frequently comment on how refined and painless the booking process feels. It immediately sets a tone of supreme professional quality.”
+          </p>
+<span class="font-mono-code text-[11px] text-muted-charcoal">— Marcus Lindqvist, Co-Founder</span>
+</div>
+<div class="pt-space-xs flex items-center justify-between">
+<span class="font-mono-code text-[11px] text-secondary">REMIX • PRISMA • DOCUSIGN API • STRIPE</span>
+<a class="font-label-md text-label-md text-primary-container font-semibold hover:underline flex items-center gap-1 group/link" href="#inquiry-module">
+            Start a similar build <span class="material-symbols-outlined text-[16px] group-hover/link:translate-x-1.5 transition-transform duration-200">arrow_forward</span>
+</a>
+</div>
+</div>
+<div class="w-full rounded-xl overflow-hidden shadow-sm bg-surface-container border border-sand-border/70">
+<img onerror="__imgFallback(this)" loading="lazy" decoding="async" class="w-full h-72 lg:h-80 object-cover" data-alt="Sophisticated client portal interface on an aluminum tablet screen, showing calendar appointment scheduling, electronic signature status, warm earthy background, minimal editorial layout" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZjQDS6g6XvbaaJVToj-T6dlfv_qse9Iahd_XOypy8JsaPfe1FETb4WOD5WdRqj_s4n1qX7nyvwSBwZGGFkkwcq6MQ9KKUkC30AukS6Ok3nVKxvt-Qrr6E56W6OJujh3s-OQg_6WtqN9RK7PqKzhvuwRoIvWQZ7FWgvjl4ai8n2JFJB5Mx72KlFPLu6IbNylFpaleQWFo4wt-M4IOZJ7HZb1hfee91WaW7F3G2G74Axqn3PJayKZGVAw" alt="Sora Atelier client reservation interface with automated booking engine">
+</div>
+</div>
+</section>
+<!-- SECTION 4: STUDIO APPROACH & CRAFT PHILOSOPHY -->
+<section class="w-full bg-surface-container py-space-2xl border-y border-sand-border/70 reveal-on-scroll is-visible" id="approach">
+<div class="max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin flex flex-col gap-space-xl">
+<div class="flex flex-col gap-space-xs max-w-2xl">
+<span class="font-mono-code text-[11px] text-primary-container uppercase tracking-wider font-semibold">How We Work</span>
+<h2 class="font-headline-lg text-headline-lg text-charcoal-ink font-bold">
+          Engineering with Craftsmanship, Not Complexity.
+        </h2>
+<p class="font-body-md text-body-md text-muted-charcoal leading-relaxed">
+          We reject bloated agency overhead and endless speculative meetings. We work as dedicated technical co-builders using an honest, four-stage cadence.
+        </p>
+</div>
+<!-- 4 Step Process Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Step 1 -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest flex flex-col justify-between shadow-sm border border-sand-border/70 hover:border-sand-border hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-mono-code text-headline-md text-primary-container font-bold group-hover:scale-110 group-hover:text-primary transition-all duration-300">01</span>
+<span class="material-symbols-outlined text-secondary group-hover:text-primary-container transition-colors duration-200">explore</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-charcoal-ink font-semibold group-hover:text-primary transition-colors">Pragmatic Discovery</h3>
+<p class="font-body-sm text-body-sm text-muted-charcoal">
+              We audit your real workflow constraints and unmask the invisible manual tax your staff is paying daily. We design the shortest path to value.
+            </p>
+</div>
+<div class="pt-space-md">
+<span class="font-mono-code text-[11px] text-secondary uppercase">Deliverable: System Blueprint</span>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest flex flex-col justify-between shadow-sm border border-sand-border/70 hover:border-sand-border hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-mono-code text-headline-md text-primary-container font-bold group-hover:scale-110 group-hover:text-primary transition-all duration-300">02</span>
+<span class="material-symbols-outlined text-secondary group-hover:text-primary-container transition-colors duration-200">code_blocks</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-charcoal-ink font-semibold group-hover:text-primary transition-colors">Rapid Interactive Prototype</h3>
+<p class="font-body-sm text-body-sm text-muted-charcoal">
+              Within 10 to 14 days, you test a working prototype with live data. No static wireframe guesswork — you experience real software early.
+            </p>
+</div>
+<div class="pt-space-md">
+<span class="font-mono-code text-[11px] text-secondary uppercase">Deliverable: Clickable MVP</span>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest flex flex-col justify-between shadow-sm border border-sand-border/70 hover:border-sand-border hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-mono-code text-headline-md text-primary-container font-bold group-hover:scale-110 group-hover:text-primary transition-all duration-300">03</span>
+<span class="material-symbols-outlined text-secondary group-hover:text-primary-container transition-colors duration-200">construction</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-charcoal-ink font-semibold group-hover:text-primary transition-colors">Robust Systems Integration</h3>
+<p class="font-body-sm text-body-sm text-muted-charcoal">
+              Production-grade code, enterprise security patterns, fail-safe webhook pipelines, and sub-second response times built for 10-year durability.
+            </p>
+</div>
+<div class="pt-space-md">
+<span class="font-mono-code text-[11px] text-secondary uppercase">Deliverable: Production Deployment</span>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest flex flex-col justify-between shadow-sm border border-sand-border/70 hover:border-sand-border hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-mono-code text-headline-md text-primary-container font-bold group-hover:scale-110 group-hover:text-primary transition-all duration-300">04</span>
+<span class="material-symbols-outlined text-secondary group-hover:text-primary-container transition-colors duration-200">verified_user</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-charcoal-ink font-semibold group-hover:text-primary transition-colors">Handover &amp; Long-Term Care</h3>
+<p class="font-body-sm text-body-sm text-muted-charcoal">
+              Complete ownership transfer, clear documentation videos for your team, and transparent maintenance packages with direct developer access.
+            </p>
+</div>
+<div class="pt-space-md">
+<span class="font-mono-code text-[11px] text-secondary uppercase">Deliverable: Full IP &amp; Ongoing Care</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 5: CLIENT TESTIMONIALS & TRUST SHOWCASE -->
+<section class="w-full bg-surface-container-lowest py-space-2xl border-b border-sand-border/70 reveal-on-scroll is-visible" id="testimonials">
+<div class="max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin flex flex-col gap-space-xl">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<span class="font-mono-code text-[11px] text-primary-container uppercase tracking-wider font-semibold">Client Voices</span>
+<h2 class="font-headline-lg text-headline-lg text-charcoal-ink font-bold">
+            Partners in growth, verified by results.
+          </h2>
+</div>
+<p class="font-body-md text-body-md text-muted-charcoal max-w-sm">
+          Hear how partnering with GoodShigoto transformed everyday operations for modern businesses.
+        </p>
+</div>
+<!-- Testimonial Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-lg">
+<!-- Review 1 -->
+<div class="p-space-lg rounded-xl bg-surface-container-low flex flex-col justify-between gap-space-md border border-sand-border/70 hover:border-sand-border hover:bg-surface-container hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex text-primary-container gap-0.5 transition-transform duration-300 group-hover:scale-105 origin-left">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-body-md text-body-md text-charcoal-ink italic leading-relaxed group-hover:text-black transition-colors">
+              “Unlike standard web agencies that disappear after launch, GoodShigoto engineered a system that our non-technical staff operates effortlessly. Our inventory sync error dropped to zero instantly.”
+            </p>
+</div>
+<div class="flex items-center gap-space-sm pt-space-xs">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest border border-sand-border flex items-center justify-center font-mono-code text-[12px] font-bold text-charcoal-ink group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+              KK
+            </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Kenzo Kikuchi</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal">CEO, Kikuchi Living</span>
+</div>
+</div>
+</div>
+<!-- Review 2 -->
+<div class="p-space-lg rounded-xl bg-surface-container-low flex flex-col justify-between gap-space-md border border-sand-border/70 hover:border-sand-border hover:bg-surface-container hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex text-primary-container gap-0.5 transition-transform duration-300 group-hover:scale-105 origin-left">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-body-md text-body-md text-charcoal-ink italic leading-relaxed group-hover:text-black transition-colors">
+              “The speed and architectural clarity were astonishing. Within two weeks we had a functioning dispatch dashboard that eliminated three hours of daily administrative headache.”
+            </p>
+</div>
+<div class="flex items-center gap-space-sm pt-space-xs">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest border border-sand-border flex items-center justify-center font-mono-code text-[12px] font-bold text-charcoal-ink group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+              AM
+            </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Ayaka Mori</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal">COO, Nihon Craft Logix</span>
+</div>
+</div>
+</div>
+<!-- Review 3 -->
+<div class="p-space-lg rounded-xl bg-surface-container-low flex flex-col justify-between gap-space-md border border-sand-border/70 hover:border-sand-border hover:bg-surface-container hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex text-primary-container gap-0.5 transition-transform duration-300 group-hover:scale-105 origin-left">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-body-md text-body-md text-charcoal-ink italic leading-relaxed group-hover:text-black transition-colors">
+              “Their dual mastery of aesthetic elegance and backend automation is genuinely rare. They elevated our brand stature while completely automating our client invoicing cycle.”
+            </p>
+</div>
+<div class="flex items-center gap-space-sm pt-space-xs">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest border border-sand-border flex items-center justify-center font-mono-code text-[12px] font-bold text-charcoal-ink group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+              ML
+            </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-charcoal-ink font-semibold">Marcus Lindqvist</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal">Principal, Sora Atelier</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 6: THE CRAFT TRIAL (INTERACTIVE GAME) -->
+<section class="w-full bg-surface-container py-space-2xl border-b border-sand-border/70 reveal-on-scroll is-visible" id="craft-trial">
+<div class="max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin flex flex-col gap-space-xl">
+<div class="flex flex-col gap-space-xs max-w-2xl">
+<span class="font-mono-code text-[11px] text-primary-container uppercase tracking-wider font-semibold">職人試験 · The Craft Trial</span>
+<h2 class="font-headline-lg text-headline-lg text-charcoal-ink font-bold">
+Precision is the product. Test yours.
+</h2>
+<p class="font-body-md text-body-md text-muted-charcoal leading-relaxed">
+One stamp, five rounds. Land the hanko dead center to earn your rank — like real ink, there are no retries mid-round.
+</p>
+</div>
+<div class="rounded-xl bg-surface-container-lowest shadow-md border border-sand-border overflow-hidden">
+<div class="flex items-center justify-between gap-space-xs px-space-md sm:px-space-lg py-space-sm border-b border-sand-border/70 bg-surface-container-low">
+<div class="flex flex-wrap items-center gap-x-space-md gap-y-1 font-mono-code text-[11px] text-secondary uppercase tracking-wider" role="status" aria-live="polite">
+<span>Round <strong class="text-charcoal-ink font-semibold" id="craft-round">–/5</strong></span>
+<span>Score <strong class="text-charcoal-ink font-semibold" id="craft-score">0</strong></span>
+<span>Streak <strong class="text-primary-container font-semibold" id="craft-streak">×0</strong></span>
+<span>Best <strong class="text-charcoal-ink font-semibold" id="craft-best">0</strong></span>
+</div>
+<button id="craft-sound" class="w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-lg text-secondary hover:text-charcoal-ink hover:bg-surface-container transition-colors" type="button" aria-pressed="true" aria-label="Mute game sound"><span class="material-symbols-outlined text-[20px]" id="craft-sound-icon">volume_up</span></button>
+</div>
+<canvas id="craft-canvas" class="block w-full h-auto touch-manipulation select-none cursor-pointer" role="img" aria-label="Hanko stamping game. When the stamp slides over the center mark, press the Stamp button, tap the board, or hit Space.">The Craft Trial needs JavaScript and canvas support.</canvas>
+<div class="flex flex-col sm:flex-row sm:items-center gap-space-sm px-space-md sm:px-space-lg py-space-md border-t border-sand-border/70 bg-surface-container-low">
+<button id="craft-action" class="inline-flex items-center justify-center gap-space-xs px-space-xl py-space-sm rounded-lg bg-primary-container text-white font-label-md text-label-md hover:bg-primary hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] transition-all duration-300 shadow-[0_2px_10px_rgba(200,75,49,0.25)]" type="button">Start Trial</button>
+<p class="font-body-sm text-body-sm text-muted-charcoal">Space, tap, or the button stamps. Five rounds, speeding up. Center hits build streaks.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 7: INTERACTIVE PROJECT ESTIMATOR & INQUIRY MODULE -->
+<section class="w-full max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin py-space-2xl reveal-on-scroll is-visible" id="inquiry-module">
+<div class="p-space-lg lg:p-space-2xl rounded-2xl bg-surface-container-lowest shadow-xl grid grid-cols-1 lg:grid-cols-12 gap-space-xl border border-sand-border">
+<!-- Left Prompt & Details (5 cols) -->
+<div class="lg:col-span-5 min-w-0 flex flex-col justify-between gap-space-lg">
+<div class="flex flex-col gap-space-sm">
+<div class="inline-flex items-center gap-space-xs self-start px-space-xs py-0.5 rounded bg-primary-container/10 text-primary-container font-mono-code text-[11px] font-semibold border border-primary-container/20">
+<span class="">Direct Studio Inquiries</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-charcoal-ink font-bold tracking-tight">
+            Ready to build something that lasts?
+          </h2>
+<p class="font-body-md text-body-md text-muted-charcoal leading-relaxed">
+            Tell us about your system requirements or current bottlenecks. We respond within 24 hours with a thoughtful technical assessment and scheduling options.
+          </p>
+</div>
+<div class="flex flex-col gap-space-sm p-space-md rounded-xl bg-surface-container-low border border-sand-border/70 transition-all duration-300 hover:bg-surface-container">
+<div class="flex items-center gap-space-sm">
+<span class="w-10 h-10 rounded-full bg-primary-container text-white flex items-center justify-center font-headline-sm text-lg font-bold shadow-sm">好</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-charcoal-ink">Direct Partner Attention</span>
+<span class="font-body-sm text-body-sm text-muted-charcoal">No junior account handlers</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5 text-body-sm font-body-sm text-muted-charcoal pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check</span>
+<span class="">Fixed-cost milestones with clear scope boundaries</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check</span>
+<span class="">Full source code &amp; infrastructure ownership</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[16px]">check</span>
+<span class="">Free 30-minute discovery architecture call</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-md">
+<span class="font-mono-code text-[11px] text-secondary uppercase">Direct Studio Line:</span>
+<a class="font-body-sm text-body-sm text-charcoal-ink font-semibold hover:text-primary-container transition-colors" href="mailto:hello@goodshigoto.studio">hello@goodshigoto.studio</a>
+</div>
+</div>
+<!-- Right Interactive Form Module (7 cols) -->
+<form class="lg:col-span-7 min-w-0 flex flex-col gap-space-md" id="inquiry-form" novalidate>
+<!-- Step 1: Project Scope Selector -->
+<fieldset class="flex flex-col gap-space-xs border-0 p-0 m-0 min-w-0" role="radiogroup" aria-labelledby="project-type-legend"><legend id="project-type-legend" class="font-label-md text-label-md text-charcoal-ink">1. What are we building together?</legend><div class="grid grid-cols-2 sm:grid-cols-2 gap-space-xs" id="scope-selector"><button class="scope-btn p-space-sm rounded-lg text-left transition-all duration-200 flex flex-col gap-0.5 active-scope bg-charcoal-ink text-washi-canvas shadow-sm scale-[1.01] border border-charcoal-ink min-w-0" data-value="Modern Website" type="button" role="radio" aria-checked="true"><span class="font-label-md text-label-md font-semibold text-washi-canvas">Modern Website</span><span class="font-mono-code text-[11px] opacity-80">Next.js • CMS • E-commerce</span></button><button class="scope-btn p-space-sm rounded-lg bg-surface-container text-left transition-all duration-200 hover:bg-surface-container-high hover:-translate-y-0.5 flex flex-col gap-0.5 border border-sand-border/70 min-w-0" data-value="Custom Software" type="button" role="radio" aria-checked="false"><span class="font-label-md text-label-md text-charcoal-ink font-semibold">Custom Software</span><span class="font-mono-code text-[11px] text-muted-charcoal">Internal Portals • ERP • SaaS</span></button><button class="scope-btn p-space-sm rounded-lg bg-surface-container text-left transition-all duration-200 hover:bg-surface-container-high hover:-translate-y-0.5 flex flex-col gap-0.5 border border-sand-border/70 min-w-0" data-value="Business Automation" type="button" role="radio" aria-checked="false"><span class="font-label-md text-label-md text-charcoal-ink font-semibold">Business Automation</span><span class="font-mono-code text-[11px] text-muted-charcoal">API sync • CRM • AI Pipelines</span></button><button class="scope-btn p-space-sm rounded-lg bg-surface-container text-left transition-all duration-200 hover:bg-surface-container-high hover:-translate-y-0.5 flex flex-col gap-0.5 border border-sand-border/70 min-w-0" data-value="Full Transformation" type="button" role="radio" aria-checked="false"><span class="font-label-md text-label-md text-charcoal-ink font-semibold">Full Transformation</span><span class="font-mono-code text-[11px] text-muted-charcoal">Combined Web + Systems build</span></button></div><input type="hidden" name="scope" id="scope-value" value="Modern Website"></fieldset><p class="font-mono-code text-[11px] text-secondary flex items-center gap-1.5 pt-space-xs" role="status"><span class="material-symbols-outlined text-primary-container text-[14px]">calculate</span><span id="scope-estimate">Modern Website · Complete Platform · 6–10 week build</span></p>
+<!-- Step 2: Estimated Budget & Timeline -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-charcoal-ink" for="budget-tier">2. Investment Tier</label>
+<div class="relative">
+<select class="w-full h-12 px-space-sm rounded-lg bg-surface-container text-charcoal-ink font-body-sm text-body-sm outline-none appearance-none border border-sand-border/80 focus:border-primary-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container/20 transition-all duration-200 pr-10" id="budget-tier">
+<option value="tier-1">$8,000 – $18,000 (Focused Sprint)</option>
+<option selected="" value="tier-2">$18,000 – $35,000 (Complete Platform)</option>
+<option value="tier-3">$35,000 – $60,000+ (Full Custom System)</option>
+<option value="tier-advisory">Advisory &amp; Ongoing Retainer</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-secondary pointer-events-none transition-transform duration-200">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-charcoal-ink" for="timeline-target">3. Target Completion</label>
+<div class="relative">
+<select class="w-full h-12 px-space-sm rounded-lg bg-surface-container text-charcoal-ink font-body-sm text-body-sm outline-none appearance-none border border-sand-border/80 focus:border-primary-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container/20 transition-all duration-200 pr-10" id="timeline-target">
+<option value="urgent">Promptly (Under 4 weeks)</option>
+<option selected="" value="standard">Normal (6 – 10 weeks)</option>
+<option value="flexible">Next Quarter (Flexible)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-secondary pointer-events-none transition-transform duration-200">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Step 3: Contact Inputs -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-charcoal-ink" for="inquiry-name">Your Name *</label>
+<input class="h-12 px-space-sm rounded-lg bg-surface-container font-body-sm text-body-sm text-charcoal-ink placeholder:text-secondary outline-none border border-sand-border/80 focus:border-primary-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container/20 transition-all duration-200" id="inquiry-name" name="name" placeholder="e.g. Kenji Tanaka" required="" type="text" aria-required="true" autocomplete="name" maxlength="100" aria-describedby="inquiry-name-error">
+<p class="hidden font-body-sm text-body-sm text-error" id="inquiry-name-error" role="alert"></p>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-charcoal-ink" for="inquiry-email">Work Email *</label>
+<input class="h-12 px-space-sm rounded-lg bg-surface-container font-body-sm text-body-sm text-charcoal-ink placeholder:text-secondary outline-none border border-sand-border/80 focus:border-primary-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container/20 transition-all duration-200" id="inquiry-email" name="email" placeholder="kenji@company.com" required="" type="email" aria-required="true" autocomplete="email" inputmode="email" maxlength="254" aria-describedby="inquiry-email-error">
+<p class="hidden font-body-sm text-body-sm text-error" id="inquiry-email-error" role="alert"></p>
+</div>
+</div>
+<!-- Project Brief Textarea -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-charcoal-ink" for="inquiry-details">Project Overview &amp; Primary Challenge</label>
+<textarea class="p-space-sm rounded-lg bg-surface-container font-body-sm text-body-sm text-charcoal-ink placeholder:text-secondary outline-none border border-sand-border/80 focus:border-primary-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container/20 resize-none transition-all duration-200" id="inquiry-details" name="details" maxlength="2000" placeholder="Briefly describe your current setup, challenges, or what you envision creating..." rows="3"></textarea>
+</div>
+<div class="pt-space-xs flex flex-col sm:flex-row items-center gap-space-md justify-between">
+<button class="w-full sm:w-auto inline-flex items-center justify-center gap-space-xs px-space-xl py-space-sm rounded-lg bg-primary-container text-white font-label-md text-label-md hover:bg-primary hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] transition-all duration-300 shadow-[0_2px_10px_rgba(200,75,49,0.25)] group" id="submit-btn" type="submit">
+<span class="">Schedule Free 30-min Technical Discovery</span>
+<span class="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform duration-200">calendar_today</span>
+</button>
+<span class="font-mono-code text-[11px] text-secondary">Zero spam • NDA protected</span>
+</div>
+<div class="hidden p-space-sm rounded-lg bg-primary-container/10 text-primary-container font-body-sm text-body-sm transition-all duration-300 border border-primary-container/25" id="confirmation-banner" role="status">
+          Thank you. Your inquiry has been routed to our lead technical partner. We will contact you shortly with discovery slots.
+        </div>
+</form>
+</div>
+</section>
+
+<!-- Interactive Script for Project Scope Selection, Metrics Counter, and Scroll Observers -->
+<script>
+    (function() {
+      // 1. Intersection Observer for Scroll Reveals
+      const revealObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            // Trigger counters inside this section if present
+            const counters = entry.target.querySelectorAll('[data-counter]');
+            counters.forEach(counter => {
+              if (counter.dataset.counted) return;
+              counter.dataset.counted = "true";
+              const target = parseFloat(counter.dataset.counter);
+              const suffix = counter.dataset.suffix || '';
+              const prefix = counter.dataset.prefix || '';
+              const decimals = parseInt(counter.dataset.decimals) || 0;
+              const duration = 1200;
+              const start = 0;
+              const startTime = performance.now();
+
+              function updateCount(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                // Ease-out expo
+                const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+                const current = start + (target - start) * easeOut;
+                counter.innerText = prefix + (decimals > 0 ? current.toFixed(decimals) : Math.floor(current)) + suffix;
+                if (progress < 1) {
+                  requestAnimationFrame(updateCount);
+                } else {
+                  counter.innerText = prefix + (decimals > 0 ? target.toFixed(decimals) : target) + suffix;
+                }
+              }
+              requestAnimationFrame(updateCount);
+            });
+            observer.unobserve(entry.target);
+          }
+        });
+      }, {
+        root: null,
+        threshold: 0.15,
+        rootMargin: "0px 0px -40px 0px"
+      });
+
+      document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+        revealObserver.observe(el);
+      });
+
+      // 2. Interactive Scope Buttons
+      const scopeButtons = document.querySelectorAll('.scope-btn');
+      const scopeValue = document.getElementById('scope-value');
+      function setScope(btn) {
+        scopeButtons.forEach(b => {
+          b.classList.remove('bg-charcoal-ink', 'text-washi-canvas', 'shadow-sm', 'scale-[1.01]', 'border-charcoal-ink');
+          b.classList.add('bg-surface-container', 'border-sand-border/70');
+          b.setAttribute('aria-checked', 'false');
+          const title = b.querySelector('span:first-child');
+          const desc = b.querySelector('span:last-child');
+          if (title) { title.classList.remove('text-washi-canvas'); title.classList.add('text-charcoal-ink'); }
+          if (desc) { desc.classList.remove('opacity-80'); desc.classList.add('text-muted-charcoal'); }
+        });
+        btn.classList.remove('bg-surface-container', 'border-sand-border/70');
+        btn.classList.add('bg-charcoal-ink', 'text-washi-canvas', 'shadow-sm', 'scale-[1.01]', 'border-charcoal-ink');
+        btn.setAttribute('aria-checked', 'true');
+        const activeTitle = btn.querySelector('span:first-child');
+        const activeDesc = btn.querySelector('span:last-child');
+        if (activeTitle) { activeTitle.classList.remove('text-charcoal-ink'); activeTitle.classList.add('text-washi-canvas'); }
+        if (activeDesc) { activeDesc.classList.remove('text-muted-charcoal'); activeDesc.classList.add('opacity-80'); }
+        if (scopeValue) scopeValue.value = btn.dataset.value || '';
+        updateEstimate();
+      }
+      scopeButtons.forEach(btn => {
+        btn.addEventListener('click', () => setScope(btn));
+      });
+
+      // 3. Inquiry form validation + submit state
+      const inquiryForm = document.getElementById('inquiry-form');
+      const submitBtn = document.getElementById('submit-btn');
+      const confirmationBanner = document.getElementById('confirmation-banner');
+      const nameInput = document.getElementById('inquiry-name');
+      const emailInput = document.getElementById('inquiry-email');
+      const nameError = document.getElementById('inquiry-name-error');
+      const emailError = document.getElementById('inquiry-email-error');
+
+      function setFieldError(input, errorEl, message) {
+        if (!input || !errorEl) return;
+        if (message) {
+          errorEl.textContent = message;
+          errorEl.classList.remove('hidden');
+          input.classList.add('field-error');
+          input.setAttribute('aria-invalid', 'true');
+        } else {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          input.classList.remove('field-error');
+          input.removeAttribute('aria-invalid');
+        }
+      }
+
+      function validateInquiry() {
+        let firstInvalid = null;
+        const name = nameInput ? nameInput.value.trim() : '';
+        if (name.length < 2) {
+          setFieldError(nameInput, nameError, name.length === 0 ? 'Please tell us your name.' : 'That name looks too short. 2 or more characters.');
+          firstInvalid = firstInvalid || nameInput;
+        } else {
+          setFieldError(nameInput, nameError, '');
+        }
+        const email = emailInput ? emailInput.value.trim() : '';
+        if (email.length === 0) {
+          setFieldError(emailInput, emailError, 'Please add your work email so we can reply.');
+          firstInvalid = firstInvalid || emailInput;
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setFieldError(emailInput, emailError, "That email doesn't look complete. Check for a typo.");
+          firstInvalid = firstInvalid || emailInput;
+        } else {
+          setFieldError(emailInput, emailError, '');
+        }
+        if (firstInvalid) firstInvalid.focus();
+        return !firstInvalid;
+      }
+
+      if (nameInput) nameInput.addEventListener('input', () => setFieldError(nameInput, nameError, ''));
+      if (emailInput) emailInput.addEventListener('input', () => setFieldError(emailInput, emailError, ''));
+
+      if (inquiryForm && submitBtn && confirmationBanner) {
+        inquiryForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          if (submitBtn.disabled) return;
+          if (!validateInquiry()) return;
+          submitBtn.disabled = true;
+          submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
+          submitBtn.innerHTML = '<span>Scheduling...</span>';
+          setTimeout(() => {
+            confirmationBanner.classList.remove('hidden');
+            submitBtn.innerHTML = '<span>Request Submitted</span><span class="material-symbols-outlined text-[18px]">check</span>';
+            submitBtn.classList.remove('bg-primary-container');
+            submitBtn.classList.add('bg-charcoal-ink');
+          }, 600);
+        });
+      }
+      // 4. Mobile menu toggle
+      const menuBtn = document.getElementById('menu-btn');
+      const mobileMenu = document.getElementById('mobile-menu');
+      const menuIcon = document.getElementById('menu-icon');
+      function setMenu(open) {
+        if (!menuBtn || !mobileMenu) return;
+        mobileMenu.classList.toggle('hidden', !open);
+        menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        menuBtn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        if (menuIcon) menuIcon.textContent = open ? 'close' : 'menu';
+      }
+      if (menuBtn && mobileMenu) {
+        menuBtn.addEventListener('click', () => setMenu(mobileMenu.classList.contains('hidden')));
+        mobileMenu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => setMenu(false)));
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
+            setMenu(false);
+            menuBtn.focus();
+          }
+        });
+      }
+
+      // 5. Live project estimate readout
+      const estimateEl = document.getElementById('scope-estimate');
+      const tierSelect = document.getElementById('budget-tier');
+      const timelineSelect = document.getElementById('timeline-target');
+      const TIER_ESTIMATES = {
+        'tier-1': 'Focused Sprint · $8k–$18k',
+        'tier-2': 'Complete Platform · $18k–$35k',
+        'tier-3': 'Full Custom System · $35k–$60k+',
+        'tier-advisory': 'Advisory & Retainer · scoped on intro call'
+      };
+      const TIMELINE_ESTIMATES = {
+        'urgent': 'kickoff ASAP · under 4 weeks',
+        'standard': '6–10 week build',
+        'flexible': 'next-quarter start'
+      };
+      function updateEstimate() {
+        if (!estimateEl) return;
+        const scope = scopeValue && scopeValue.value ? scopeValue.value : 'Modern Website';
+        const tier = tierSelect && TIER_ESTIMATES[tierSelect.value] ? TIER_ESTIMATES[tierSelect.value] : '';
+        const timeline = timelineSelect && TIMELINE_ESTIMATES[timelineSelect.value] ? TIMELINE_ESTIMATES[timelineSelect.value] : '';
+        estimateEl.textContent = scope + (tier ? ' · ' + tier : '') + (timeline ? ' · ' + timeline : '');
+      }
+      if (tierSelect) tierSelect.addEventListener('change', updateEstimate);
+      if (timelineSelect) timelineSelect.addEventListener('change', updateEstimate);
+      updateEstimate();
+
+      // 6. Pillar CTAs preselect the matching scope
+      document.querySelectorAll('[data-scope]').forEach(link => {
+        link.addEventListener('click', () => {
+          const match = Array.from(scopeButtons).find(b => b.dataset.value === link.dataset.scope);
+          if (match) setScope(match);
+        });
+      });
+
+    })();
+  </script>
+<script>
+    (function () {
+      var canvas = document.getElementById('craft-canvas');
+      if (!canvas || !canvas.getContext) return;
+      var ctx = canvas.getContext('2d');
+      var actionBtn = document.getElementById('craft-action');
+      var soundBtn = document.getElementById('craft-sound');
+      var soundIcon = document.getElementById('craft-sound-icon');
+      var roundEl = document.getElementById('craft-round');
+      var scoreEl = document.getElementById('craft-score');
+      var streakEl = document.getElementById('craft-streak');
+      var bestEl = document.getElementById('craft-best');
+      if (!actionBtn || !roundEl || !scoreEl || !streakEl || !bestEl) return;
+
+      var W = 960;
+      var H = 560;
+      var DPR = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(W * DPR);
+      canvas.height = Math.round(H * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      var PAPER = '#fbfaf7';
+      var INK = '#161618';
+      var VERMILION = '#c84b31';
+      var VERMILION_DEEP = '#b33d26';
+      var SAND = '#d8d3c7';
+      var SAND_SOFT = '#e4dfd5';
+      var MUTED = '#57534e';
+      var MONO = '"JetBrains Mono", ui-monospace, monospace';
+      var DISPLAY = '"General Sans", "Satoshi", sans-serif';
+
+      var ROUNDS = 5;
+      var SPEEDS = [1.0, 1.25, 1.5, 1.8, 2.1];
+      var TRACK_X0 = 90;
+      var TRACK_X1 = 870;
+      var CENTER_X = (TRACK_X0 + TRACK_X1) / 2;
+      var TRACK_Y = 232;
+      var SEAL_Y = 360;
+      var SEAL_R = 70;
+      var STAMP_SIZE = 96;
+      var STAMP_TOP = 110;
+      var SLAM_TOP = SEAL_Y - STAMP_SIZE / 2;
+
+      var phase = 'attract';
+      var round = 0;
+      var score = 0;
+      var streak = 0;
+      var best = 0;
+      try { best = parseInt(window.localStorage.getItem('craft-trial-best') || '0', 10) || 0; } catch (e) { best = 0; }
+      var marker = 0;
+      var markerDir = 1;
+      var slam = null;
+      var particles = [];
+      var floaters = [];
+      var rings = [];
+      var marks = [];
+      var shake = 0;
+      var time = 0;
+      var last = 0;
+      var rafId = 0;
+      var visible = true;
+      var newBest = false;
+
+      var actx = null;
+      var muted = false;
+      function audio() {
+        try {
+          if (!actx) {
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return null;
+            actx = new AC();
+          }
+          if (actx.state === 'suspended') actx.resume();
+          return actx;
+        } catch (e) { return null; }
+      }
+      function tone(freq, startAt, dur, type, gain) {
+        if (muted) return;
+        var ac = audio();
+        if (!ac) return;
+        try {
+          var o = ac.createOscillator();
+          var g = ac.createGain();
+          o.type = type || 'sine';
+          o.frequency.value = freq;
+          var t = ac.currentTime + (startAt || 0);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(gain || 0.12, t + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          o.connect(g);
+          g.connect(ac.destination);
+          o.start(t);
+          o.stop(t + dur + 0.05);
+        } catch (e) { /* stay silent */ }
+      }
+      function noiseBurst(dur, cutoff, gain) {
+        if (muted) return;
+        var ac = audio();
+        if (!ac) return;
+        try {
+          var len = Math.max(1, Math.floor(ac.sampleRate * dur));
+          var buf = ac.createBuffer(1, len, ac.sampleRate);
+          var d = buf.getChannelData(0);
+          for (var i = 0; i < len; i += 1) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+          var src = ac.createBufferSource();
+          src.buffer = buf;
+          var f = ac.createBiquadFilter();
+          f.type = 'lowpass';
+          f.frequency.value = cutoff;
+          var g = ac.createGain();
+          g.gain.value = gain;
+          src.connect(f);
+          f.connect(g);
+          g.connect(ac.destination);
+          src.start();
+        } catch (e) { /* stay silent */ }
+      }
+      function sndThunk(perfect) {
+        noiseBurst(0.14, 420, 0.5);
+        tone(92, 0, 0.2, 'sine', 0.22);
+        if (perfect) { tone(740, 0.05, 0.22, 'sine', 0.1); tone(1108, 0.12, 0.28, 'sine', 0.09); }
+      }
+      function sndTick() { tone(520, 0, 0.06, 'triangle', 0.05); }
+      function sndFanfare() {
+        var seq = [523, 659, 784, 1046];
+        for (var i = 0; i < seq.length; i += 1) tone(seq[i], i * 0.09, 0.3, 'triangle', 0.1);
+      }
+      function tierFor(dx) {
+        var a = Math.abs(dx);
+        if (a <= 10) return { label: '一発 PERFECT', pts: 100, hot: true };
+        if (a <= 30) return { label: 'Clean', pts: 80, hot: false };
+        if (a <= 70) return { label: 'Inked', pts: 50, hot: false };
+        return { label: 'Smudged', pts: 15, hot: false };
+      }
+
+      function rankFor(total) {
+        if (total >= 500) return { kanji: '匠', roma: 'TAKUMI · Master of Craft' };
+        if (total >= 400) return { kanji: '職人', roma: 'SHOKUNIN · Craftsman' };
+        if (total >= 250) return { kanji: '見習い', roma: 'MINARAI · Apprentice' };
+        return { kanji: '修行中', roma: 'SHUGYO · In Training' };
+      }
+
+      function hud() {
+        roundEl.textContent = (phase === 'attract' ? '–' : Math.min(round, ROUNDS)) + '/' + ROUNDS;
+        scoreEl.textContent = String(score);
+        streakEl.textContent = '×' + streak;
+        bestEl.textContent = String(Math.max(best, score));
+      }
+
+      function speedFor(r) {
+        var s = SPEEDS[Math.max(0, Math.min(ROUNDS - 1, r - 1))] || 1;
+        return reduceMotion ? s * 0.7 : s;
+      }
+
+      function startGame() {
+        audio();
+        phase = 'playing';
+        round = 1;
+        score = 0;
+        streak = 0;
+        newBest = false;
+        marks = [];
+        particles = [];
+        floaters = [];
+        rings = [];
+        slam = null;
+        marker = -0.85;
+        markerDir = 1;
+        actionBtn.textContent = 'STAMP!';
+        canvas.style.cursor = 'pointer';
+        hud();
+        sndTick();
+      }
+
+      function stamp() {
+        if (phase !== 'playing' || slam) return;
+        var half = (TRACK_X1 - TRACK_X0) / 2;
+        var x = CENTER_X + marker * half;
+        var tier = tierFor(x - CENTER_X);
+        if (tier.pts >= 80) { streak += 1; } else { streak = 0; }
+        var bonus = tier.pts >= 80 ? Math.min(streak - 1, 5) * 5 : 0;
+        score += tier.pts + bonus;
+        slam = { t: 0, x: x, tier: tier, bonus: bonus };
+        marks.push({ x: x, hot: tier.hot });
+        if (!reduceMotion) {
+          var n = tier.hot ? 42 : 24;
+          for (var i = 0; i < n; i += 1) {
+            var a = Math.random() * Math.PI * 2;
+            var sp = 60 + Math.random() * (tier.hot ? 260 : 170);
+            particles.push({ x: x, y: SEAL_Y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 90, life: 0, max: 0.5 + Math.random() * 0.5, size: 1.5 + Math.random() * 3.5, ink: Math.random() < 0.25 });
+          }
+          rings.push({ t: 0, x: x });
+          shake = tier.hot ? 9 : 5;
+        }
+        floaters.push({ t: 0, x: Math.max(130, Math.min(W - 130, x)), y: SEAL_Y - 112, text: '+' + (tier.pts + bonus), sub: tier.label, hot: tier.hot });
+        sndThunk(tier.hot);
+        hud();
+      }
+
+      function advance() {
+        if (round >= ROUNDS) {
+          phase = 'done';
+          actionBtn.textContent = 'Play Again';
+          canvas.style.cursor = 'default';
+          if (score > best) {
+            best = score;
+            newBest = score > 0;
+            try { window.localStorage.setItem('craft-trial-best', String(best)); } catch (e) { /* silent */ }
+          }
+          sndFanfare();
+          hud();
+          return;
+        }
+        round += 1;
+        hud();
+        sndTick();
+      }
+
+      function step(now) {
+        rafId = 0;
+        if (!visible) return;
+        if (!last) last = now;
+        var dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        time += dt;
+
+        var speed = phase === 'playing' ? speedFor(round) : (phase === 'attract' ? 0.45 : 0);
+        if (!slam && speed > 0) {
+          marker += markerDir * speed * dt;
+          if (marker > 1) { marker = 1; markerDir = -1; }
+          if (marker < -1) { marker = -1; markerDir = 1; }
+        }
+        if (slam) {
+          slam.t += dt;
+          if (slam.t > 0.9) { slam = null; advance(); }
+        }
+        var i;
+        for (i = particles.length - 1; i >= 0; i -= 1) {
+          var p = particles[i];
+          p.life += dt;
+          if (p.life > p.max) { particles.splice(i, 1); continue; }
+          p.vy += 520 * dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+        }
+        for (i = floaters.length - 1; i >= 0; i -= 1) {
+          floaters[i].t += dt;
+          if (floaters[i].t > 1.1) floaters.splice(i, 1);
+        }
+        for (i = rings.length - 1; i >= 0; i -= 1) {
+          rings[i].t += dt;
+          if (rings[i].t > 0.6) rings.splice(i, 1);
+        }
+        if (shake > 0) shake = Math.max(0, shake - dt * 34);
+
+        render();
+        rafId = requestAnimationFrame(step);
+      }
+      function rr(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+
+      function stampTop() {
+        if (!slam) {
+          if (reduceMotion || phase !== 'playing') return STAMP_TOP;
+          return STAMP_TOP + Math.sin(time * 2.2) * 4;
+        }
+        if (reduceMotion) return slam.t > 0.32 ? STAMP_TOP : SLAM_TOP;
+        if (slam.t < 0.14) {
+          var k = slam.t / 0.14;
+          return STAMP_TOP + (SLAM_TOP - STAMP_TOP) * k * k;
+        }
+        if (slam.t < 0.32) return SLAM_TOP;
+        var k2 = Math.min(1, (slam.t - 0.32) / 0.38);
+        var e = 1 - Math.pow(1 - k2, 3);
+        return SLAM_TOP + (STAMP_TOP - SLAM_TOP) * e;
+      }
+
+      function render() {
+        ctx.save();
+        ctx.fillStyle = PAPER;
+        ctx.fillRect(0, 0, W, H);
+        if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+
+        ctx.strokeStyle = SAND_SOFT;
+        ctx.lineWidth = 1;
+        var ledger = [150, 300, 470];
+        for (var li = 0; li < ledger.length; li += 1) {
+          ctx.beginPath();
+          ctx.moveTo(48, ledger[li] + 0.5);
+          ctx.lineTo(W - 48, ledger[li] + 0.5);
+          ctx.stroke();
+        }
+
+        var completed = phase === 'done' ? ROUNDS : (phase === 'playing' ? (slam ? round : round - 1) : 0);
+        var pi;
+        for (pi = 0; pi < ROUNDS; pi += 1) {
+          var px = CENTER_X + (pi - (ROUNDS - 1) / 2) * 30;
+          ctx.beginPath();
+          ctx.arc(px, 48, 8, 0, Math.PI * 2);
+          if (pi < completed) {
+            ctx.fillStyle = VERMILION;
+            ctx.fill();
+          } else {
+            ctx.strokeStyle = (phase === 'playing' && pi === round - 1) ? INK : SAND;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+        }
+        ctx.font = '600 12px ' + MONO;
+        ctx.fillStyle = MUTED;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('ROUND ' + (phase === 'attract' ? '–' : Math.min(round, ROUNDS)) + '/' + ROUNDS, TRACK_X0, 48);
+        ctx.textAlign = 'right';
+        ctx.fillText('BEST ' + Math.max(best, score), TRACK_X1, 48);
+
+        ctx.fillStyle = 'rgba(200, 75, 49, 0.08)';
+        ctx.fillRect(CENTER_X - 70, TRACK_Y - 14, 140, 28);
+        ctx.fillStyle = 'rgba(200, 75, 49, 0.16)';
+        ctx.fillRect(CENTER_X - 30, TRACK_Y - 14, 60, 28);
+        ctx.fillStyle = VERMILION;
+        ctx.fillRect(CENTER_X - 10, TRACK_Y - 14, 20, 28);
+        ctx.strokeStyle = SAND;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(TRACK_X0, TRACK_Y + 0.5);
+        ctx.lineTo(TRACK_X1, TRACK_Y + 0.5);
+        ctx.stroke();
+        ctx.fillStyle = SAND;
+        ctx.fillRect(TRACK_X0 - 1, TRACK_Y - 9, 2, 18);
+        ctx.fillRect(TRACK_X1 - 1, TRACK_Y - 9, 2, 18);
+
+        var half = (TRACK_X1 - TRACK_X0) / 2;
+        var mx = CENTER_X + marker * half;
+        ctx.fillStyle = INK;
+        ctx.beginPath();
+        ctx.moveTo(mx, TRACK_Y - 18);
+        ctx.lineTo(mx - 7, TRACK_Y - 30);
+        ctx.lineTo(mx + 7, TRACK_Y - 30);
+        ctx.closePath();
+        ctx.fill();
+
+        if (phase !== 'done') {
+          ctx.save();
+          ctx.setLineDash([5, 6]);
+          ctx.strokeStyle = SAND;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(mx, STAMP_TOP + STAMP_SIZE + 8);
+          ctx.lineTo(mx, SEAL_Y - SEAL_R - 6);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        var mi;
+        for (mi = 0; mi < marks.length; mi += 1) {
+          ctx.beginPath();
+          ctx.arc(marks[mi].x, SEAL_Y, 15, 0, Math.PI * 2);
+          ctx.fillStyle = marks[mi].hot ? 'rgba(200, 75, 49, 0.20)' : 'rgba(22, 22, 24, 0.10)';
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = SAND;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(CENTER_X, SEAL_Y, SEAL_R, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.save();
+        ctx.setLineDash([4, 5]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(CENTER_X, SEAL_Y, SEAL_R - 16, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        ctx.font = '700 44px ' + DISPLAY;
+        ctx.fillStyle = 'rgba(22, 22, 24, 0.08)';
+        ctx.textAlign = 'center';
+        ctx.fillText('好', CENTER_X, SEAL_Y + 2);
+
+        var sy = stampTop();
+        var tilt = (!slam && !reduceMotion && phase === 'playing') ? Math.sin(time * 3) * 0.02 + markerDir * 0.015 : 0;
+        ctx.save();
+        ctx.translate(mx, sy + STAMP_SIZE / 2);
+        ctx.rotate(tilt);
+        ctx.shadowColor = 'rgba(22, 22, 24, 0.20)';
+        ctx.shadowBlur = 16;
+        ctx.shadowOffsetY = 8;
+        ctx.fillStyle = VERMILION;
+        rr(-STAMP_SIZE / 2, -STAMP_SIZE / 2, STAMP_SIZE, STAMP_SIZE, 16);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.lineWidth = 2;
+        rr(-STAMP_SIZE / 2 + 7, -STAMP_SIZE / 2 + 7, STAMP_SIZE - 14, STAMP_SIZE - 14, 11);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 52px ' + DISPLAY;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('好', 0, 3);
+        ctx.restore();
+
+        var ri;
+        for (ri = 0; ri < rings.length; ri += 1) {
+          var rk = rings[ri].t / 0.6;
+          ctx.beginPath();
+          ctx.arc(rings[ri].x, SEAL_Y, 24 + rk * 110, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(200, 75, 49, ' + (0.35 * (1 - rk)).toFixed(3) + ')';
+          ctx.lineWidth = 3 * (1 - rk) + 1;
+          ctx.stroke();
+        }
+
+        var qi;
+        for (qi = 0; qi < particles.length; qi += 1) {
+          var pt = particles[qi];
+          var pk = 1 - pt.life / pt.max;
+          ctx.fillStyle = pt.ink ? 'rgba(22, 22, 24, ' + (0.5 * pk).toFixed(3) + ')' : 'rgba(200, 75, 49, ' + (0.75 * pk).toFixed(3) + ')';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.size * (0.5 + 0.5 * pk), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        var fi;
+        for (fi = 0; fi < floaters.length; fi += 1) {
+          var fl = floaters[fi];
+          var fk = Math.min(1, fl.t / 0.25);
+          var fe = 1 - Math.pow(1 - fk, 3);
+          var fa = fl.t > 0.7 ? Math.max(0, 1 - (fl.t - 0.7) / 0.4) : 1;
+          var rise = reduceMotion ? 6 : 26;
+          ctx.textAlign = 'center';
+          ctx.font = '700 ' + (fl.hot ? 34 : 26) + 'px ' + DISPLAY;
+          ctx.fillStyle = fl.hot ? 'rgba(179, 61, 38, ' + fa.toFixed(3) + ')' : 'rgba(22, 22, 24, ' + fa.toFixed(3) + ')';
+          ctx.fillText(fl.text, fl.x, fl.y - rise * fe);
+          ctx.font = '600 12px ' + MONO;
+          ctx.fillStyle = 'rgba(87, 83, 78, ' + fa.toFixed(3) + ')';
+          ctx.fillText(fl.sub, fl.x, fl.y + 22 - rise * fe);
+        }
+
+        ctx.font = '600 12px ' + MONO;
+        ctx.textAlign = 'center';
+        if (phase === 'attract') {
+          var blink = reduceMotion ? 1 : 0.55 + 0.45 * Math.sin(time * 3.2);
+          ctx.fillStyle = 'rgba(87, 83, 78, ' + blink.toFixed(3) + ')';
+          ctx.fillText('PRESS START TRIAL — LAND THE CENTER MARK', CENTER_X, H - 34);
+        } else if (phase === 'playing') {
+          ctx.fillStyle = MUTED;
+          ctx.fillText('SPACE · TAP · BUTTON — ROUND ' + round + ' OF ' + ROUNDS, CENTER_X, H - 34);
+        }
+
+        if (phase === 'done') {
+          ctx.fillStyle = 'rgba(251, 250, 247, 0.92)';
+          ctx.fillRect(0, 0, W, H);
+          var rank = rankFor(score);
+          ctx.textAlign = 'center';
+          ctx.fillStyle = VERMILION_DEEP;
+          ctx.font = '700 84px ' + DISPLAY;
+          ctx.fillText(rank.kanji, CENTER_X, 218);
+          ctx.fillStyle = INK;
+          ctx.font = '600 13px ' + MONO;
+          ctx.fillText(rank.roma, CENTER_X, 272);
+          ctx.font = '700 56px ' + DISPLAY;
+          ctx.fillText(String(score) + ' PTS', CENTER_X, 340);
+          ctx.font = '600 12px ' + MONO;
+          ctx.fillStyle = MUTED;
+          ctx.fillText(newBest && score > 0 ? 'NEW HOUSE BEST — THE STUDIO BOWS' : 'HOUSE BEST ' + best, CENTER_X, 380);
+          if (newBest && score > 0) {
+            ctx.font = '700 12px ' + MONO;
+            var tw = ctx.measureText('NEW BEST').width + 30;
+            ctx.fillStyle = INK;
+            rr(CENTER_X - tw / 2, 398, tw, 30, 15);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('NEW BEST', CENTER_X, 414);
+          }
+        }
+        ctx.restore();
+      }
+
+      function onAction() {
+        if (phase === 'playing') stamp();
+        else startGame();
+      }
+      actionBtn.addEventListener('click', onAction);
+      canvas.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        if (phase === 'playing') stamp();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.code !== 'Space' || e.repeat) return;
+        var tag = (e.target && e.target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        var r = canvas.getBoundingClientRect();
+        var onScreen = r.bottom > 0 && r.top < window.innerHeight;
+        if (phase === 'playing' && onScreen) {
+          e.preventDefault();
+          stamp();
+        }
+      });
+      if (soundBtn) {
+        soundBtn.addEventListener('click', function () {
+          muted = !muted;
+          soundBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
+          soundBtn.setAttribute('aria-label', muted ? 'Unmute game sound' : 'Mute game sound');
+          if (soundIcon) soundIcon.textContent = muted ? 'volume_off' : 'volume_up';
+          if (!muted) sndTick();
+        });
+      }
+
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+          var v = entries[0] && entries[0].isIntersecting;
+          if (v && !visible) {
+            visible = true;
+            last = 0;
+            if (!rafId) rafId = requestAnimationFrame(step);
+          } else if (!v && visible) {
+            visible = false;
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = 0;
+          }
+        }, { threshold: 0.05 }).observe(canvas);
+      }
+
+      canvas.style.cursor = 'default';
+      hud();
+      rafId = requestAnimationFrame(step);
+    })();
+  </script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+var heroCanvas = document.getElementById('hero-3d');
+if (heroCanvas) {
+  initCluster(heroCanvas).catch(function () {
+    try { heroCanvas.remove(); } catch (e) { /* photo fallback stays */ }
+  });
+}
+
+async function initCluster(canvas) {
+  var frame = canvas.parentElement;
+  var img = frame ? frame.querySelector('img') : null;
+  var probe = document.createElement('canvas');
+  if (!probe.getContext('webgl2')) throw new Error('no-webgl2');
+
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.setClearColor(0x000000, 0);
+
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xf6f4ee, 11, 20);
+
+  var camera = new THREE.PerspectiveCamera(34, 1.7, 0.1, 60);
+  camera.position.set(0, 4.6, 12.5);
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  scene.add(new THREE.HemisphereLight(0xfff6ea, 0xd8d3c7, 0.95));
+  var sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(4.5, 7, 3.5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width = 1024;
+  sun.shadow.mapSize.height = 1024;
+  sun.shadow.camera.left = -5;
+  sun.shadow.camera.right = 5;
+  sun.shadow.camera.top = 5;
+  sun.shadow.camera.bottom = -5;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 20;
+  sun.shadow.bias = -0.0002;
+  sun.shadow.normalBias = 0.02;
+  scene.add(sun);
+  scene.add(sun.target);
+  var fill = new THREE.DirectionalLight(0xffe8d6, 0.35);
+  fill.position.set(-5, 3, -4);
+  scene.add(fill);
+
+  var cluster = new THREE.Group();
+  scene.add(cluster);
+
+  var ground = new THREE.Mesh(
+    new THREE.CircleGeometry(3.1, 64),
+    new THREE.MeshStandardMaterial({ color: 0xeae6de, roughness: 1, metalness: 0 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  cluster.add(ground);
+
+  var ring = new THREE.Mesh(
+    new THREE.TorusGeometry(2.55, 0.035, 12, 140, Math.PI * 1.7),
+    new THREE.MeshStandardMaterial({ color: 0xc84b31, roughness: 0.5, metalness: 0.1 })
+  );
+  ring.rotation.set(-Math.PI / 2, 0, Math.PI * 0.15);
+  ring.position.y = 0.03;
+  cluster.add(ring);
+
+  var BAR_H = [1.0, 2.0, 1.4, 2.4, 2.75, 1.75, 1.2, 2.25, 1.55];
+  var BAR_C = [0xd8d3c7, 0xd8d3c7, 0x57534e, 0xd8d3c7, 0xc84b31, 0xd8d3c7, 0x57534e, 0xc84b31, 0xd8d3c7];
+  var nodeTops = [];
+  for (var bi = 0; bi < 9; bi += 1) {
+    var bh = BAR_H[bi];
+    var bar = new THREE.Mesh(
+      new RoundedBoxGeometry(0.62, bh, 0.62, 3, 0.09),
+      new THREE.MeshStandardMaterial({ color: BAR_C[bi], roughness: 0.85, metalness: 0 })
+    );
+    var bx = ((bi % 3) - 1) * 1.15;
+    var bz = (Math.floor(bi / 3) - 1) * 1.15;
+    bar.position.set(bx, bh / 2, bz);
+    bar.castShadow = true;
+    bar.receiveShadow = true;
+    cluster.add(bar);
+    if (bi === 3 || bi === 4 || bi === 7) nodeTops.push(new THREE.Vector3(bx, bh + 0.14, bz));
+  }
+
+  var nodeMat = new THREE.MeshStandardMaterial({ color: 0xc84b31, emissive: 0xc84b31, emissiveIntensity: 0.9, roughness: 0.4 });
+  var nodeGeo = new THREE.SphereGeometry(0.11, 20, 20);
+  nodeTops.forEach(function (v) {
+    var s = new THREE.Mesh(nodeGeo, nodeMat);
+    s.position.copy(v);
+    cluster.add(s);
+  });
+  var links = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(nodeTops),
+    new THREE.LineBasicMaterial({ color: 0x89837c, transparent: true, opacity: 0.6 })
+  );
+  cluster.add(links);
+
+  var pulses = [];
+  for (var pri = 0; pri < 2; pri += 1) {
+    var pm = new THREE.Mesh(
+      new THREE.RingGeometry(0.92, 1.0, 64),
+      new THREE.MeshBasicMaterial({ color: 0xc84b31, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
+    );
+    pm.rotation.x = -Math.PI / 2;
+    pm.position.y = 0.05;
+    pm.userData.phase = pri * 0.5;
+    cluster.add(pm);
+    pulses.push(pm);
+  }
+
+  var glowCanvas = document.createElement('canvas');
+  glowCanvas.width = 128;
+  glowCanvas.height = 128;
+  var gg = glowCanvas.getContext('2d');
+  var grad = gg.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(200, 75, 49, 0.85)');
+  grad.addColorStop(0.35, 'rgba(200, 75, 49, 0.28)');
+  grad.addColorStop(1, 'rgba(200, 75, 49, 0)');
+  gg.fillStyle = grad;
+  gg.fillRect(0, 0, 128, 128);
+  var glowTex = new THREE.CanvasTexture(glowCanvas);
+  nodeTops.forEach(function (v) {
+    var sm = new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.55, depthWrite: false });
+    var sp = new THREE.Sprite(sm);
+    sp.position.copy(v);
+    sp.scale.set(0.9, 0.9, 1);
+    cluster.add(sp);
+  });
+
+  var P_COUNT = 130;
+  var pGeo = new THREE.BufferGeometry();
+  var pPos = new Float32Array(P_COUNT * 3);
+  var pseed = new Float32Array(P_COUNT);
+  for (var qi = 0; qi < P_COUNT; qi += 1) {
+    pPos[qi * 3] = (Math.random() - 0.5) * 7;
+    pPos[qi * 3 + 1] = Math.random() * 4.2;
+    pPos[qi * 3 + 2] = (Math.random() - 0.5) * 7;
+    pseed[qi] = Math.random() * Math.PI * 2;
+  }
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  var points = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0xc84b31, size: 0.05, sizeAttenuation: true, transparent: true, opacity: 0.5, depthWrite: false }));
+  points.frustumCulled = false;
+  cluster.add(points);
+  var controls = new OrbitControls(camera, canvas);
+  controls.target.set(0, 0.35, 0);
+  controls.enableDamping = !reduceMotion;
+  controls.dampingFactor = 0.06;
+  controls.enablePan = false;
+  controls.enableZoom = true;
+  controls.minDistance = 5.2;
+  controls.maxDistance = 13;
+  controls.minPolarAngle = 0.85;
+  controls.maxPolarAngle = 1.45;
+  controls.rotateSpeed = 0.7;
+  controls.zoomSpeed = 0.6;
+  controls.autoRotate = !reduceMotion;
+  controls.autoRotateSpeed = 0.9;
+  canvas.style.touchAction = 'pan-y';
+  canvas.style.cursor = 'grab';
+  var idleTimer = 0;
+  controls.addEventListener('start', function () {
+    controls.autoRotate = false;
+    window.clearTimeout(idleTimer);
+    canvas.style.cursor = 'grabbing';
+  });
+  controls.addEventListener('end', function () {
+    canvas.style.cursor = 'grab';
+    window.clearTimeout(idleTimer);
+    idleTimer = window.setTimeout(function () {
+      if (!reduceMotion) controls.autoRotate = true;
+    }, 2500);
+  });
+
+  var revealed = false;
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+    if (img && img.parentElement) img.style.display = 'none';
+  }
+
+  function homeDist() {
+    return camera.aspect < 1.5 ? 9.2 : 8.0;
+  }
+  function fit() {
+    var w = frame.clientWidth;
+    var h = frame.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    var off = camera.position.clone().sub(controls.target);
+    var need = homeDist();
+    if (off.length() < need) {
+      off.setLength(need);
+      camera.position.copy(controls.target).add(off);
+    }
+    camera.updateProjectionMatrix();
+    if (reduceMotion) renderer.render(scene, camera);
+  }
+
+  canvas.addEventListener('keydown', function (e) {
+    var off;
+    if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+      off = camera.position.clone().sub(controls.target);
+      var axis = new THREE.Vector3(0, 1, 0);
+      off.applyAxisAngle(axis, e.code === 'ArrowLeft' ? -0.18 : 0.18);
+      camera.position.copy(controls.target).add(off);
+    } else if (e.code === 'Home') {
+      camera.position.set(0, 2.9 * (homeDist() / 8.0), homeDist());
+    } else {
+      return;
+    }
+    controls.update();
+    if (reduceMotion) renderer.render(scene, camera);
+  });
+
+  var clock = new THREE.Clock();
+  var raf = 0;
+  var visible = true;
+  function tick() {
+    raf = 0;
+    if (!visible) return;
+    var dt = Math.min(0.05, clock.getDelta());
+    var t = clock.elapsedTime;
+    for (var pi2 = 0; pi2 < pulses.length; pi2 += 1) {
+      var ph = ((t / 2.4) + pulses[pi2].userData.phase) % 1;
+      var s = 0.6 + ph * 2.6;
+      pulses[pi2].scale.set(s, s, s);
+      pulses[pi2].material.opacity = 0.5 * (1 - ph);
+    }
+    var arr = pGeo.attributes.position.array;
+    for (var vi = 0; vi < P_COUNT; vi += 1) {
+      arr[vi * 3 + 1] += dt * 0.14;
+      arr[vi * 3] += Math.sin(t * 0.7 + pseed[vi]) * dt * 0.05;
+      if (arr[vi * 3 + 1] > 4.4) arr[vi * 3 + 1] = 0;
+    }
+    pGeo.attributes.position.needsUpdate = true;
+    controls.update();
+    renderer.render(scene, camera);
+    reveal();
+    raf = requestAnimationFrame(tick);
+  }
+
+  var rsz = 0;
+  function onResize() {
+    window.clearTimeout(rsz);
+    rsz = window.setTimeout(fit, 180);
+  }
+  if ('ResizeObserver' in window && frame) {
+    new ResizeObserver(onResize).observe(frame);
+  } else {
+    window.addEventListener('resize', onResize);
+  }
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function (entries) {
+      var v = entries[0] && entries[0].isIntersecting;
+      if (v && !visible) {
+        visible = true;
+        clock.getDelta();
+        if (!raf) raf = requestAnimationFrame(tick);
+      } else if (!v && visible) {
+        visible = false;
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+      }
+    }, { threshold: 0.05 }).observe(canvas);
+  }
+
+  fit();
+  var hd = homeDist();
+  var HOME = new THREE.Vector3(0, 2.9 * (hd / 8.0), hd);
+  var gsapLib = (typeof window.gsap !== 'undefined') ? window.gsap : null;
+  if (reduceMotion || !gsapLib) {
+    camera.position.copy(HOME);
+    controls.update();
+    renderer.render(scene, camera);
+    reveal();
+    if (!reduceMotion) raf = requestAnimationFrame(tick);
+  } else {
+    controls.enabled = false;
+    renderer.render(scene, camera);
+    reveal();
+    gsapLib.to(camera.position, {
+      x: HOME.x, y: HOME.y, z: HOME.z,
+      duration: 1.8, ease: 'power3.out',
+      onUpdate: function () { controls.update(); },
+      onComplete: function () { controls.enabled = true; }
+    });
+    raf = requestAnimationFrame(tick);
+  }
+}
+  </script>
+</div></main><footer class="w-full bg-surface-container border-t border-sand-border/80"><div class="max-w-[1280px] mx-auto px-gutter-mobile lg:px-margin py-space-2xl"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-space-xl"><div class="lg:col-span-4 flex flex-col gap-space-md"><div class="flex items-center gap-space-sm group"><img onerror="__imgFallback(this)" alt="GoodShigoto Logo" class="w-8 h-8 object-contain rounded transition-transform group-hover:rotate-6 duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyJBoWy8Ry7_UUsIQNsUeLVdL9SLAQ3WAKNuURzCWhr5Ef_dcNV0ief9w72q-UbC9IBLK-7OvJ6EAEuctRMiHHgCRkzvzQ8LdFW4OF6abHgp-jYuUBkX9kQJ_yHZOTJHiIaOahYm7O-fiXSyDJ6lYTqbCXOF018LbpnJrrZ8cbnglaN_rQauCkqO4-aLFy6x5XM3wwF66BoHC3kJ8r8yARoAlswpz12bhTsXg8VPJPcWy5idfOfwP1cRcEq9z6_rCXNXY"><span class="font-headline-sm text-headline-sm text-charcoal-ink">GoodShigoto</span></div><p class="font-body-sm text-body-sm text-muted-charcoal max-w-sm">A thoughtful digital studio &amp; tech consultancy partnering with ambitious teams to engineer enduring software, bespoke web experiences, and resilient architectures.</p><div class="flex flex-col gap-space-xs mt-space-sm"><span class="font-mono-code text-[11px] uppercase text-secondary font-semibold">Inquiries</span><a class="font-body-sm text-body-sm text-charcoal-ink hover:text-primary transition-colors inline-block" href="mailto:hello@goodshigoto.studio">hello@goodshigoto.studio</a><span class="font-mono-code text-[12px] text-muted-charcoal">Tokyo • Kyoto • San Francisco</span></div></div><div class="lg:col-span-3 flex flex-col gap-space-sm"><span class="font-label-md text-label-md text-charcoal-ink uppercase tracking-wider">Practice Areas</span><ul class="flex flex-col gap-space-xs"><li class="font-body-sm text-body-sm text-muted-charcoal hover:text-primary transition-colors"><a class="hover:translate-x-1 inline-block transition-transform duration-200" data-path="services" href="#services">Modern Web Platforms</a></li><li class="font-body-sm text-body-sm text-muted-charcoal hover:text-primary transition-colors"><a class="hover:translate-x-1 inline-block transition-transform duration-200" data-path="services" href="#services">Custom Software Systems</a></li><li class="font-body-sm text-body-sm text-muted-charcoal hover:text-primary transition-colors"><a class="hover:translate-x-1 inline-block transition-transform duration-200" data-path="services" href="#services">Business Automation &amp; AI</a></li><li class="font-body-sm text-body-sm text-muted-charcoal hover:text-primary transition-colors"><a class="hover:translate-x-1 inline-block transition-transform duration-200" data-path="services" href="#services">Tech Advisory &amp; Architecture</a></li></ul></div><div class="lg:col-span-2 flex flex-col gap-space-sm"><span class="font-label-md text-label-md text-charcoal-ink uppercase tracking-wider">Studio</span><ul class="flex flex-col gap-space-xs"><li class="font-body-sm text-body-sm text-muted-charcoal hover:text-primary transition-colors"><a class="hover:translate-x-1 inline-block transition-transform duration-200" data-path="case-studies" href="#case-studies-section">Selected Works</a></li><li class="font-body-sm text-body-sm text-muted-charcoal hover:text-primary transition-colors"><a class="hover:translate-x-1 inline-block transition-transform duration-200" data-path="approach" href="#approach">Craft &amp; Philosophy</a></li><li class="font-body-sm text-body-sm text-muted-charcoal hover:text-primary transition-colors"><a class="hover:translate-x-1 inline-block transition-transform duration-200" data-path="about" href="#testimonials">Studio Team</a></li><li class="font-body-sm text-body-sm text-muted-charcoal hover:text-primary transition-colors"><a class="hover:translate-x-1 inline-block transition-transform duration-200" data-path="contact" href="#inquiry-module">Book Consultation</a></li></ul></div><div class="lg:col-span-3 flex flex-col gap-space-md"><span class="font-label-md text-label-md text-charcoal-ink uppercase tracking-wider">Start a Project</span><p class="font-body-sm text-body-sm text-muted-charcoal">Fixed-scope builds with a working prototype in about 12 days. Currently scheduling new work.</p><a class="inline-flex items-center justify-center gap-space-xs px-space-md py-space-sm rounded-lg bg-primary-container text-white font-label-md text-label-md hover:bg-primary hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99] transition-all duration-200 shadow-[0_2px_8px_rgba(200,75,49,0.22)] self-start" href="#inquiry-module"><span class="">Book Free Discovery</span><span class="material-symbols-outlined text-[16px]">arrow_forward</span></a><span class="font-mono-code text-[11px] text-secondary">Free 30-min call · NDA friendly</span></div></div><div class="mt-space-2xl pt-space-lg flex flex-col sm:flex-row items-center justify-between gap-space-sm border-t border-sand-border"><span class="font-body-sm text-body-sm text-secondary">© 2026 GoodShigoto Studio KK. All rights reserved. Crafted with intent.</span><div class="flex items-center gap-space-md"><a class="font-mono-code text-[11px] text-secondary hover:text-on-surface transition-colors" data-path="privacy-terms" href="#">Privacy &amp; Terms</a><a class="font-mono-code text-[11px] text-secondary hover:text-on-surface transition-colors" data-path="about" href="#">Code of Conduct</a></div></div></div></footer>
+</body></html>

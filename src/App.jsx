@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowLeft,
@@ -11,9 +11,11 @@ import {
   ChevronRight,
   Home,
   LoaderCircle,
+  LogOut,
   Mail,
   Menu,
   PanelLeftClose,
+  Radar,
   Search,
   Settings as SettingsIcon,
   Sparkles,
@@ -47,12 +49,15 @@ import {
 import { ATTEMPT_OUTCOMES, NEXT_TASK_TYPES, TASK_OWNERS, addDaysString, describeOpportunity, localDayString, rankFindingsForOutreach, taskBucket } from '../server/services/brief.js'
 import { buildQueue, computeReadiness, explainReadiness } from '../server/services/readiness.js'
 import PreviewPage from './preview/PreviewPage.jsx'
+import CrawlPage from './CrawlPage.jsx'
+import LandingPage from './LandingPage.jsx'
 
 const navItems = [
   { label: 'Overview', Icon: Home },
   { label: 'Clients', Icon: Building2 },
   { label: 'Starred', Icon: Star },
   { label: 'Research', Icon: Sparkles },
+  { label: 'Crawl', Icon: Radar },
   { label: 'Outreach', Icon: Mail },
   { label: 'Pipeline', Icon: BarChart3 },
   { label: 'Contracts', Icon: Trophy },
@@ -60,7 +65,7 @@ const navItems = [
 
 const researchLabels = researchStages.map((stage) => stage.label)
 const pipelineStages = [...salesStages]
-const pagePaths = { Overview: '/overview', Clients: '/clients', Starred: '/starred', Research: '/research', Review: '/review', Outreach: '/outreach', Pipeline: '/pipeline', Contracts: '/contracts', Won: '/won', Settings: '/settings', Preview: '/preview' }
+const pagePaths = { Overview: '/overview', Clients: '/clients', Starred: '/starred', Research: '/research', Review: '/review', Crawl: '/crawl', Outreach: '/outreach', Pipeline: '/pipeline', Contracts: '/contracts', Won: '/won', Settings: '/settings', Preview: '/preview' }
 const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]) => [path.slice(1), page]))
 pathPages.won = 'Contracts'
 
@@ -98,6 +103,7 @@ async function apiRequest(path, options = {}) {
     const raw = await response.text()
     let body = null
     try { body = raw ? JSON.parse(raw) : null } catch { body = raw }
+    if (response.status === 401) window.dispatchEvent(new Event('scoutline:auth-required'))
     if (!response.ok) throw new ApiError(body?.error || `Request failed with HTTP ${response.status}`, response.status, body)
     return body
   } catch (error) {
@@ -390,6 +396,58 @@ function Logo() {
   return <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
 }
 
+function GoogleSignInButton({ clientId, onCredential, onError }) {
+  const buttonRef = useRef(null)
+  const callbackRef = useRef(onCredential)
+  callbackRef.current = onCredential
+
+  useEffect(() => {
+    let stopped = false
+    const render = () => {
+      if (stopped || !buttonRef.current || !window.google?.accounts?.id) return
+      buttonRef.current.replaceChildren()
+      window.google.accounts.id.initialize({ client_id: clientId, callback: (response) => callbackRef.current(response.credential) })
+      window.google.accounts.id.renderButton(buttonRef.current, { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', width: 300 })
+    }
+
+    const existing = document.querySelector('script[data-scoutline-google-identity]')
+    if (window.google?.accounts?.id) render()
+    else if (existing) {
+      existing.addEventListener('load', render, { once: true })
+      existing.addEventListener('error', onError, { once: true })
+    } else {
+      const script = document.createElement('script')
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.dataset.scoutlineGoogleIdentity = 'true'
+      script.addEventListener('load', render, { once: true })
+      script.addEventListener('error', onError, { once: true })
+      document.head.appendChild(script)
+    }
+    return () => { stopped = true; existing?.removeEventListener('load', render); existing?.removeEventListener('error', onError) }
+  }, [clientId, onError])
+
+  return <div className="google-signin" ref={buttonRef} aria-label="Sign in with Google" />
+}
+
+function LoginPage({ configured, clientId, error, signingIn, onCredential, onRetry }) {
+  const handleScriptError = useCallback(() => onRetry('Google sign-in could not be loaded. Check your connection and try again.'), [onRetry])
+  return (
+    <main className="auth-shell">
+      <section className="auth-card" aria-labelledby="auth-title">
+        <div className="auth-brand"><Logo /><span>Scoutline</span></div>
+        <Badge tone="blue">Private workspace</Badge>
+        <h1 id="auth-title">Sign in to continue</h1>
+        <p>Use a Google account that has been added to this workspace’s email allowlist.</p>
+        {!configured ? <div className="auth-setup" role="alert"><strong>Google login needs configuration</strong><span>Add <code>GOOGLE_CLIENT_ID</code> and <code>SCOUTLINE_ALLOWED_EMAILS</code> to <code>.env</code>, then restart the server.</span></div> : <GoogleSignInButton clientId={clientId} onCredential={onCredential} onError={handleScriptError} />}
+        {signingIn && <div className="auth-progress" role="status"><LoaderCircle className="spin" size={15} />Checking account…</div>}
+        {error && <div className="auth-error" role="alert">{error}</div>}
+        <small>Access is checked by the server after Google verifies the account.</small>
+      </section>
+    </main>
+  )
+}
+
 const Badge = memo(function Badge({ children, tone = 'gray', dot = false }) {
   return <span className={cn('badge', `badge-${tone}`)}>{dot && <i />}{children}</span>
 })
@@ -424,7 +482,7 @@ function ResearchProgress({ lead, compact = false, labels = true }) {
   )
 }
 
-function Sidebar({ page, setPage, open, close, counts }) {
+function Sidebar({ page, setPage, open, close, counts, currentUser, onLogout }) {
   const go = (next) => { setPage(next); close() }
   return (
     <>
@@ -451,7 +509,7 @@ function Sidebar({ page, setPage, open, close, counts }) {
         </div>
         <div className="sidebar-bottom">
           <button className={cn('nav-item', page === 'Settings' && 'nav-item-active')} aria-current={page === 'Settings' ? 'page' : undefined} onClick={() => go('Settings')}><span className="nav-emoji" aria-hidden="true"><SettingsIcon size={16} /></span><span>Settings</span></button>
-          <button className="profile-row" onClick={() => go('Settings')}><Avatar name="Rohan" /><span><strong>Local workspace</strong><small>Private · On this device</small></span><ChevronRight size={13} /></button>
+          <div className="profile-row auth-profile-row"><Avatar name={currentUser.name || currentUser.email} /><span><strong>{currentUser.name || currentUser.email}</strong><small>{currentUser.email}</small></span><IconButton label="Sign out" onClick={onLogout}><LogOut size={13} /></IconButton></div>
         </div>
       </aside>
     </>
@@ -1336,10 +1394,11 @@ function SettingsPage({ apiStatus, settings, onSave }) {
         <div><h2>Offer &amp; campaign</h2><p>Used when generating outreach. Editing the offer marks existing drafts stale without rewriting them.</p></div>
         <div className="minimal-form"><label><span>Service description</span><input value={draft.offer?.service || ''} onChange={handleOfferField('service')} onBlur={handleBlur('offer.service')} className={show('offer.service') ? 'input-error' : undefined} />{show('offer.service') && <span className="field-error">{merged['offer.service']}</span>}</label><div><label><span>Target categories (comma separated)</span><input value={(draft.offer?.targetCategories || []).join(', ')} onChange={handleOfferField('targetCategories', (v) => String(v).split(',').map((s) => s.trim()).filter(Boolean))} /></label><label><span>Geography</span><input value={draft.offer?.geography || ''} onChange={handleOfferField('geography')} placeholder="Salt Lake City, Utah" /></label></div><label><span>Exclusions</span><input value={draft.offer?.exclusions || ''} onChange={handleOfferField('exclusions')} placeholder="Who this is not for — optional" /></label><label><span>Proof points (one per line — leave blank if unconfirmed)</span><textarea value={(draft.offer?.proofPoints || []).join('\n')} onChange={handleOfferField('proofPoints', (v) => String(v).split('\n').map((s) => s.trim()).filter(Boolean))} placeholder="No invented results, guarantees, or pricing" /></label><label><span>Preferred call to action *</span><input value={draft.offer?.callToAction || ''} onChange={handleOfferField('callToAction')} onBlur={handleBlur('offer.callToAction')} className={show('offer.callToAction') ? 'input-error' : undefined} />{show('offer.callToAction') && <span className="field-error">{merged['offer.callToAction']}</span>}</label><div><label><span>Tone</span><input value={draft.offer?.tone || ''} onChange={handleOfferField('tone')} /></label><fieldset className="channel-picks"><legend>Preferred channels</legend>{['email', 'phone', 'form'].map((channel) => <label key={channel}><input type="checkbox" checked={(draft.offer?.channels || []).includes(channel)} onChange={toggleOfferChannel(channel)} />{channel}</label>)}</fieldset></div>{show('offer.channels') && <span className="field-error">{merged['offer.channels']}</span>}<p className="hint">Changing the offer stamps a new version; drafts keep the version they were written with.</p></div>
       </section>
-      {(!apiStatus?.brightDataAdapterReady || !apiStatus?.outreachConfigured) && <details className="panel advanced-group setup-guide"><summary>Connect AI and discovery services</summary><div><p><strong>Live discovery:</strong> add <code>BRIGHT_DATA_API_KEY</code> to <code>.env</code> and restart the server.</p><p><strong>Outreach generation:</strong> add <code>MODEL_API_KEY</code> (or <code>OPENAI_API_KEY</code>) to <code>.env</code> and restart the server.</p><p>See <code>.env.example</code> for every supported key.</p></div></details>}
+      {(!apiStatus?.brightDataAdapterReady || !apiStatus?.outreachConfigured || !apiStatus?.jevConfigured) && <details className="panel advanced-group setup-guide"><summary>Connect AI and discovery services</summary><div><p><strong>Live discovery:</strong> add <code>BRIGHT_DATA_API_KEY</code> to <code>.env</code> and restart the server.</p><p><strong>Jev triage:</strong> add <code>TYPESAFE_API_KEY</code> to <code>.env</code> and restart the server. It is advisory and does not replace the deterministic score.</p><p><strong>Outreach generation:</strong> add <code>MODEL_API_KEY</code> (or <code>OPENAI_API_KEY</code>) to <code>.env</code> and restart the server.</p><p>See <code>.env.example</code> for every supported key.</p></div></details>}
       <BackupPanel />
       <section className="panel connection-status"><span className="e e18" aria-hidden="true">🗄️</span><div><strong>Local SQLite storage</strong><span>{apiStatus?.databasePath || 'data/scoutline.db'}</span></div><Badge tone="green">Healthy</Badge></section>
       <section className="panel connection-status"><span className="e e18" aria-hidden="true">🪄</span><div><strong>Live discovery</strong><span>{apiStatus?.brightDataAdapterReady ? `Connected · each run can collect up to ${apiStatus.brightDataMaxRecords || 25} businesses.` : 'Not connected — runs audit your saved clients instead. Add a discovery key to collect new businesses.'}</span></div><Badge tone={apiStatus?.brightDataAdapterReady ? 'green' : 'amber'}>{apiStatus?.brightDataAdapterReady ? 'Connected' : 'Not connected'}</Badge></section>
+      <section className="panel connection-status"><span className="e e18" aria-hidden="true">🧭</span><div><strong>Jev semantic triage</strong><span>{apiStatus?.jevConfigured ? `Connected · ${apiStatus.jevModel || 'jev-latest'} classifies local scrape results and suggests review or deep-audit routing.` : 'Not connected — local scrapes keep using deterministic opportunity and eligibility scores.'}</span></div><Badge tone={apiStatus?.jevConfigured ? 'green' : 'gray'}>{apiStatus?.jevConfigured ? 'Connected' : 'Advisory off'}</Badge></section>
       <section className="panel connection-status"><span className="e e18" aria-hidden="true">🤖</span><div><strong>Outreach generation</strong><span>{apiStatus?.outreachConfigured ? `${apiStatus.outreachProviderLabel} writes all three email versions from your evidence.` : 'No model key — drafts use built-in evidence templates instead.'}</span></div><Badge tone={apiStatus?.outreachConfigured ? 'green' : 'gray'}>{apiStatus?.outreachConfigured ? 'AI drafts' : 'Templates'}</Badge></section>
     </>
   )
@@ -2067,7 +2126,7 @@ function Toast({ toast }) {
   return <div className={cn('toast', notice.tone === 'error' && 'toast-error')} role={notice.tone === 'error' ? 'alert' : 'status'} aria-live="polite"><span>{notice.tone === 'error' ? <span className="e e12" aria-hidden="true">⚠️</span> : <span className="e e12" aria-hidden="true">✅</span>}</span>{notice.message}</div>
 }
 
-export default function App() {
+function WorkspaceApp({ currentUser, onLogout }) {
   const [route, setRoute] = useState(() => readRoute())
   const page = route.page
   const [theme, setTheme] = useState(() => localStorage.getItem('scoutline-theme') || 'light')
@@ -2571,11 +2630,63 @@ export default function App() {
   else if (page === 'Starred') content = <ClientsPage leads={leads} runs={runs} onOpen={openLead} onImport={() => csvInput.current?.click()} onExport={exportCsv} goTo={navigate} onNewRun={() => setRunModalOpen(true)} onToggleStar={(lead) => updateLead(lead.id, { starred: !lead.starred })} initialFilter="Starred" />
   else if (page === 'Research') content = <ResearchPage leads={leads} runs={runs} activeRunId={activeRunId} onOpen={openLead} onOutreach={() => navigate('Outreach')} onReview={openReview} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} onNewRun={() => setRunModalOpen(true)} onTogglePause={toggleRunPause} onCancel={cancelRun} />
   else if (page === 'Review') content = selectedLead ? <ReviewWorkspace lead={selectedLead} leads={leads} runs={runs} onBack={backToQueue} onSelect={(id) => navigate('Review', { clientId: id })} onOpenRecord={(lead) => navigate('Clients', { clientId: lead.id, drawer: true })} onUpdate={updateLead} onQualify={(lead) => setQualifyLead(lead)} onAnalyze={analyzeLead} onRetryJob={retryLeadJob} onCancelJob={cancelLeadJob} onExport={exportLead} onOutreach={() => navigate('Outreach')} /> : <ResearchPage leads={leads} runs={runs} activeRunId={activeRunId} onOpen={openLead} onOutreach={() => navigate('Outreach')} onReview={openReview} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} onNewRun={() => setRunModalOpen(true)} onTogglePause={toggleRunPause} onCancel={cancelRun} />
+  else if (page === 'Crawl') content = <CrawlPage onLeadAdded={(lead, created) => setLeads((current) => (created || !current.some((item) => item.id === lead.id) ? [...current, lead] : current.map((item) => item.id === lead.id ? lead : item)))} onToast={setToast} brightDataReady={apiStatus?.brightDataAdapterReady} jevConfigured={apiStatus?.jevConfigured} jevModel={apiStatus?.jevModel} localDefaults={{ location: settingsData.defaultLocation || 'Salt Lake City, Utah', category: settingsData.categories?.[0] || 'Roofing', latitude: settingsData.discoveryLatitude ?? '', longitude: settingsData.discoveryLongitude ?? '' }} />
   else if (page === 'Outreach') content = <OutreachPage leads={leads} onOpen={openLead} onReview={openReview} onUpdate={updateLead} onAttempt={recordContactAttempt} onGenerate={generateOutreachVersions} onCandidate={resolveOutreachCandidate} onToast={setToast} goTo={navigate} />
   else if (page === 'Pipeline') content = <PipelinePage leads={leads} onOpen={openLead} onUpdate={updateLead} goTo={navigate} onContract={setContractLead} />
   else if (page === 'Contracts') content = <ContractsPage leads={leads} onOpen={openLead} onContract={setContractLead} goTo={navigate} />
   else if (page === 'Preview') content = <PreviewPage initialScreen={new URLSearchParams(route.search || '').get('screen') || 'home'} />
   else content = <SettingsPage apiStatus={apiStatus} settings={settingsData} onSave={saveSettings} />
 
-  return <div className="app-shell"><Sidebar page={page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} /><main className="main-shell"><Topbar title={topTitle} meta={topMeta} actions={topActions} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} onAdd={() => setCreateMenuOpen(true)} /><SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className={cn('page-content', page === 'Clients' && 'page-clients', page === 'Research' && 'page-research')}>{content}</div></main>{page === 'Review' ? null : <LeadDrawer lead={selectedLead} runs={runs} leads={leads} queue={recordQueueRef.current} origin={page} siblings={drawerSiblings} onSelect={openLead} close={closeLead} onExport={exportLead} onUpdate={updateLead} onQualify={(lead) => setQualifyLead(lead)} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} onReview={reviewFinding} fetchBrief={fetchBrief} onBriefExport={exportBrief} onProspectBrief={exportProspectBrief} onAddContact={addContact} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} />}{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{qualifyLead && <QualifyDialog lead={qualifyLead} close={() => setQualifyLead(null)} onConfirm={async () => { const updated = await updateLead(qualifyLead.id, { qualified: true, salesStage: 'Qualified' }); if (updated) setQualifyLead(null) }} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
+  return <div className="app-shell"><Sidebar page={page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} currentUser={currentUser} onLogout={onLogout} /><main className="main-shell"><Topbar title={topTitle} meta={topMeta} actions={topActions} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} onAdd={() => setCreateMenuOpen(true)} /><SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className={cn('page-content', page === 'Clients' && 'page-clients', page === 'Research' && 'page-research')}>{content}</div></main>{page === 'Review' ? null : <LeadDrawer lead={selectedLead} runs={runs} leads={leads} queue={recordQueueRef.current} origin={page} siblings={drawerSiblings} onSelect={openLead} close={closeLead} onExport={exportLead} onUpdate={updateLead} onQualify={(lead) => setQualifyLead(lead)} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} onReview={reviewFinding} fetchBrief={fetchBrief} onBriefExport={exportBrief} onProspectBrief={exportProspectBrief} onAddContact={addContact} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} />}{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{qualifyLead && <QualifyDialog lead={qualifyLead} close={() => setQualifyLead(null)} onConfirm={async () => { const updated = await updateLead(qualifyLead.id, { qualified: true, salesStage: 'Qualified' }); if (updated) setQualifyLead(null) }} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
+}
+
+export default function App() {
+  const isLanding = window.location.pathname.toLowerCase() === '/landing'
+  const [authState, setAuthState] = useState({ loading: true, configured: false, clientId: null, user: null, error: '', signingIn: false })
+
+  const checkSession = useCallback(async () => {
+    setAuthState((current) => ({ ...current, loading: true, error: '' }))
+    try {
+      const [configResponse, sessionResponse] = await Promise.all([fetch('/api/auth/config'), fetch('/api/auth/session')])
+      if (!configResponse.ok || !sessionResponse.ok) throw new Error('The authentication service could not be reached.')
+      const [config, session] = await Promise.all([configResponse.json(), sessionResponse.json()])
+      setAuthState({ loading: false, configured: config.configured, clientId: config.clientId, user: session.authenticated ? session.user : null, error: '', signingIn: false })
+    } catch (error) {
+      setAuthState((current) => ({ ...current, loading: false, error: error.message || 'Authentication check failed.', signingIn: false }))
+    }
+  }, [])
+
+  useEffect(() => { if (!isLanding) checkSession() }, [checkSession, isLanding])
+  useEffect(() => {
+    const requireAuth = () => setAuthState((current) => ({ ...current, user: null, error: 'Your session ended. Sign in again to continue.' }))
+    window.addEventListener('scoutline:auth-required', requireAuth)
+    return () => window.removeEventListener('scoutline:auth-required', requireAuth)
+  }, [])
+
+  const signIn = useCallback(async (credential) => {
+    setAuthState((current) => ({ ...current, signingIn: true, error: '' }))
+    try {
+      const response = await fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential }) })
+      const body = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(body?.error || 'Google sign-in failed.')
+      setAuthState((current) => ({ ...current, user: body.user, signingIn: false, error: '' }))
+    } catch (error) {
+      setAuthState((current) => ({ ...current, signingIn: false, error: error.message || 'Google sign-in failed.' }))
+    }
+  }, [])
+
+  const logout = useCallback(async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST' }) }
+    finally {
+      window.google?.accounts?.id?.disableAutoSelect?.()
+      setAuthState((current) => ({ ...current, user: null, error: '', signingIn: false }))
+    }
+  }, [])
+
+  const showLoginError = useCallback((message) => setAuthState((current) => ({ ...current, error: message })), [])
+
+  if (isLanding) return <LandingPage />
+  if (authState.loading) return <div className="app-loading" role="status" aria-live="polite"><Logo /><LoaderCircle className="spin" size={18} /><span>Checking access…</span></div>
+  if (!authState.user) return <LoginPage configured={authState.configured} clientId={authState.clientId} error={authState.error} signingIn={authState.signingIn} onCredential={signIn} onRetry={showLoginError} />
+  return <WorkspaceApp currentUser={authState.user} onLogout={logout} />
 }

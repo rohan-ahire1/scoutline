@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scoutline Crawler</title>
+  <style>
+    :root { color-scheme: light; --bg:#f7f7f5; --panel:#fff; --line:#e5e5e1; --text:#171717; --muted:#737373; --soft:#f1f1ee; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:var(--text); background:var(--bg); }
+    .wrap { max-width:1440px; margin:0 auto; padding:28px; }
+    header { display:flex; align-items:end; justify-content:space-between; gap:16px; margin-bottom:20px; }
+    h1 { margin:0; font-size:20px; font-weight:650; letter-spacing:-.02em; }
+    .sub { color:var(--muted); margin-top:3px; font-size:13px; }
+    .live { color:var(--muted); font-size:12px; }
+    .cards { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; min-height:88px; }
+    .label { color:var(--muted); font-size:12px; margin-bottom:8px; }
+    .value { font-size:24px; font-weight:650; letter-spacing:-.03em; }
+    .hint { color:var(--muted); font-size:11px; margin-top:4px; }
+    .progress { height:5px; background:var(--soft); border-radius:999px; margin-top:9px; overflow:hidden; }
+    .progress > div { height:100%; background:#222; width:0%; }
+    .toolbar { display:flex; gap:8px; align-items:center; background:var(--panel); border:1px solid var(--line); border-bottom:0; padding:10px; border-radius:10px 10px 0 0; }
+    input, select { height:34px; border:1px solid var(--line); border-radius:7px; background:white; padding:0 10px; color:var(--text); font:inherit; }
+    input { width:280px; }
+    .table-wrap { overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:0 0 10px 10px; }
+    table { width:100%; border-collapse:collapse; min-width:1160px; }
+    th,td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; vertical-align:middle; }
+    th { color:var(--muted); font-size:11px; font-weight:600; background:#fbfbfa; position:sticky; top:0; }
+    tr:last-child td { border-bottom:0; }
+    tr:hover td { background:#fcfcfb; }
+    .site { max-width:300px; overflow:hidden; text-overflow:ellipsis; }
+    .site a { color:inherit; text-decoration:none; }
+    .site-title { font-weight:550; overflow:hidden; text-overflow:ellipsis; }
+    .host { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; }
+    .pill { display:inline-flex; align-items:center; border:1px solid var(--line); background:var(--soft); border-radius:999px; padding:2px 7px; font-size:11px; }
+    .pill.crawling,.pill.queued { background:#eef3ff; border-color:#dbe5ff; }
+    .pill.completed,.pill.eligible { background:#edf8f0; border-color:#d7eedc; }
+    .pill.failed,.pill.blocked,.pill.rejected { background:#fff1ef; border-color:#f3dbd7; }
+    .score { font-variant-numeric:tabular-nums; font-weight:600; }
+    .muted { color:var(--muted); }
+    .empty { padding:40px; text-align:center; color:var(--muted); }
+    .footer { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; margin-top:10px; }
+    button { border:1px solid var(--line); background:var(--panel); border-radius:6px; height:28px; padding:0 9px; color:var(--text); cursor:pointer; }
+    button:disabled { opacity:.4; cursor:default; }
+    @media (max-width:900px) { .cards { grid-template-columns:repeat(2,1fr); } .wrap{padding:16px;} input{width:100%;} .toolbar{flex-wrap:wrap;} }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Scoutline Crawler</h1><div class="sub">Crawler activity and website qualification</div></div>
+    <div class="live" id="lastUpdated">Loading…</div>
+  </header>
+
+  <section class="cards">
+    <div class="card"><div class="label">Today</div><div class="value" id="today">—</div><div class="hint" id="todayHint">of 1,000 sites</div><div class="progress"><div id="progressBar"></div></div></div>
+    <div class="card"><div class="label">Crawling</div><div class="value" id="crawling">—</div><div class="hint">active workers</div></div>
+    <div class="card"><div class="label">Queued</div><div class="value" id="queued">—</div><div class="hint">waiting to crawl</div></div>
+    <div class="card"><div class="label">Eligible</div><div class="value" id="eligible">—</div><div class="hint">latest qualification</div></div>
+    <div class="card"><div class="label">Failed / blocked</div><div class="value" id="failed">—</div><div class="hint">current state</div></div>
+    <div class="card"><div class="label">Database</div><div class="value" id="dbSize">—</div><div class="hint">PostgreSQL size</div></div>
+  </section>
+
+  <div class="toolbar">
+    <input id="search" placeholder="Search domain or title" />
+    <select id="state">
+      <option value="all">All states</option><option>pending</option><option>queued</option><option>crawling</option><option>completed</option><option>failed</option><option>blocked</option>
+    </select>
+    <select id="qualification">
+      <option value="all">All qualifications</option><option value="eligible">eligible</option><option value="rejected">rejected</option><option value="not_evaluated">not evaluated</option>
+    </select>
+    <select id="sort"><option value="recent">Recently updated</option><option value="opportunity">Highest opportunity</option></select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Website</th><th>State</th><th>Qualification</th><th>Type</th><th>Opportunity</th><th>Visual risk</th><th>HTTP</th><th>Pages</th><th>Contacts</th><th>Duration</th><th>Last result</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="11" class="empty">Loading websites…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="footer"><span id="rowCount"></span><span><button id="prev">Previous</button> <button id="next">Next</button> · Auto-refreshes every 15s</span></div>
+</div>
+<script>
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const fmtBytes = n => { if (!n) return '0 B'; const units=['B','KB','MB','GB']; let i=0,v=n; while(v>=1024&&i<units.length-1){v/=1024;i++;} return `${v.toFixed(i>1?1:0)} ${units[i]}`; };
+  const fmtTime = d => d ? new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(d)) : '—';
+  const pill = v => `<span class="pill ${esc(v)}">${esc(v || '—').replace('_',' ')}</span>`;
+  let timer;
+  let offset = 0;
+  const pageSize = 100;
+  let total = 0;
+
+  async function loadSummary() {
+    const s = await fetch('/api/summary').then(r=>r.json());
+    $('today').textContent = `${s.processedToday}/${s.dailyLimit}`;
+    $('todayHint').textContent = `${s.scheduledToday} scheduled today`;
+    $('progressBar').style.width = `${Math.min(100,(s.processedToday/s.dailyLimit)*100)}%`;
+    $('crawling').textContent = s.states.crawling || 0;
+    $('queued').textContent = s.states.queued || 0;
+    $('eligible').textContent = s.qualifications.eligible || 0;
+    $('failed').textContent = (s.states.failed || 0) + (s.states.blocked || 0);
+    $('dbSize').textContent = fmtBytes(s.databaseBytes);
+  }
+
+  async function loadSites() {
+    const p = new URLSearchParams({limit:String(pageSize), offset:String(offset), state:$('state').value, qualification:$('qualification').value, sort:$('sort').value});
+    if ($('search').value.trim()) p.set('q',$('search').value.trim());
+    const data = await fetch('/api/sites?'+p).then(r=>r.json());
+    const rows = data.items || []; total = data.total || 0;
+    const start = total ? offset + 1 : 0; const end = Math.min(offset + rows.length, total);
+    $('rowCount').textContent = `${start}–${end} of ${total} websites`;
+    $('prev').disabled = offset <= 0; $('next').disabled = offset + pageSize >= total;
+    $('rows').innerHTML = rows.length ? rows.map(r => {
+      const contacts=(r.emails?.length||0)+(r.phones?.length||0);
+      return `<tr>
+        <td class="site"><div class="site-title"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.title || r.host)}</a></div><div class="host">${esc(r.host)}</div></td>
+        <td>${pill(r.crawl_state)}</td>
+        <td>${pill(r.qualification_state)}</td>
+        <td>${esc(r.website_type || 'unknown')}</td>
+        <td class="score">${r.last_opportunity_score ?? '—'}</td>
+        <td class="score">${r.last_visual_risk_score ?? '—'}</td>
+        <td>${r.last_status_code ?? '—'}</td>
+        <td>${r.last_pages_inspected ?? '—'}</td>
+        <td>${contacts || '—'}</td>
+        <td>${r.last_duration_ms ? (r.last_duration_ms/1000).toFixed(1)+'s' : '—'}</td>
+        <td class="muted">${fmtTime(r.last_result_at)}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="11" class="empty">No websites match these filters.</td></tr>';
+  }
+
+  async function refresh() {
+    try { await Promise.all([loadSummary(), loadSites()]); $('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString(); }
+    catch(e) { $('lastUpdated').textContent='Dashboard update failed'; console.error(e); }
+  }
+
+  ['state','qualification','sort'].forEach(id => $(id).addEventListener('change',()=>{offset=0;refresh();}));
+  $('search').addEventListener('input',()=>{clearTimeout(timer);offset=0;timer=setTimeout(refresh,300);});
+  $('prev').addEventListener('click',()=>{offset=Math.max(0,offset-pageSize);refresh();});
+  $('next').addEventListener('click',()=>{if(offset+pageSize<total){offset+=pageSize;refresh();}});
+  refresh(); setInterval(refresh,15000);
+</script>
+</body>
+</html>

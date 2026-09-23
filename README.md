@@ -63,6 +63,21 @@ npm run build
 npm start
 ```
 
+To load the Google settings from Bitwarden Secrets Manager instead of the
+local `.env`, set the `BWS_ACCESS_TOKEN` for the `scoutline-deploy` machine
+account and use the wrapped commands:
+
+```bash
+export BWS_ACCESS_TOKEN='paste-the-machine-account-token-here'
+npm run secrets:dev    # local UI + API
+npm run secrets:start  # production server after npm run build
+```
+
+The token is never committed to the repository. The machine account is
+read-only and scoped to the Bitwarden `Scoutline` project. That project
+contains `GOOGLE_CLIENT_ID` and `SCOUTLINE_ALLOWED_EMAILS`, which `bws run`
+injects into the server process.
+
 ## Optional integrations
 
 Copy `.env.example` to `.env` and add only the providers you want:
@@ -79,7 +94,50 @@ cp .env.example .env
 - `META_MODEL_API_BASE_URL` optionally overrides Meta's `https://api.meta.ai/v1` endpoint.
 - `OPENAI_API_KEY` enables the optional OpenAI fallback when no Meta key is present.
 - `OPENAI_MODEL` overrides the default OpenAI model.
+- `TYPESAFE_API_KEY` enables Jev semantic triage for local scrapes. When configured, each successfully crawled site is classified with advisory routing metadata (archetype, primary opportunity, semantic scores, route). The deterministic opportunity/eligibility scores remain authoritative; Jev is advisory only and never stored as sales evidence.
+- `JEV_MODEL` defaults to `jev-latest`.
+- `JEV_API_URL` defaults to `https://api.typesafe.ai/v1/systemone`.
 
-When a provider is not configured, the UI states the fallback explicitly: saved-client audits for discovery and evidence templates for outreach.
+When a provider is not configured, the UI states the fallback explicitly: saved-client audits for discovery and evidence templates for outreach. Jev triage is omitted when unconfigured and does not block the crawl when the provider fails.
+
+To try Jev, create an API key in the [TypeSafe console](https://console.typesafe.ai), put it in the local `.env` as `TYPESAFE_API_KEY=...`, restart `npm run dev`, and open **Crawl**. Paste a few public URLs and start a local scrape; each successful result shows Jev's advisory `deep-audit`, `review`, or `pass` route alongside Scoutline's deterministic scores.
 
 Secrets, databases, and generated lead artifacts are excluded from Git.
+
+## Google login and email allowlist
+
+Scoutline requires a Google account whose verified email is listed by the server. To configure it:
+
+1. In Google Cloud Console, configure the OAuth consent screen and create an OAuth 2.0 Client ID of type **Web application**.
+2. Add `http://127.0.0.1:5174` as an authorized JavaScript origin for local development. Add the HTTPS origin of the deployed site for production.
+3. Add the client ID and the exact email addresses that may sign in to `.env`:
+
+```bash
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+SCOUTLINE_ALLOWED_EMAILS=you@example.com,teammate@example.com
+```
+
+4. Restart `npm run dev` after changing the allowlist.
+
+The allowlist is read only by the Express server. Google ID tokens are verified on the server, API routes require an HTTP-only session cookie, and logout revokes the corresponding SQLite session. Removing an address from the allowlist and restarting the server invalidates that account's existing session on its next request.
+
+## VPS crawler tab
+
+The **Crawl** tab reviews snapshots from the always-on crawler in `crawler/`
+(deployed on the VPS). Sync flow: on the VPS run
+`npm run export -- --out crawl-export.json`, copy the file to this machine,
+and import it from the Crawl tab. The tab shows today's totals, a 30-day
+trend, website-type/qualification filters, per-site detail with scores and
+contacts, and an **Add as lead** action that pushes a site into Research
+(duplicate domains resolve to the existing lead). With no import yet, the tab
+offers the bundled `crawler/crawl-export.sample.json` to explore.
+
+The same tab also runs **local scrapes**: enter a location + category
+(discovery via Bright Data — needs the API key and coordinates unless the
+location matches your Settings geography) or paste URLs to skip discovery.
+The crawler engine runs on this machine and each run is saved as a
+committable JSON file under `data/crawl/local/`, with the same detail view
+and add-as-lead action as snapshot sites.
+The Local scrape panel also shows saved Jev usage totals: HTTP request attempts
+(including retries), successful classifications, failures/rate limits, token
+usage when the provider reports it, and `deep-audit`/`review`/`pass` routes.

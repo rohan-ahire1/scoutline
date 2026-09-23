@@ -1,10 +1,11 @@
 import express from 'express'
 import Database from 'better-sqlite3'
 import 'dotenv/config'
-import { mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
+import { AUTH_SESSION_TTL_SECONDS, AuthError, clearedSessionCookie, createAuthService, sessionCookie } from './auth.js'
 import { auditWebsite, mergeContactCandidates } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
@@ -19,6 +20,9 @@ import { canRetryJob, classifyJobError, findTimedOutJobs, isActiveJobStatus, isT
 import { acceptOutreachCandidate, buildRefreshPatch, dismissOutreachCandidates, getRev, resolveOutreachCompletion, resolveSynthesisCompletion, updateLeadFields } from './services/revisions.js'
 import { auditIdForJob, buildLeadReport, listAuditManifests, loadAuditForSynthesis, readManifest, renderLeadReportMarkdown, saveAuditArtifacts } from './services/artifacts.js'
 import { applyJsonRestore, BACKUP_RESTORE_COLUMNS, BACKUP_TABLES, buildJsonBackup, collectJsonBackupFiles, createBackup, listBackups, planJsonRestore, pruneBackups, storageWritable, validateJsonBackup, verifyBackup } from './services/backup.js'
+import { buildLocalRunId, createJevUsage, crawlSiteToLeadRow, describeCrawlSite, findLeadByWebsite, isLocalRunId, sanitizeJevUsage, summarizeCrawlSites, validateCrawlExport, validateLocalScrapeRequest } from './services/crawl.js'
+import { LOCAL_RUN_ACTIVE, LOCAL_RUN_VERSION, readLocalRunFile, runLocalScrape, writeLocalRunFile } from './services/crawlRunner.js'
+import { getJevConfig } from './services/jev.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
@@ -52,6 +56,7 @@ function readBackupTables(database) {
 const db = new Database(join(dataDir, 'scoutline.db'))
 db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
+const auth = createAuthService(db)
 db.exec(`
   CREATE TABLE IF NOT EXISTS leads (
     id TEXT PRIMARY KEY,
@@ -146,6 +151,50 @@ const settingInsert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VA
 Object.entries(defaultSettings).forEach(([key, value]) => settingInsert.run(key, JSON.stringify(value)))
 
 const app = express()
+app.set('trust proxy', 1)
+
+const authCookieOptions = (req) => ({ secure: process.env.NODE_ENV === 'production' || req.secure })
+const noStore = (res) => res.set('Cache-Control', 'no-store')
+
+app.get('/api/auth/config', (_req, res) => {
+  noStore(res).json({ configured: auth.configured, clientId: auth.configured ? auth.clientId : null })
+})
+
+app.get('/api/auth/session', (req, res) => {
+  const user = auth.session(req.headers.cookie)
+  noStore(res).json({ authenticated: Boolean(user), user })
+})
+
+app.post('/api/auth/google', express.json({ limit: '16kb' }), async (req, res) => {
+  try {
+    const { token, user } = await auth.login(req.body?.credential)
+    res.setHeader('Set-Cookie', sessionCookie(token, { ...authCookieOptions(req), ttlSeconds: AUTH_SESSION_TTL_SECONDS }))
+    noStore(res).json({ authenticated: true, user })
+  } catch (error) {
+    const status = error instanceof AuthError ? error.status : 500
+    const code = error instanceof AuthError ? error.code : 'AUTH_ERROR'
+    const message = error instanceof AuthError ? error.message : 'Scoutline could not complete Google sign-in'
+    noStore(res).status(status).json({ error: message, code })
+  }
+})
+
+app.post('/api/auth/logout', (req, res) => {
+  auth.logout(req.headers.cookie)
+  res.setHeader('Set-Cookie', clearedSessionCookie(authCookieOptions(req)))
+  noStore(res).json({ ok: true })
+})
+
+app.use('/api', (req, res, next) => {
+  if (!auth.configured) return noStore(res).status(503).json({ error: 'Google login is not configured on this server', code: 'AUTH_NOT_CONFIGURED' })
+  const user = auth.session(req.headers.cookie)
+  if (!user) {
+    res.setHeader('Set-Cookie', clearedSessionCookie(authCookieOptions(req)))
+    return noStore(res).status(401).json({ error: 'Sign in with an allowed Google account to continue', code: 'AUTH_REQUIRED' })
+  }
+  req.user = user
+  next()
+})
+
 // Portable-backup uploads can legitimately exceed the 1mb API default, so
 // this route is registered before the global parser with its own limit.
 app.post('/api/backup/restore', express.json({ limit: '160mb' }), (req, res) => {
@@ -1415,6 +1464,7 @@ app.get('/api/status', (_req, res) => {
   const settings = readSettings()
   const brightData = getBrightDataConfig(settings)
   const outreach = getOutreachConfig()
+  const jev = getJevConfig()
   const activeJobs = db.prepare("SELECT COUNT(*) AS count FROM jobs WHERE status IN ('Queued', 'Running', 'Waiting')").get().count
   res.json({
     ok: true,
@@ -1432,6 +1482,8 @@ app.get('/api/status', (_req, res) => {
     brightDataConnected: brightData.ready,
     brightDataDatasetId: brightData.datasetId,
     brightDataMaxRecords: brightData.maxRecords,
+    jevConfigured: jev.configured,
+    jevModel: jev.model,
   })
 })
 
@@ -1763,6 +1815,248 @@ app.post('/api/leads/import', (req, res) => {
   })
   res.status(201).json({ imported: created.length, skipped, leads: created, ...(rowErrors.length ? { rowErrors: rowErrors.slice(0, 20) } : {}) })
 })
+
+// VPS crawler export sync. The latest crawl-export.json snapshot is cached
+// on disk (derived data — re-importable, excluded from backups).
+const crawlDir = join(dataDir, 'crawl')
+const crawlLatestPath = join(crawlDir, 'latest.json')
+const readCrawlImport = () => {
+  try {
+    if (!existsSync(crawlLatestPath)) return null
+    return JSON.parse(readFileSync(crawlLatestPath, 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+app.get('/api/crawl', (_req, res) => {
+  const data = readCrawlImport()
+  if (!data) return res.json({ imported: false })
+  res.json({ imported: true, ...data, siteSummary: summarizeCrawlSites(data.sites) })
+})
+
+// Ships the repo's sample snapshot so the Crawl tab can be explored before
+// the first real VPS import. Never written to disk automatically.
+app.get('/api/crawl/sample', (_req, res) => {
+  try {
+    const samplePath = join(rootDir, 'crawler', 'crawl-export.sample.json')
+    if (!existsSync(samplePath)) return notFound(res, 'Sample snapshot is not available')
+    const result = validateCrawlExport(JSON.parse(readFileSync(samplePath, 'utf8')))
+    if (!result.ok) return notFound(res, 'Sample snapshot is invalid')
+    res.json({ imported: true, ...result.data, siteSummary: summarizeCrawlSites(result.data.sites), sample: true })
+  } catch {
+    return notFound(res, 'Sample snapshot is not available')
+  }
+})
+
+app.post('/api/crawl/import', express.json({ limit: '60mb' }), (req, res) => {
+  const result = validateCrawlExport(req.body)
+  if (!result.ok) return badRequest(res, null, result.error)
+  mkdirSync(crawlDir, { recursive: true })
+  writeFileSync(crawlLatestPath, JSON.stringify(result.data))
+  recordEvent('crawl', 'latest', 'imported', {
+    exportedAt: result.data.exportedAt, sites: result.data.sites.length, siteTotal: result.data.siteTotal,
+  })
+  res.status(201).json({
+    imported: true, exportedAt: result.data.exportedAt, sites: result.data.sites.length,
+    siteTotal: result.data.siteTotal, siteTruncated: result.data.siteTruncated,
+    summary: result.data.summary, siteSummary: summarizeCrawlSites(result.data.sites),
+  })
+})
+
+// Shared by snapshot and local-run promotion. Crawl rows are weak identity
+// (no provider id/address), so a shared domain resolves to the existing
+// lead — same fast-path as CSV import — instead of creating a duplicate.
+function addCrawledSiteAsLead(site, { company = '', source = 'Crawl import', evidenceSuffix = '' } = {}) {
+  const row = crawlSiteToLeadRow(site, { company })
+  if (!isStringWithLength(row.company, 2, 120)) return { ok: false, field: 'company', message: 'Company name must be 2-120 characters' }
+  if (!isValidDomain(row.website)) return { ok: false, field: 'website', message: 'Crawled host is not a valid domain' }
+  const existingByDomain = findLeadByWebsite(readRows('leads'), row.website)
+  if (existingByDomain) {
+    recordEvent('lead', existingByDomain.id, 'crawl_promoted', { siteId: site.id, host: site.host, matched: true })
+    return { ok: true, created: false, lead: existingByDomain }
+  }
+  const lead = insertUniqueLead(row, 0, source)
+  if (!lead) return { ok: false, field: null, message: 'Site could not be added as a lead' }
+  const created = lead._runImport?.created !== false
+  if (!created) {
+    const { _runImport: _dropped, ...publicLead } = lead
+    recordEvent('lead', lead.id, 'crawl_promoted', { siteId: site.id, host: site.host, matched: true })
+    return { ok: true, created: false, lead: publicLead }
+  }
+  const annotated = {
+    ...lead,
+    evidence: [...(lead.evidence || []), `Crawl import: ${describeCrawlSite(site)}${evidenceSuffix}`],
+    mainIssue: site.last_eligible ? 'Crawl flagged as eligible' : lead.mainIssue,
+  }
+  saveLead(annotated)
+  recordEvent('lead', lead.id, 'crawl_promoted', { siteId: site.id, host: site.host })
+  const { _runImport: _dropped, ...publicLead } = annotated
+  return { ok: true, created: true, lead: publicLead }
+}
+
+app.post('/api/crawl/sites/:siteId/add-lead', (req, res) => {
+  const data = readCrawlImport()
+  if (!data) return notFound(res, 'No crawl import yet — import a crawl-export.json first')
+  const site = (data.sites || []).find((row) => String(row.id) === String(req.params.siteId))
+  if (!site) return notFound(res, 'Crawled site not found', 'siteId')
+  const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}
+  const result = addCrawledSiteAsLead(site, { company: String(body.company || ''), evidenceSuffix: ` (snapshot ${data.exportedAt})` })
+  if (!result.ok) return badRequest(res, result.field, result.message)
+  res.status(result.created ? 201 : 200).json({ created: result.created, lead: result.lead })
+})
+
+// Local scrape runs. Each run is a committable JSON file under data/crawl/local
+// (VPS Postgres comes later); the runner updates it in place with progress.
+const localRunsDir = join(crawlDir, 'local')
+const localRunPath = (id) => join(localRunsDir, `${id}.json`)
+const summarizeLocalRun = (run) => ({
+  id: run.id,
+  mode: run.mode,
+  location: run.location || null,
+  category: run.category || null,
+  limit: run.limit,
+  urlCount: (run.urls || []).length,
+  status: run.status,
+  progress: run.progress || { discovered: 0, scraped: 0, total: 0 },
+  counts: run.counts || null,
+  error: run.error || null,
+  note: run.note || null,
+  siteCount: (run.sites || []).length,
+  jev: sanitizeJevUsage(run.jev),
+  createdAt: run.createdAt,
+  finishedAt: run.finishedAt || null,
+})
+function listLocalRuns() {
+  try {
+    if (!existsSync(localRunsDir)) return []
+    return readdirSync(localRunsDir)
+      .filter((file) => file.endsWith('.json'))
+      .map((file) => {
+        try {
+          return summarizeLocalRun(JSON.parse(readFileSync(join(localRunsDir, file), 'utf8')))
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+  } catch {
+    return []
+  }
+}
+function readLocalRun(id) {
+  if (!isLocalRunId(id)) return { error: 'invalid' }
+  try {
+    if (!existsSync(localRunPath(id))) return { error: 'missing' }
+    return { run: readLocalRunFile(localRunPath(id)) }
+  } catch {
+    return { error: 'unreadable' }
+  }
+}
+
+app.post('/api/crawl/local-runs', (req, res) => {
+  const validated = validateLocalScrapeRequest(req.body)
+  if (!validated.ok) return badRequest(res, null, validated.error)
+  const request = validated.request
+  if (request.mode === 'discovery' && !getBrightDataConfig(readSettings()).apiKey) {
+    return badRequest(res, null, 'Bright Data API key is not configured — paste URLs directly, or add the key in Settings')
+  }
+  const id = buildLocalRunId()
+  const now = nowIso()
+  const run = {
+    version: LOCAL_RUN_VERSION,
+    source: 'local',
+    id,
+    mode: request.mode,
+    location: request.location || null,
+    category: request.category || null,
+    latitude: request.latitude ?? null,
+    longitude: request.longitude ?? null,
+    limit: request.limit,
+    urls: request.urls || [],
+    status: 'queued',
+    progress: { discovered: 0, scraped: 0, total: request.mode === 'urls' ? request.urls.length : request.limit },
+    counts: null,
+    sites: [],
+    jev: createJevUsage(getJevConfig()),
+    error: null,
+    note: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  mkdirSync(localRunsDir, { recursive: true })
+  writeFileSync(localRunPath(id), JSON.stringify(run))
+  recordEvent('crawl', id, 'local_run_queued', { mode: request.mode, location: run.location, category: run.category, total: run.progress.total })
+  setImmediate(() => {
+    runLocalScrape({ runPath: localRunPath(id), settings: readSettings() }).catch((error) => {
+      console.error(`local run ${id} crashed`, error)
+      try {
+        writeLocalRunFile(localRunPath(id), { ...readLocalRunFile(localRunPath(id)), status: 'failed', error: 'Runner crashed unexpectedly', finishedAt: new Date().toISOString() })
+      } catch {
+        // Run file already gone; nothing left to mark.
+      }
+    })
+  })
+  res.status(201).json(summarizeLocalRun(run))
+})
+
+app.get('/api/crawl/local-runs', (_req, res) => {
+  res.json({ runs: listLocalRuns() })
+})
+
+app.get('/api/crawl/local-runs/:runId', (req, res) => {
+  const { run, error } = readLocalRun(req.params.runId)
+  if (error === 'invalid') return badRequest(res, 'runId', 'Invalid run id format')
+  if (!run) return notFound(res, 'Local run not found')
+  res.json(run)
+})
+
+app.delete('/api/crawl/local-runs/:runId', (req, res) => {
+  const { run, error } = readLocalRun(req.params.runId)
+  if (error === 'invalid') return badRequest(res, 'runId', 'Invalid run id format')
+  if (!run) return notFound(res, 'Local run not found')
+  if (LOCAL_RUN_ACTIVE.includes(run.status)) return conflict(res, 'Cannot delete a running scrape — wait for it to finish', 'runId', 'RUN_ACTIVE')
+  unlinkSync(localRunPath(req.params.runId))
+  recordEvent('crawl', req.params.runId, 'local_run_deleted', {})
+  res.json({ deleted: true })
+})
+
+app.post('/api/crawl/local-runs/:runId/sites/:siteId/add-lead', (req, res) => {
+  const { run, error } = readLocalRun(req.params.runId)
+  if (error === 'invalid') return badRequest(res, 'runId', 'Invalid run id format')
+  if (!run) return notFound(res, 'Local run not found')
+  const site = (run.sites || []).find((row) => String(row.id) === String(req.params.siteId))
+  if (!site) return notFound(res, 'Scraped site not found', 'siteId')
+  const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}
+  const result = addCrawledSiteAsLead(site, {
+    company: String(body.company || site.company || ''),
+    source: 'Crawl import (local)',
+    evidenceSuffix: ` (local run ${run.id})`,
+  })
+  if (!result.ok) return badRequest(res, result.field, result.message)
+  res.status(result.created ? 201 : 200).json({ created: result.created, lead: result.lead })
+})
+
+// Runs stuck mid-flight when the process stopped can never resume (the
+// runner is in-process), so mark them honestly instead of polling forever.
+try {
+  if (existsSync(localRunsDir)) {
+    for (const file of readdirSync(localRunsDir).filter((name) => name.endsWith('.json'))) {
+      try {
+        const runPath = join(localRunsDir, file)
+        const run = readLocalRunFile(runPath)
+        if (LOCAL_RUN_ACTIVE.includes(run.status)) {
+          writeLocalRunFile(runPath, { ...run, status: 'interrupted', error: 'Server stopped before the run finished', finishedAt: new Date().toISOString() })
+        }
+      } catch {
+        // Leave unreadable run files for explicit deletion.
+      }
+    }
+  }
+} catch {
+  // Local runs unavailable; endpoints report empty until the directory heals.
+}
 
 app.patch('/api/leads/:id', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
