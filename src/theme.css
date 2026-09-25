@@ -120,8 +120,8 @@
   --paper: #ffffff;
   --white: #ffffff;
   --ink-line: 14, 17, 22;
-  --brand-orange: #d76034;
-  --brand-orange-hover: #b74e24;
+  --brand-orange: #c2620a;
+  --brand-orange-hover: #a8540a;
   --ok-green: #337250;
   --info-blue: #3b5bfd;
   --violet: #5b54b5;
@@ -159,8 +159,8 @@
   --lav-ink: var(--lav-700);
   --orange: var(--brand-orange);
   --orange-hover: var(--brand-orange-hover);
-  --orange-soft: #fcd9c9;
-  --orange-ink: #c2431f;
+  --orange-soft: #fff4e0;
+  --orange-ink: #a86200;
   --amber-ink: #886108;
   --blue: var(--info-blue);
   --green: var(--ok-green);
@@ -231,9 +231,9 @@ html[data-theme="dark"] {
   --brown: #bea287;
   --lav: #1e2748;
   --lav-ink: #aab8ff;
-  --orange: #df7752;
+  --orange: #f5a524;
   --orange-hover: #e8855f;
-  --orange-soft: rgba(223, 119, 82, 0.16);
+  --orange-soft: rgba(245, 165, 36, 0.15);
   --blue: #88aed9;
   --green: #78bc95;
   --purple: #ab9ddb;
@@ -252,7 +252,7 @@ html[data-theme="dark"] {
   --tint-peach: #4c271a;
   --tint-green: #20382c;
   --tint-amber: #4a3620;
-  --orange-ink: #e89a7a;
+  --orange-ink: #f5b95a;
   --amber-ink: #d3aa64;
   --play-redesign-bg: rgba(229, 72, 77, 0.16);
   --play-redesign: #ff8a8e;
