@@ -205,3 +205,123 @@ span.e:not(:has(svg)), i.e:not(:has(svg)) { display: none; }
   .topbar-left { align-items: flex-start; }
 }
 .lead-page .ws-identity-side { display: flex; gap: 8px; align-items: center; }
+
+/* ============================================================================
+   Polish pass: everything the redesign inherited from the old UI.
+   ========================================================================== */
+
+/* Form controls: one vocabulary everywhere. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea {
+  min-height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--surface); color: var(--text); font: inherit; font-size: 14px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+textarea { min-height: 88px; padding: 10px 12px; line-height: 1.5; }
+select { padding-right: 32px; appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235b6472' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; }
+input::placeholder, textarea::placeholder { color: var(--subtle); }
+input:not([type="checkbox"]):not([type="radio"]):hover, select:hover, textarea:hover { border-color: var(--border-strong); }
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); width: 16px; height: 16px; }
+/* Inputs that sit inside their own framed control keep that frame. */
+.global-search input, .table-search input, .command-menu > label input, label.today-search input { min-height: 0; padding: 0; border: 0; box-shadow: none !important; background: transparent; }
+.table-search { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.table-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.sort-control select { min-height: 38px; }
+
+/* Section labels: sentence case headings instead of tiny tracked capitals. */
+.detail-label, .panel-kicker, .next-action-callout span { color: var(--text); font-size: 14px; font-weight: 800; letter-spacing: 0; text-transform: none; }
+.client-table-head, .research-table-head, .command-results > span { letter-spacing: 0; text-transform: none; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.command-results > span { padding: 10px 10px 4px; display: block; }
+
+/* Score chips: a quiet number, not a ringed badge. */
+.score { width: auto; min-width: 34px; height: 26px; padding: 0 7px; border: 0; border-radius: var(--r-md); background: var(--surface-muted); color: var(--text); font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+.score-large { height: 32px; font-size: 15px; }
+
+/* Segmented filters (lists, research, pipeline): chips with counts. */
+.view-tabs { padding: 0; gap: 6px; border: 0; background: transparent; flex-wrap: wrap; }
+.view-tabs button { min-height: 32px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); color: var(--text-soft); font-size: 13px; font-weight: 600; }
+.view-tabs button:hover { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
+.view-tabs button.active { border-color: var(--primary); background: var(--lav); color: var(--lav-ink); }
+.view-tabs button > em { min-width: 0; height: auto; padding: 0; background: none; color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; }
+.view-tabs button.active > em { background: none; color: inherit; }
+.view-tabs .filter-dot { display: none; }
+.client-list-panel { border-radius: var(--r-2xl); }
+.client-list-tools { padding: 14px 16px; gap: 10px 16px; }
+
+/* Warnings and callouts: amber tint, no peach. */
+.next-action-callout { padding: 12px 14px; border-radius: var(--r-lg); background: var(--surface-muted); }
+.next-action-callout strong { font-size: 14px; }
+.candidate-banner { padding: 12px 14px; border-radius: var(--r-lg); border-color: var(--border); background: var(--surface); }
+.preview-banner, .mode-banner { border-radius: var(--r-lg); }
+
+/* Research table: no colored side stripe. */
+.research-result { padding-left: 0; border-left: 0; }
+
+/* Run menu: no empty icon tiles, highlight in the action color. */
+.full-run-action, .run-action-list button { grid-template-columns: minmax(0, 1fr) 14px; }
+.full-run-action > span:not(:has(svg)), .run-action-list button > span:not(:has(svg)) { display: none; }
+.full-run-action { background: var(--lav); color: var(--lav-ink); }
+.full-run-action:hover:not(:disabled) { background: color-mix(in srgb, var(--lav) 70%, var(--surface-muted)); }
+.client-run-popover { border-radius: var(--r-xl); box-shadow: 0 16px 40px -12px rgba(var(--ink-line), 0.3); }
+
+/* Lead page tabs: sections get breathing room and panels. */
+.research-detail, .sales-detail { display: grid; gap: 16px; }
+.research-detail > * { margin: 0 !important; }
+.research-checklist { display: grid; gap: 8px; }
+.sales-stage-card, .sales-email-card, .ws-reco { padding: 18px 20px; border-radius: var(--r-2xl); }
+.sales-stage-path button > span { width: 26px; height: 26px; font-family: var(--font-mono); font-size: 12px; }
+.sales-stage-path button > small { font-size: 12.5px; }
+.close-lost-action { color: var(--play-redesign); }
+.ws-details { border-radius: var(--r-2xl); }
+.detail-section + .detail-section { margin-top: 20px; padding-top: 20px; }
+
+/* Today cards: email line pinned to the bottom so rows line up. */
+.lead-card-body { flex: 1; grid-template-rows: auto auto auto 1fr; }
+.lead-card-email { align-self: end; }
+.lead-card-reason { overflow-wrap: anywhere; }
+.site-preview-empty { gap: 6px; }
+.site-preview-empty svg { color: var(--subtle); }
+
+/* Lead evidence details. */
+.shot-bar { flex-wrap: nowrap; }
+.shot-bar a { white-space: nowrap; }
+.panel-actions .button { gap: 6px; }
+
+/* Command menu rows: the name gets the room, the address truncates. */
+.command-results button { display: grid !important; grid-template-columns: 78px minmax(120px, max-content) minmax(0, 1fr); align-items: center; gap: 10px; }
+.command-results button > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.command-results button > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.command-results button > i { grid-column: 1; }
+.command-results button:has(> i) { grid-template-columns: 22px 1fr; }
+
+/* Dialogs. */
+.qualify-facts { padding: 14px; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; border-radius: var(--r-lg); background: var(--surface-muted); }
+.qualify-facts p { margin: 0; display: grid; gap: 4px; color: var(--muted); font-size: 13.5px; }
+.qualify-facts p strong { color: var(--text); font-size: 14px; }
+.run-modal, .modal-dialog { border-radius: var(--r-2xl); }
+.modal-body small, .modal-body .field-hint { font-size: 12.5px; }
+
+/* Settings: every section uses the same width. */
+.settings-page > *, .settings-layout > * { max-width: 980px; }
+
+@media (max-width: 767px) {
+  .top-actions .button-secondary { display: none; }
+  .global-search { width: 38px; flex: none; padding: 0; justify-content: center; }
+  .global-search span, .global-search kbd { display: none; }
+  .shot-meta { display: none; }
+  .command-results button { grid-template-columns: 78px minmax(0, 1fr); }
+  .command-results button > small { display: none; }
+}
+.global-search input, .table-search input, .command-menu > label input { min-height: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+.sort-control select { background-color: var(--surface); }
+.email-cell.is-missing { font-family: var(--font-sans); font-size: 13px; font-weight: 600; }
+.problem-list > div > span { color: var(--play-audit); background: var(--play-audit-bg); border: 0; }
+.contact-route-form, .ws-restrict-form { gap: 8px; }
+.task-editor { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.task-editor label { min-width: 0; gap: 6px; color: var(--text-soft); font-size: 13px; font-weight: 600; }
+.task-editor input, .task-editor select { width: 100%; min-width: 0; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235b6472' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 10px center !important; padding-right: 32px !important; }
+.table-search { gap: 8px; }
+aside .task-editor { grid-template-columns: 1fr; }
