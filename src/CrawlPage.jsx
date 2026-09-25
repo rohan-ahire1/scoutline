@@ -632,7 +632,7 @@ export default function CrawlPage({ onLeadAdded, onToast, brightDataReady, local
     <div className="crawl-page">
       <div className="crawl-head">
         <div>
-          <h1>VPS crawler</h1>
+          <h2 className="crawl-section-title">VPS crawler</h2>
           <p>
             {data
               ? <>Snapshot from {formatDateTime(data.exportedAt)} ({timeAgo(data.exportedAt)}){data.workerId ? ` · ${data.workerId}` : ''}{data.siteTruncated ? ` · showing ${data.sites.length} of ${data.siteTotal} sites` : ''}</>
