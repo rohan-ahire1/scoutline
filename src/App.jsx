@@ -9,17 +9,23 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   Home,
+  LayoutGrid,
+  List,
   LoaderCircle,
   LogOut,
   Mail,
   Menu,
+  Moon,
   PanelLeftClose,
+  Plus,
   Radar,
   Search,
   Settings as SettingsIcon,
   Sparkles,
   Star,
+  Sun,
   Trophy,
   X,
 } from 'lucide-react'
@@ -50,30 +56,34 @@ import { ATTEMPT_OUTCOMES, NEXT_TASK_TYPES, TASK_OWNERS, addDaysString, describe
 import { buildQueue, computeReadiness, explainReadiness } from '../server/services/readiness.js'
 import PreviewPage from './preview/PreviewPage.jsx'
 import CrawlPage from './CrawlPage.jsx'
+import TodayPage from './TodayPage.jsx'
+import { LeadEvidence, PlayTag } from './leadUi.jsx'
 
 const navItems = [
-  { label: 'Overview', Icon: Home },
-  { label: 'Clients', Icon: Building2 },
-  { label: 'Starred', Icon: Star },
-  { label: 'Research', Icon: Sparkles },
+  { label: 'Today', Icon: LayoutGrid },
+  { label: 'Leads', Icon: List },
   { label: 'Crawl', Icon: Radar },
   { label: 'Outreach', Icon: Mail },
-  { label: 'Pipeline', Icon: BarChart3 },
-  { label: 'Contracts', Icon: Trophy },
 ]
+// Old page names still resolve so saved links and internal calls keep working.
+const PAGE_ALIASES = { Clients: 'Leads', Overview: 'Today' }
 
 const researchLabels = researchStages.map((stage) => stage.label)
 const pipelineStages = [...salesStages]
-const pagePaths = { Overview: '/overview', Clients: '/clients', Starred: '/starred', Research: '/research', Review: '/review', Crawl: '/crawl', Outreach: '/outreach', Pipeline: '/pipeline', Contracts: '/contracts', Won: '/won', Settings: '/settings', Preview: '/preview' }
+const pagePaths = { Today: '/today', Leads: '/leads', Overview: '/today', Clients: '/leads', Starred: '/starred', Research: '/research', Review: '/review', Crawl: '/crawl', Outreach: '/outreach', Pipeline: '/pipeline', Contracts: '/contracts', Won: '/won', Settings: '/settings', Preview: '/preview' }
 const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]) => [path.slice(1), page]))
 pathPages.won = 'Contracts'
+pathPages.today = 'Today'
+pathPages.leads = 'Leads'
+pathPages.overview = 'Today'
+pathPages.clients = 'Leads'
 
 function readRoute() {
   const search = window.location.search || ''
   let segments
   try { segments = window.location.pathname.split('/').filter(Boolean).map(decodeURIComponent) }
   catch { return { page: 'NotFound', clientId: null, requestedPath: window.location.pathname, canonical: true, search } }
-  if (!segments.length) return { page: 'Overview', clientId: null, requestedPath: null, canonical: false, search }
+  if (!segments.length) return { page: 'Today', clientId: null, requestedPath: null, canonical: false, search }
   const page = pathPages[segments[0].toLowerCase()]
   if (!page || segments.length > 2 || (page === 'Settings' && segments.length > 1)) return { page: 'NotFound', clientId: null, requestedPath: window.location.pathname, canonical: true, search }
   return { page, clientId: segments[1] || null, requestedPath: null, canonical: true, search }
@@ -209,13 +219,15 @@ function opportunityRankValue(lead = {}) {
 // Shared table sort (Clients + Research). Recommended keeps the caller's
 // commercial order; every table also sorts by name, score, and date, both
 // directions, driven by the sort select or the clickable column headers.
-const TABLE_SORTS = ['Recommended', 'Company A–Z', 'Company Z–A', 'Highest score', 'Lowest score', 'Newest first', 'Oldest first']
+const TABLE_SORTS = ['Recommended', 'Company A–Z', 'Company Z–A', 'Highest score', 'Lowest score', 'Newest first', 'Oldest first', 'Highest priority', 'Lowest priority']
 function sortTableRows(rows, sortMode, recommendedRank) {
   const list = [...rows]
   if (sortMode === 'Company A–Z') list.sort((a, b) => String(a.company || '').localeCompare(String(b.company || '')))
   else if (sortMode === 'Company Z–A') list.sort((a, b) => String(b.company || '').localeCompare(String(a.company || '')))
   else if (sortMode === 'Highest score') list.sort((a, b) => opportunityRankValue(b) - opportunityRankValue(a))
   else if (sortMode === 'Lowest score') list.sort((a, b) => opportunityRankValue(a) - opportunityRankValue(b))
+  else if (sortMode === 'Highest priority') list.sort((a, b) => (b.qualification?.priority ?? -1) - (a.qualification?.priority ?? -1))
+  else if (sortMode === 'Lowest priority') list.sort((a, b) => (a.qualification?.priority ?? 101) - (b.qualification?.priority ?? 101))
   else if (sortMode === 'Newest first') list.sort((a, b) => leadCollectedTime(b) - leadCollectedTime(a))
   else if (sortMode === 'Oldest first') list.sort((a, b) => leadCollectedTime(a) - leadCollectedTime(b))
   else if (recommendedRank) list.sort(recommendedRank)
@@ -228,6 +240,7 @@ const TABLE_COLUMNS = {
   client: { label: 'Client', natural: 'Company A–Z', reverse: 'Company Z–A' },
   score: { label: 'Score', natural: 'Highest score', reverse: 'Lowest score' },
   added: { label: 'Added', natural: 'Newest first', reverse: 'Oldest first' },
+  priority: { label: 'Priority', natural: 'Highest priority', reverse: 'Lowest priority' },
 }
 function nextColumnSort(column, sortMode) {
   const def = TABLE_COLUMNS[column]
@@ -481,48 +494,42 @@ function ResearchProgress({ lead, compact = false, labels = true }) {
   )
 }
 
-function Sidebar({ page, setPage, open, close, counts, currentUser, onLogout }) {
+function Sidebar({ page, setPage, open, close, counts, currentUser, onLogout, activity }) {
   const go = (next) => { setPage(next); close() }
   return (
     <>
       {open && <button className="nav-scrim" aria-label="Close navigation" onClick={close} />}
       <aside className={cn('sidebar', open && 'sidebar-open')}>
         <div className="brand-row">
-          <button className="brand-button" onClick={() => go('Clients')}><Logo /><span>Scoutline</span><Badge tone="blue">Local</Badge></button>
+          <button className="brand-button" onClick={() => go('Today')}><Logo /><span>Scoutline</span></button>
           <IconButton label="Close sidebar" className="sidebar-close" onClick={close}><PanelLeftClose size={15} /></IconButton>
         </div>
-        <div className="workspace-label"><span>Client workspace</span></div>
-        <nav className="main-nav" aria-label="Client workflow">
+        <nav className="main-nav" aria-label="Main">
           {navItems.map(({ label, Icon }) => (
             <button key={label} className={cn('nav-item', page === label && 'nav-item-active')} aria-current={page === label ? 'page' : undefined} onClick={() => go(label)}>
-              <span className="nav-emoji" aria-hidden="true"><Icon size={16} /></span><span>{label}</span>
+              <Icon size={17} aria-hidden="true" /><span>{label}</span>
               {counts[label] > 0 && <small>{counts[label]}</small>}
             </button>
           ))}
         </nav>
-        <div className="workflow-key">
-          <span>Up next</span>
-          <button onClick={() => go('Research')}><span className="key-emoji" aria-hidden="true"><Check size={12} /></span>{counts.Research} to review</button>
-          <button onClick={() => go('Outreach')}><span className="key-emoji" aria-hidden="true"><Mail size={12} /></span>{counts.Outreach} to contact</button>
-          <button onClick={() => go('Pipeline')}><span className="key-emoji" aria-hidden="true"><BarChart3 size={12} /></span>{counts.Pipeline} open deals</button>
-        </div>
         <div className="sidebar-bottom">
-          <button className={cn('nav-item', page === 'Settings' && 'nav-item-active')} aria-current={page === 'Settings' ? 'page' : undefined} onClick={() => go('Settings')}><span className="nav-emoji" aria-hidden="true"><SettingsIcon size={16} /></span><span>Settings</span></button>
-          <div className="profile-row auth-profile-row"><Avatar name={currentUser.name || currentUser.email} /><span><strong>{currentUser.name || currentUser.email}</strong><small>{currentUser.email}</small></span><IconButton label="Sign out" onClick={onLogout}><LogOut size={13} /></IconButton></div>
+          {activity && <button className="sidebar-activity" onClick={() => go(activity.page)}><span><i aria-hidden="true" />{activity.title}</span><small>{activity.detail}</small>{activity.progress != null && <b aria-hidden="true"><em style={{ transform: `scaleX(${activity.progress / 100})` }} /></b>}</button>}
+          <button className={cn('nav-item', page === 'Settings' && 'nav-item-active')} aria-current={page === 'Settings' ? 'page' : undefined} onClick={() => go('Settings')}><SettingsIcon size={17} aria-hidden="true" /><span>Settings</span></button>
+          <div className="profile-row auth-profile-row"><Avatar name={currentUser.name || currentUser.email} size="small" /><span><strong>{currentUser.name || currentUser.email}</strong><small>{currentUser.email}</small></span><IconButton label="Sign out" onClick={onLogout}><LogOut size={14} /></IconButton></div>
         </div>
       </aside>
     </>
   )
 }
 
-function Topbar({ title, meta, actions, onMenu, onSearch, theme, toggleTheme, onAdd }) {
+function Topbar({ title, meta, actions, onMenu, onSearch, theme, toggleTheme }) {
   return (
     <header className="topbar">
-      <div className="topbar-left"><IconButton label="Open navigation" className="mobile-menu" onClick={onMenu}><Menu size={17} /></IconButton><span className="topbar-title">{title}</span>{meta ? <span className="topbar-meta">{meta}</span> : null}</div>
-      <div className="top-actions">{actions}
-        <button className="global-search" onClick={onSearch}><span className="e e14" aria-hidden="true">🔍</span><span>Find a client</span><kbd>⌘ K</kbd></button>
-        <IconButton label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`} onClick={toggleTheme}>{theme === 'light' ? '🌙' : '☀️'}</IconButton>
-        <button className="button button-primary top-run" onClick={onAdd}><span className="e" aria-hidden="true">➕</span>Create</button>
+      <div className="topbar-left"><IconButton label="Open navigation" className="mobile-menu" onClick={onMenu}><Menu size={17} /></IconButton><div className="topbar-heading"><h1 className="topbar-title">{title}</h1>{meta ? <p className="topbar-meta">{meta}</p> : null}</div></div>
+      <div className="top-actions">
+        <button className="global-search" onClick={onSearch}><Search size={15} aria-hidden="true" /><span>Search leads</span><kbd>⌘K</kbd></button>
+        <IconButton label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`} onClick={toggleTheme}>{theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}</IconButton>
+        {actions}
       </div>
     </header>
   )
@@ -645,7 +652,7 @@ function OverviewPage({ leads, runs, onOpen, onImport, onExport, goTo, onNewRun 
 
 const CLIENT_PAGE_SIZES = [25, 50, 100]
 
-const CLIENT_VIEWS = ['All', 'Starred', 'Needs research', 'Ready to review', 'Pipeline', 'Won', 'Lost']
+const CLIENT_VIEWS = ['All', 'Redesign', 'Audit', 'Skip', 'Not sorted', 'Starred', 'Pipeline', 'Won', 'Lost']
 
 function StarToggle({ lead, onToggle, size = 14 }) {
   if (!onToggle) return lead.starred ? <span className="star-glyph" aria-label="Starred">★</span> : null
@@ -662,9 +669,11 @@ function ClientsPage({ leads, runs, onOpen, onImport, onExport, goTo, onNewRun, 
   const [pageSize, setPageSize] = useState(CLIENT_PAGE_SIZES[0])
   const views = [
     { label: 'All', count: leads.length, tone: 'all' },
+    { label: 'Redesign', count: leads.filter((lead) => lead.qualification?.play === 'redesign').length, tone: 'red' },
+    { label: 'Audit', count: leads.filter((lead) => lead.qualification?.play === 'audit').length, tone: 'amber' },
+    { label: 'Skip', count: leads.filter((lead) => lead.qualification?.play === 'skip').length, tone: 'gray' },
+    { label: 'Not sorted', count: leads.filter((lead) => !lead.qualification).length, tone: 'gray' },
     { label: 'Starred', count: leads.filter((lead) => lead.starred).length, tone: 'orange' },
-    { label: 'Needs research', count: leads.filter((lead) => !researchState(lead).analyzed || researchState(lead).failure).length, tone: 'orange' },
-    { label: 'Ready to review', count: leads.filter((lead) => researchState(lead).museComplete && !isQualifiedLead(lead)).length, tone: 'purple' },
     { label: 'Pipeline', count: leads.filter(isOpenPipelineLead).length, tone: 'blue' },
     { label: 'Won', count: leads.filter((lead) => lead.salesStage === 'Won').length, tone: 'green' },
     { label: 'Lost', count: leads.filter((lead) => lead.salesStage === 'Lost').length, tone: 'gray' },
@@ -674,14 +683,14 @@ function ClientsPage({ leads, runs, onOpen, onImport, onExport, goTo, onNewRun, 
     const match = `${lead.company} ${lead.category} ${lead.location} ${lead.collectedAt || ''} ${formatCollectedDate(lead)} ${collectedSearchText(lead)}`.toLowerCase().includes(query.toLowerCase())
     if (!match) return false
     if (view === 'Starred') return Boolean(lead.starred)
-    if (view === 'Needs research') return !researchState(lead).analyzed || researchState(lead).failure
-    if (view === 'Ready to review') return researchState(lead).museComplete && !isQualifiedLead(lead)
+    if (view === 'Redesign' || view === 'Audit' || view === 'Skip') return lead.qualification?.play === view.toLowerCase()
+    if (view === 'Not sorted') return !lead.qualification
     if (view === 'Pipeline') return isOpenPipelineLead(lead)
     if (view === 'Won') return lead.salesStage === 'Won'
     if (view === 'Lost') return lead.salesStage === 'Lost'
     return true
   })
-  const sorted = sortTableRows(filtered, sortMode, (a, b) => leadRankValue(b) - leadRankValue(a))
+  const sorted = sortTableRows(filtered, sortMode, (a, b) => ((b.qualification ? 1000 + (b.qualification.play === 'skip' ? -500 : 0) + b.qualification.priority : 0) - (a.qualification ? 1000 + (a.qualification.play === 'skip' ? -500 : 0) + a.qualification.priority : 0)) || (leadRankValue(b) - leadRankValue(a)))
   // Search, filter, sort, and page-size changes return to page one; opening
   // and closing a record keeps this component mounted, so the page is preserved.
   useEffect(() => { setPage(1) }, [query, view, sortMode, pageSize, leads.length])
@@ -701,14 +710,14 @@ function ClientsPage({ leads, runs, onOpen, onImport, onExport, goTo, onNewRun, 
           </div>
         </div>
         <div className="client-table">
-          <div className="client-table-head"><SortHeader column="client" sortMode={sortMode} onSort={setSortMode} /><span>Research</span><SortHeader column="score" sortMode={sortMode} onSort={setSortMode} /><SortHeader column="added" sortMode={sortMode} onSort={setSortMode} /><span>Sales phase</span><span>Next action</span><span /><span /></div>
+          <div className="client-table-head"><SortHeader column="client" sortMode={sortMode} onSort={setSortMode} /><span>Play</span><SortHeader column="priority" sortMode={sortMode} onSort={setSortMode} /><SortHeader column="added" sortMode={sortMode} onSort={setSortMode} /><span>Stage</span><span>Email</span><span /><span /></div>
           <div className="client-table-body">
             {pageItems.map((lead) => {
               const { failure, phase } = researchState(lead)
               const origin = leadRunInfo(lead, runs)
               const originLabel = origin.collectionRun ? `Added in ${runLabel(origin.collectionRun)}` : lead.labels?.includes('CSV import') ? 'Manual import' : 'Existing client'
               const dupeCount = dupeCounts.get(lead.id)
-              return <div className="client-row" key={lead.id} role="button" tabIndex={0} onClick={() => onOpen(lead, { queue: sorted.map((item) => item.id) })} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen(lead, { queue: sorted.map((item) => item.id) }) } }} title={`${lead.company} — ${originLabel}${origin.collectionRun ? ` · ${runTimestamp(origin.collectionRun)}` : ''}`}><span className="client-name"><Avatar name={lead.company} /><span><strong>{lead.company}{dupeCount ? <span className="dup-flag" title="This business appears more than once — open the record to compare before acting">Possible duplicate</span> : null}</strong><small>{lead.category} · {lead.location}{lead.website ? '' : ' · No website'}</small></span></span><span className="phase-cell"><Badge tone={failure ? 'red' : phase === 2 ? 'purple' : phase === 1 ? 'blue' : 'gray'} dot>{getResearchLabel(lead)}</Badge></span><Score value={lead.opportunityScore} /><span className="added-cell" title={lead.collectedAt ? `Collected ${lead.collectedAt}` : 'Collection date not recorded'}>{formatCollectedDate(lead)}</span><span>{lead.salesStage ? <Badge tone={statusTone[lead.salesStage]} dot>{lead.salesStage}</Badge> : <span className="muted-dash">Not in sales</span>}</span><span className="next-action-cell">{getNextAction(lead)}</span><StarToggle lead={lead} onToggle={onToggleStar} /><ChevronRight size={13} /></div>
+              return <div className="client-row" key={lead.id} role="button" tabIndex={0} onClick={() => onOpen(lead, { queue: sorted.map((item) => item.id) })} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen(lead, { queue: sorted.map((item) => item.id) }) } }} title={`${lead.company} — ${originLabel}${origin.collectionRun ? ` · ${runTimestamp(origin.collectionRun)}` : ''}`}><span className="client-name"><span><strong>{lead.company}{dupeCount ? <span className="dup-flag" title="This business appears more than once — open the record to compare before acting">Possible duplicate</span> : null}</strong><small>{lead.category} · {lead.location}{lead.website ? '' : ' · No website'}</small></span></span><span className="phase-cell"><PlayTag play={lead.qualification?.play} />{failure ? <Badge tone="red" dot>Failed</Badge> : null}</span><span className="num priority-cell">{lead.qualification ? lead.qualification.priority : '—'}</span><span className="added-cell" title={lead.collectedAt ? `Collected ${lead.collectedAt}` : 'Collection date not recorded'}>{formatCollectedDate(lead)}</span><span>{lead.salesStage ? <Badge tone={statusTone[lead.salesStage]} dot>{lead.salesStage}</Badge> : <span className="muted-dash">Not in sales</span>}</span>{(() => { const email = lead.qualification?.contact?.email || (/@/.test(lead.email || '') ? lead.email : null); return <span className={cn('email-cell', !email && 'is-missing')}>{email || 'not found'}</span> })()}<StarToggle lead={lead} onToggle={onToggleStar} /><ChevronRight size={13} /></div>
             })}
             {!sorted.length && (view === 'Starred' ? <div className="empty-state"><span className="e e20" aria-hidden="true">⭐</span><h3>No starred clients yet</h3><p>Star important clients to pin them here.</p></div> : <div className="empty-state"><span className="e e20" aria-hidden="true">🔍</span><h3>No clients here</h3><p>Try another view or search.</p></div>)}
           </div>
@@ -1121,7 +1130,7 @@ function OutreachPage({ leads, onOpen, onReview, onUpdate, onAttempt, onGenerate
             ? `${readiness.primaryChannel ? `${readiness.primaryChannel.kind}: ${readiness.primaryChannel.value}` : 'channel ready'} · ${readiness.commercial.status === 'scored' ? `value ${readiness.commercial.score}` : readiness.commercial.status}`
             : explainReadiness(readiness)
           return <button key={lead.id} role="option" aria-selected={selected?.id === lead.id} className={selected?.id === lead.id ? 'active' : ''} onClick={() => setSelectedId(lead.id)} title={sub}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{readiness.ready ? `Ready · ${readiness.primaryChannel?.kind || 'channel'}` : readiness.preparation.replace(/-/g, ' ')}</small></span><ChevronRight size={12} /></button>
-        })}</div><div className="outreach-selected"><OutreachCard key={selected?.id} lead={selected} readiness={readinessOf(selected)} queueItem={selected ? queueFor(selected) : null} commercialLabel={selected ? commercialStatusLabel(selected) : ''} onOpen={onOpen} onReview={onReview} onUpdate={onUpdate} onAttempt={onAttempt} onGenerate={onGenerate} onCandidate={onCandidate} onToast={onToast} /></div></div> : eligible.length === 0 ? <div className="empty-state"><span className="e e20" aria-hidden="true">✉️</span><h3>No qualified prospects yet</h3><p>Review research findings and qualify a client to prepare its first draft.</p><div className="empty-steps"><span>1 · Review findings</span><span>2 · Qualify for outreach</span><span>3 · Copy, send externally, mark contacted</span></div><button className="button button-primary" onClick={() => goTo('Research')}>Review prospects <ArrowRight size={12} /></button></div> : <div className="empty-state"><span className="e e20" aria-hidden="true">🔍</span><h3>No matching results</h3><p>This filter has no clients. Clear it to see the full queue.</p><button className="button button-secondary" onClick={() => setView('Ready to contact')}>Clear filters</button></div>}
+        })}</div><div className="outreach-selected"><OutreachCard key={selected?.id} lead={selected} readiness={readinessOf(selected)} queueItem={selected ? queueFor(selected) : null} commercialLabel={selected ? commercialStatusLabel(selected) : ''} onOpen={onOpen} onReview={onReview} onUpdate={onUpdate} onAttempt={onAttempt} onGenerate={onGenerate} onCandidate={onCandidate} onToast={onToast} /></div></div> : eligible.length === 0 ? <div className="empty-state"><span className="e e20" aria-hidden="true">✉️</span><h3>Nothing to send yet</h3><p>Open a lead on Today and choose Draft email. It lands here with drafts written from its evidence.</p><div className="empty-steps"><span>1 · Pick a lead on Today</span><span>2 · Draft email</span><span>3 · Copy, send yourself, mark as sent</span></div><button className="button button-primary" onClick={() => goTo('Today')}>Go to Today <ArrowRight size={12} /></button></div> : <div className="empty-state"><span className="e e20" aria-hidden="true">🔍</span><h3>No matching results</h3><p>This filter has no clients. Clear it to see the full queue.</p><button className="button button-secondary" onClick={() => setView('Ready to contact')}>Clear filters</button></div>}
       </section>
     </>
   )
@@ -1209,6 +1218,18 @@ function PipelinePage({ leads, onOpen, onUpdate, goTo, onContract }) {
       {pipeline.some((lead) => lead.salesStage === 'Lost') && <section className="panel lost-pipeline-panel"><div className="section-heading"><div><h2>Closed as lost</h2><span>Kept here for history; these clients are not active opportunities.</span></div><Badge tone="gray">{pipeline.filter((lead) => lead.salesStage === 'Lost').length}</Badge></div><div className="lost-pipeline-list">{pipeline.filter((lead) => lead.salesStage === 'Lost').map((lead) => <button key={lead.id} onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.lostReason || 'Reason not recorded'}</small></span><Score value={lead.opportunityScore} /><ChevronRight size={13} /></button>)}</div></section>}
       </>}
     </>
+  )
+}
+
+function LeadsPage({ view, onView, leads, onUpdate, onContract, goTo, children }) {
+  return (
+    <div className="leads-page">
+      <div className="segmented leads-view" role="tablist" aria-label="View">
+        <button type="button" role="tab" aria-selected={view === 'table'} className={view === 'table' ? 'active' : ''} onClick={() => onView('table')}>Table</button>
+        <button type="button" role="tab" aria-selected={view === 'pipeline'} className={view === 'pipeline' ? 'active' : ''} onClick={() => onView('pipeline')}>Pipeline</button>
+      </div>
+      {view === 'pipeline' ? <PipelinePage leads={leads} onOpen={(lead) => goTo('Leads', { clientId: lead.id, drawer: true })} onUpdate={onUpdate} goTo={goTo} onContract={onContract} /> : children}
+    </div>
   )
 }
 
@@ -1725,10 +1746,10 @@ function ActivityPanel({ lead, history, noteDraft, setNoteDraft, editing, setEdi
   </aside></div>
 }
 
-const WORKSPACE_TABS = ['Overview', 'Research', 'Outreach', 'Activity']
+const WORKSPACE_TABS = ['Evidence', 'Research', 'Outreach', 'Activity']
 
-function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', siblings = [], onSelect, close, onExport, onUpdate, onAddContact, onQualify, onAnalyze, onMuseAnalyze, onRunAction, onReview, fetchBrief, onBriefExport, onProspectBrief, onCancelJob, onRetryJob, brightDataReady, onToast, onContract, onInsight, onFailure, onOutreach }) {
-  const [tab, setTab] = useState('Overview')
+function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', siblings = [], onSelect, close, onExport, onUpdate, onAddContact, onQualify, onAnalyze, onMuseAnalyze, onRunAction, onReview, fetchBrief, onBriefExport, onProspectBrief, onCancelJob, onRetryJob, brightDataReady, onToast, onContract, onInsight, onFailure, onOutreach, asPage = false, api, onLeadChanged }) {
+  const [tab, setTab] = useState('Evidence')
   const [compareId, setCompareId] = useState(null)
   const [stuck, setStuck] = useState(false)
   const identityRef = useRef(null)
@@ -1737,7 +1758,7 @@ function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', 
   const drawerRef = useRef(null)
   const closeRef = useRef(null)
   const previouslyFocused = useRef(null)
-  useEffect(() => { setTab('Overview'); setCompareId(null); setEditing(false); setNoteDraft(lead?.notes || '') }, [lead?.id])
+  useEffect(() => { setTab('Evidence'); setCompareId(null); setEditing(false); setNoteDraft(lead?.notes || '') }, [lead?.id])
   // Newly selected tabs start at their content heading. The workspace
   // overlay owns the scroll position; the list underneath keeps its own.
   useEffect(() => { drawerRef.current?.closest('.workspace-overlay')?.scrollTo({ top: 0 }) }, [tab])
@@ -1754,7 +1775,7 @@ function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', 
   }, [lead?.id, compareId])
   // Accessible dialog: focus entry + restoration and background scroll lock.
   useEffect(() => {
-    if (!lead) return undefined
+    if (!lead || asPage) return undefined
     previouslyFocused.current = document.activeElement
     const original = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -1782,7 +1803,7 @@ function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', 
   const currentSalesIndex = pipelineStages.indexOf(lead.salesStage)
   const runOrigin = leadRunInfo(lead, runs)
   const originLabel = runOrigin.collectionRun ? `Added in ${runLabel(runOrigin.collectionRun)}` : lead.labels?.includes('CSV import') ? 'Manual import' : 'Existing client'
-  const backLabel = origin === 'Research' ? 'Back to Research' : origin === 'Review' ? 'Back to review' : 'Back to Clients'
+  const backLabel = origin === 'Research' ? 'Back to Research' : origin === 'Review' ? 'Back to review' : origin === 'Today' || origin === 'Overview' ? 'Back to Today' : origin === 'Outreach' ? 'Back to Outreach' : origin === 'Crawl' ? 'Back to Crawl' : 'Back to Leads'
   // Prev/next follows the list the record was opened from so reviewing
   // multiple records never needs the list. Deep links without a queue fall
   // back to commercial-rank order. Replacement keeps Close exiting in one
@@ -1817,8 +1838,8 @@ function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', 
   const guidance = getMuseGuidance(lead)
   const limitation = failure ? `Collection issue. ${failure.reason}` : lead.researchStatus === 'Inconclusive' ? (lead.captureQuality?.reason || lead.lastAuditAttempt?.reason || 'The latest capture was inconclusive.') : lead.museAnalysis?.stale ? 'AI synthesis predates the latest audit.' : lead.measureProvenance?.performance?.source === 'html_heuristic' ? 'Performance is an HTML estimate rather than a Lighthouse measurement.' : !done[1] ? 'No website audit yet. Based on the business profile only.' : null
   return (
-    <div className="workspace-overlay" onMouseDown={(event) => event.target === event.currentTarget && close()} onKeyDown={trapTab}>
-      <div ref={drawerRef} className={cn('client-workspace', stuck && 'is-stuck')} role="dialog" aria-modal="true" aria-label={`${lead.company} record`}>
+    <div className={asPage ? 'lead-page' : 'workspace-overlay'} onMouseDown={asPage ? undefined : (event) => event.target === event.currentTarget && close()} onKeyDown={asPage ? undefined : trapTab}>
+      <div ref={drawerRef} className={cn('client-workspace', stuck && 'is-stuck')} role={asPage ? 'region' : 'dialog'} aria-modal={asPage ? undefined : 'true'} aria-label={`${lead.company} record`}>
         <div className="ws-context">
           <button className="ws-back" onClick={close}><ArrowLeft size={13} />{backLabel}</button>
           <div className="ws-context-right">
@@ -1828,7 +1849,7 @@ function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', 
               <button className="ws-page-btn" aria-label={nextLead ? `Next client: ${nextLead.company}` : 'No next client'} disabled={!nextLead} onClick={() => nextLead && onSelect(nextLead, { replace: true })}><ArrowRight size={13} /></button>
             </div>
             <ClientRunMenu lead={lead} onRun={onRunAction} brightDataReady={brightDataReady} />
-            <IconButton label={websiteUrl(lead.website) ? `Open ${lead.company} website` : 'No website saved'} disabled={!websiteUrl(lead.website)} onClick={() => window.open(websiteUrl(lead.website), '_blank', 'noopener,noreferrer')}><span className="e e14" aria-hidden="true">↗️</span></IconButton>
+            <IconButton label={websiteUrl(lead.website) ? `Open ${lead.company} website` : 'No website saved'} disabled={!websiteUrl(lead.website)} onClick={() => window.open(websiteUrl(lead.website), '_blank', 'noopener,noreferrer')}><ExternalLink size={15} /></IconButton>
             <IconButton ref={closeRef} label="Close client record" onClick={close}><X size={16} /></IconButton>
           </div>
         </div>
@@ -1836,9 +1857,8 @@ function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', 
         : <>
         <header ref={identityRef} className="ws-identity">
           <div className="ws-identity-main">
-            <div className="ws-eyebrow"><Badge tone={categoryTone[lead.category] || 'gray'}>{lead.category}</Badge><Badge tone={stageChip[1]} dot>{stageChip[0]}</Badge><StarToggle lead={lead} onToggle={(item) => onUpdate(item.id, { starred: !item.starred })} /></div>
-            <h1 title={lead.company}>{lead.company}</h1>
-            <p className="ws-sub">{lead.location}{websiteUrl(lead.website) ? <span> · <a href={websiteUrl(lead.website)} target="_blank" rel="noreferrer">Open website <span className="e e10" aria-hidden="true">↗️</span></a></span> : ' · No website'} · {freshness}</p>
+            <div className="ws-title-row"><h1 title={lead.company}>{lead.company}</h1><PlayTag play={lead.qualification?.play} />{lead.qualification && <span className="priority"><span className="priority-label">Priority</span> {lead.qualification.priority}</span>}<Badge tone={stageChip[1]} dot>{stageChip[0]}</Badge><StarToggle lead={lead} onToggle={(item) => onUpdate(item.id, { starred: !item.starred })} /></div>
+            <p className="ws-sub">{[lead.category, lead.rating ? `${lead.rating}★ from ${lead.reviews || 0} Google reviews` : null].filter(Boolean).join(' · ')} · {lead.location}{websiteUrl(lead.website) ? <span> · <a href={websiteUrl(lead.website)} target="_blank" rel="noreferrer">Open website <span className="e e10" aria-hidden="true">↗️</span></a></span> : ' · No website'} · {freshness}</p>
             <details className="ws-record-details"><summary>Record details<ChevronDown size={12} /></summary>
               <dl className="ws-record-grid">
                 <div><dt>Address</dt><dd>{lead.address || lead.location || 'Not collected'}</dd></div>
@@ -1852,8 +1872,8 @@ function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', 
             </details>
           </div>
           <div className="ws-identity-side">
-            <div className="ws-score"><Score value={lead.opportunityScore} size="large" /><span>Opportunity<small>{lead.confidence != null ? `${lead.confidence}% confidence` : 'Not analyzed'}</small></span></div>
-            {primaryAction && <button tabIndex={stuck ? -1 : undefined} className={cn('button', primaryAction.kind === 'primary' ? 'button-primary' : 'button-secondary')} onClick={primaryAction.run}><span className="e" aria-hidden="true">{primaryAction.emoji}</span>{primaryAction.label}</button>}
+            {asPage && lead.qualification && lead.qualification.play !== 'skip' && <button className="button button-primary" onClick={() => (isQualifiedLead(lead) ? onOutreach() : onQualify(lead))}>{isQualifiedLead(lead) ? 'Open outreach' : 'Draft email'}</button>}
+            {primaryAction && <button tabIndex={stuck ? -1 : undefined} className={cn('button', primaryAction.kind === 'primary' && !(asPage && lead.qualification && lead.qualification.play !== 'skip') ? 'button-primary' : 'button-secondary')} onClick={primaryAction.run}><span className="e" aria-hidden="true">{primaryAction.emoji}</span>{primaryAction.label}</button>}
           </div>
         </header>
         <div className="ws-tabs" role="tablist" aria-label="Client record views" onKeyDown={(event) => {
@@ -1869,7 +1889,7 @@ function LeadDrawer({ lead, runs, leads = [], queue = null, origin = 'Clients', 
           event.currentTarget.querySelectorAll('[role="tab"]')[next]?.focus()
         }}>{WORKSPACE_TABS.map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item}{item === 'Research' && findings.length > 0 && <em>{findings.length}</em>}{item === 'Activity' && attempts.length > 0 && <em>{attempts.length}</em>}</button>)}<div className="ws-stuck"><strong title={lead.company}>{lead.company}</strong><Badge tone={stageChip[1]} dot>{stageChip[0]}</Badge>{primaryAction && <button className="button button-primary button-small" onClick={primaryAction.run}><span className="e" aria-hidden="true">{primaryAction.emoji}</span>{primaryAction.label}</button>}</div></div>
         <div className="ws-body">
-          {tab === 'Overview' && <div className="ws-cols"><div className="ws-main"><section className="ws-next" aria-label="Next action"><span className="detail-label">Next action</span><strong>{getNextAction(lead)}</strong>{primaryAction ? <div className="ws-next-row"><button className="button button-secondary" onClick={primaryAction.run}><span className="e" aria-hidden="true">{primaryAction.emoji}</span>{primaryAction.label}</button><button className="button button-quiet" onClick={() => onExport(lead)}><span className="e" aria-hidden="true">📤</span>Export research packet</button></div> : <p className="lead-summary">Add a website to enable the audit; the business can still be qualified on its profile.</p>}{needsReview && <small>Qualifying moves this client to outreach. Staying here keeps it queued. That is the defer path.</small>}</section>{failure && <div className="candidate-banner" role="alert"><span><strong>Collection issue, not a verdict.</strong><small> {failure.reason} Saved evidence below is kept; fix the failure before treating the recommendation as final.</small></span></div>}<section className="detail-section"><span className="detail-label">Main opportunity</span>{lead.mainIssue ? <><h2>{lead.mainIssue}</h2><p className="lead-summary">{lead.issueDetail}</p></> : <><h2>Not assessed yet</h2><p className="lead-summary">No website audit has run for this business, so there is no evidence to summarize yet — this does not mean there is no opportunity.</p>{lead.website ? <p className="lead-summary">Run the website audit to produce findings.</p> : <p className="lead-summary">Add a website to enable the audit; the business can still be qualified on its profile.</p>}</>}</section><section className="detail-section"><div className="detail-heading"><span className="detail-label">Findings</span>{findings.length > 0 && <Badge tone="gray">{findings.length}</Badge>}</div>{findings.length ? <><ul className="ws-finding-titles">{findings.slice(0, 3).map((problem) => <li key={problem}>{problem}</li>)}</ul>{findings.length > 3 && <p className="lead-summary">Showing 3 of {findings.length}.</p>}<button className="button button-quiet button-small" onClick={() => setTab('Research')}>View all findings in Research <ArrowRight size={11} /></button></> : <p className="lead-summary">Website analysis has not been completed yet.</p>}</section></div><aside>{siblings.length ? <div className="dup-card"><span className="detail-label">Possible duplicates</span><p>{siblings.length + 1} records share this business name — open a side-by-side comparison before acting.</p><div>{siblings.map((sibling) => <button key={sibling.id} type="button" onClick={() => setCompareId(sibling.id)} title={`Compare with ${sibling.company}`}><Avatar name={sibling.company} size="small" /><span><strong>{sibling.company}</strong><small>{sibling.category} · {sibling.location} · {getResearchLabel(sibling)}</small></span></button>)}</div>{lead.duplicateReviewed ? <p className="lead-summary">Reviewed — outreach readiness no longer waits on duplicates.</p> : <button className="button button-secondary button-small" onClick={() => onUpdate(lead.id, { duplicateReviewed: true })}>Mark reviewed — distinct records</button>}</div> : null}<div className="business-card"><span className="detail-label">Client profile</span><div><span>Rating</span><strong>{lead.rating} ★ · {lead.reviews} reviews</strong></div><div><span>Phone</span><strong>{lead.phone}</strong></div><div><span>Email</span><strong>{lead.email}</strong></div><div><span>Sales phase</span><strong>{lead.salesStage || 'Not in pipeline'}</strong></div></div><div className="ws-activity-teaser"><span className="detail-label">Follow-up</span><p>{lead.nextTask?.status === 'open' ? `${lead.nextTask.type} · ${lead.nextTask.dueAt || 'no date'}` : 'No open follow-up.'}{attempts.length ? ` · ${attempts.length} recorded attempt${attempts.length === 1 ? '' : 's'}` : ''}</p><button className="button button-quiet button-small" onClick={() => setTab('Activity')}>Open activity <ArrowRight size={11} /></button></div></aside></div>}
+          {tab === 'Evidence' && <>{siblings.length > 0 && <div className="candidate-banner"><span><strong>Possible duplicate.</strong><small> {siblings.length + 1} records share this business name.</small></span><div>{siblings.slice(0, 2).map((sibling) => <button key={sibling.id} type="button" className="button button-secondary button-small" onClick={() => setCompareId(sibling.id)}>Compare with {sibling.location || sibling.company}</button>)}{!lead.duplicateReviewed && <button type="button" className="button button-quiet button-small" onClick={() => onUpdate(lead.id, { duplicateReviewed: true })}>Mark distinct</button>}</div></div>}<LeadEvidence lead={lead} api={api} onLeadChanged={() => onLeadChanged?.(lead.id)} onToast={onToast} onDraft={() => (isQualifiedLead(lead) ? onOutreach() : onQualify(lead))} /></>}
           {tab === 'Research' && <div className="research-detail">
             <section className="ws-reco" aria-label="Recommendation"><div className="ws-reco-verdict"><span className="detail-label">Recommendation</span><strong className={cn('ws-guidance', guidance === 'Pursue' && 'is-pursue', guidance === 'Pass' && 'is-pass')}>{guidance || 'Not run'}</strong></div><p className="ws-reco-reason">{lead.museAnalysis?.qualificationRationale || lead.museAnalysis?.summary || lead.issueDetail || 'No recommendation recorded yet.'}</p><p className="ws-score-line">{lead.confidence != null ? `${lead.confidence}% confidence` : 'Confidence not recorded'}{lead.leadValue ? ` · commercial value ${lead.leadValue.leadValueScore}/100 (${lead.leadValue.band})` : ''}</p>{limitation && <p className="ws-limitation"><span className="e e11" aria-hidden="true">⚠️</span><span>{limitation}</span></p>}</section>
             <div className="research-detail-head">
@@ -2156,8 +2176,9 @@ function WorkspaceApp({ currentUser, onLogout }) {
   const csvInput = useRef(null)
   const hasActiveLeadJobs = leads.some((lead) => ['Queued', 'Running', 'Waiting'].includes(lead.researchJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.museJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.refreshJob?.status) || ['Queued', 'Running', 'Waiting'].includes(lead.manualRun?.status) || ['Queued', 'Analyzing'].includes(lead.researchStatus))
 
-  const navigate = (nextPage, { clientId = null, replace = false, search = '', drawer = false } = {}) => {
-    const nextRoute = { page: pagePaths[nextPage] ? nextPage : 'Clients', clientId, requestedPath: null, canonical: true, search: search || '' }
+  const navigate = (requestedPage, { clientId = null, replace = false, search = '', drawer = false } = {}) => {
+    const nextPage = PAGE_ALIASES[requestedPage] || requestedPage
+    const nextRoute = { page: pagePaths[nextPage] ? nextPage : 'Today', clientId, requestedPath: null, canonical: true, search: search || '' }
     const method = replace ? 'replaceState' : 'pushState'
     // drawer marks record opens so Close/Escape return to the entry screen
     // instead of dumping to the Clients list.
@@ -2175,7 +2196,7 @@ function WorkspaceApp({ currentUser, onLogout }) {
     else navigate('Research')
   }
   const openLead = (lead, { replace = false, queue = null } = {}) => {
-    const originPage = pagePaths[page] && page !== 'Settings' ? page : 'Clients'
+    const originPage = pagePaths[page] && page !== 'Settings' ? page : 'Leads'
     // Sibling comparison replaces the drawer entry so Close always exits in
     // one step; top-level opens push so browser Back returns to the list.
     window.history[replace ? 'replaceState' : 'pushState']({ scoutline: true, scoutlineDrawer: true }, '', routePath(originPage, lead.id))
@@ -2192,7 +2213,7 @@ function WorkspaceApp({ currentUser, onLogout }) {
     const current = readRoute()
     if (window.history.state?.scoutlineDrawer) window.history.back()
     else {
-      const nextPage = pagePaths[current.page] ? current.page : 'Clients'
+      const nextPage = pagePaths[current.page] ? current.page : 'Leads'
       window.history.replaceState({ scoutline: true }, '', routePath(nextPage))
       setRoute({ page: nextPage, clientId: null, requestedPath: null, canonical: true, search: '' })
       setSelectedLead(null)
@@ -2223,7 +2244,7 @@ function WorkspaceApp({ currentUser, onLogout }) {
   }, [reloadToken])
   useEffect(() => {
     if (!route.canonical) {
-      window.history.replaceState({ scoutline: true }, '', routePath('Clients'))
+      window.history.replaceState({ scoutline: true }, '', routePath('Today'))
       setRoute((current) => ({ ...current, canonical: true }))
     }
     const onPopState = () => {
@@ -2307,7 +2328,10 @@ function WorkspaceApp({ currentUser, onLogout }) {
   }, [activeRunId, hasActiveLeadJobs])
   useEffect(() => { if (!toast) return; const timeout = window.setTimeout(() => setToast(''), 3000); return () => window.clearTimeout(timeout) }, [toast])
 
-  const counts = useMemo(() => getSidebarCounts(leads), [leads])
+  const counts = useMemo(() => { const base = getSidebarCounts(leads); return { ...base, Leads: leads.length } }, [leads])
+  const pitchable = useMemo(() => leads.filter((lead) => lead.qualification && lead.qualification.play !== 'skip'), [leads])
+  const activeRun = activeRunId ? runs.find((run) => run.id === activeRunId) : null
+  const sidebarActivity = activeRun ? { title: activeRun.status === 'Paused' ? 'Run paused' : 'Run in progress', detail: `${activeRun.audited || 0} analyzed${activeRun.total ? ` of ${activeRun.total}` : ''}`, progress: activeRun.total ? Math.round(((activeRun.audited || 0) / activeRun.total) * 100) : null, page: 'Research' } : null
 
   const refreshLead = async (id) => {
     const fresh = await apiRequest(`/api/leads/${id}`)
@@ -2595,15 +2619,22 @@ function WorkspaceApp({ currentUser, onLogout }) {
 
   // Page titles and page actions live in the topbar, so no page burns a full
   // row on its own header. The Review workspace keeps its contextual nav.
-  const importExportActions = <><button className="button button-secondary button-small" onClick={() => csvInput.current?.click()}><span className="e" aria-hidden="true">📥</span>Import CSV</button><button className="button button-secondary button-small" onClick={exportCsv}><span className="e" aria-hidden="true">📤</span>Export</button></>
+  const importExportActions = <><button className="button button-secondary" onClick={() => csvInput.current?.click()}>Import CSV</button><button className="button button-secondary" onClick={exportCsv}>Export</button></>
   const readyCount = leads.filter((lead) => researchState(lead).museComplete && !isQualifiedLead(lead)).length
   const bareReviewQueue = page === 'Review' && !selectedLead
   let topTitle = page === 'NotFound' ? 'Not found' : bareReviewQueue ? 'Research' : page
   let topMeta = null
   let topActions = null
-  if (page === 'Overview' || page === 'Clients') {
-    topMeta = `${leads.length} clients`
-    topActions = importExportActions
+  if (page === 'Today') {
+    topMeta = `${settingsData.defaultLocation || 'All markets'} · ${pitchable.length} worth pitching, ${pitchable.filter((lead) => lead.qualification.contact?.email).length} with an email`
+    topActions = <button className="button button-primary" onClick={() => navigate('Crawl')}><Plus size={15} aria-hidden="true" />New crawl</button>
+  } else if (page === 'Leads' || page === 'Clients') {
+    topTitle = 'Leads'
+    topMeta = 'Everything the crawls found, and where each one stands'
+    topActions = <>{importExportActions}<button className="button button-secondary" onClick={() => setManualLeadOpen(true)}><Plus size={15} aria-hidden="true" />Add lead</button></>
+  } else if (page === 'Crawl') {
+    topMeta = 'Finds trade businesses, scans their sites, and sorts each into a play'
+    topActions = <button className="button button-secondary" onClick={() => navigate('Research')}>Research runs</button>
   } else if (page === 'Starred') {
     topMeta = `${leads.filter((lead) => lead.starred).length} starred`
     topActions = importExportActions
@@ -2611,7 +2642,7 @@ function WorkspaceApp({ currentUser, onLogout }) {
     topMeta = `${readyCount} ready to review`
     topActions = <button className="button button-primary button-small" onClick={() => setRunModalOpen(true)}><span className="e" aria-hidden="true">▶️</span>New research run</button>
   } else if (page === 'Outreach') {
-    topActions = <div className="outreach-guard"><span className="e e14" aria-hidden="true">🛡️</span><span><strong>Manual send only</strong><small>Review every draft before it leaves.</small></span></div>
+    topMeta = 'You send every email yourself. Drafts come from the evidence; Scoutline remembers who’s due'
   } else if (page === 'Pipeline') {
     topActions = <button className="button button-secondary button-small" onClick={() => navigate('Outreach')}><span className="e" aria-hidden="true">✉️</span>Open outreach queue</button>
   } else if (page === 'Contracts') {
@@ -2623,8 +2654,8 @@ function WorkspaceApp({ currentUser, onLogout }) {
   let content
   if (page === 'NotFound') content = <NotFoundPage requestedPath={route.requestedPath} onNavigate={navigate} onBack={() => window.history.length > 1 ? window.history.back() : navigate('Clients')} />
   else if (route.clientId && !selectedLead) content = <NotFoundPage clientId={route.clientId} onNavigate={navigate} onBack={() => window.history.length > 1 ? window.history.back() : navigate('Clients')} />
-  if (page === 'Overview') content = <OverviewPage leads={leads} runs={runs} onOpen={openLead} onImport={() => csvInput.current?.click()} onExport={exportCsv} goTo={navigate} onNewRun={() => setRunModalOpen(true)} />
-  else if (page === 'Clients') content = <ClientsPage leads={leads} runs={runs} onOpen={openLead} onImport={() => csvInput.current?.click()} onExport={exportCsv} goTo={navigate} onNewRun={() => setRunModalOpen(true)} onToggleStar={(lead) => updateLead(lead.id, { starred: !lead.starred })} initialFilter={new URLSearchParams(route.search || '').get('filter')} />
+  if (page === 'Today' || page === 'Overview') content = <TodayPage api={apiRequest} leads={leads} onOpen={openLead} goTo={navigate} onNewCrawl={() => navigate('Crawl')} reloadKey={leads} />
+  else if (page === 'Leads' || page === 'Clients') content = <LeadsPage view={new URLSearchParams(route.search || '').get('view') === 'pipeline' ? 'pipeline' : 'table'} onView={(view) => navigate('Leads', { search: view === 'pipeline' ? '?view=pipeline' : '', replace: true })} leads={leads} onUpdate={updateLead} onContract={setContractLead} goTo={navigate}><ClientsPage leads={leads} runs={runs} onOpen={openLead} onImport={() => csvInput.current?.click()} onExport={exportCsv} goTo={navigate} onNewRun={() => setRunModalOpen(true)} onToggleStar={(lead) => updateLead(lead.id, { starred: !lead.starred })} initialFilter={new URLSearchParams(route.search || '').get('filter')} /></LeadsPage>
   else if (page === 'Starred') content = <ClientsPage leads={leads} runs={runs} onOpen={openLead} onImport={() => csvInput.current?.click()} onExport={exportCsv} goTo={navigate} onNewRun={() => setRunModalOpen(true)} onToggleStar={(lead) => updateLead(lead.id, { starred: !lead.starred })} initialFilter="Starred" />
   else if (page === 'Research') content = <ResearchPage leads={leads} runs={runs} activeRunId={activeRunId} onOpen={openLead} onOutreach={() => navigate('Outreach')} onReview={openReview} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} onNewRun={() => setRunModalOpen(true)} onTogglePause={toggleRunPause} onCancel={cancelRun} />
   else if (page === 'Review') content = selectedLead ? <ReviewWorkspace lead={selectedLead} leads={leads} runs={runs} onBack={backToQueue} onSelect={(id) => navigate('Review', { clientId: id })} onOpenRecord={(lead) => navigate('Clients', { clientId: lead.id, drawer: true })} onUpdate={updateLead} onQualify={(lead) => setQualifyLead(lead)} onAnalyze={analyzeLead} onRetryJob={retryLeadJob} onCancelJob={cancelLeadJob} onExport={exportLead} onOutreach={() => navigate('Outreach')} /> : <ResearchPage leads={leads} runs={runs} activeRunId={activeRunId} onOpen={openLead} onOutreach={() => navigate('Outreach')} onReview={openReview} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} onNewRun={() => setRunModalOpen(true)} onTogglePause={toggleRunPause} onCancel={cancelRun} />
@@ -2634,8 +2665,10 @@ function WorkspaceApp({ currentUser, onLogout }) {
   else if (page === 'Contracts') content = <ContractsPage leads={leads} onOpen={openLead} onContract={setContractLead} goTo={navigate} />
   else if (page === 'Preview') content = <PreviewPage initialScreen={new URLSearchParams(route.search || '').get('screen') || 'home'} />
   else content = <SettingsPage apiStatus={apiStatus} settings={settingsData} onSave={saveSettings} />
+  const leadOpen = Boolean(selectedLead) && page !== 'Review'
+  if (leadOpen) content = <LeadDrawer asPage api={apiRequest} onLeadChanged={refreshLead} lead={selectedLead} runs={runs} leads={leads} queue={recordQueueRef.current} origin={page} siblings={drawerSiblings} onSelect={openLead} close={closeLead} onExport={exportLead} onUpdate={updateLead} onQualify={(lead) => setQualifyLead(lead)} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} onReview={reviewFinding} fetchBrief={fetchBrief} onBriefExport={exportBrief} onProspectBrief={exportProspectBrief} onAddContact={addContact} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} />
 
-  return <div className="app-shell"><Sidebar page={page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} currentUser={currentUser} onLogout={onLogout} /><main className="main-shell"><Topbar title={topTitle} meta={topMeta} actions={topActions} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} onAdd={() => setCreateMenuOpen(true)} /><SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className={cn('page-content', page === 'Clients' && 'page-clients', page === 'Research' && 'page-research')}>{content}</div></main>{page === 'Review' ? null : <LeadDrawer lead={selectedLead} runs={runs} leads={leads} queue={recordQueueRef.current} origin={page} siblings={drawerSiblings} onSelect={openLead} close={closeLead} onExport={exportLead} onUpdate={updateLead} onQualify={(lead) => setQualifyLead(lead)} onAnalyze={analyzeLead} onMuseAnalyze={analyzeWithMuse} onRunAction={runClientAction} onReview={reviewFinding} fetchBrief={fetchBrief} onBriefExport={exportBrief} onProspectBrief={exportProspectBrief} onAddContact={addContact} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} brightDataReady={apiStatus?.brightDataAdapterReady} onToast={setToast} onContract={setContractLead} onInsight={setInsightLead} onFailure={setFailureLead} onOutreach={() => navigate('Outreach')} />}{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{qualifyLead && <QualifyDialog lead={qualifyLead} close={() => setQualifyLead(null)} onConfirm={async () => { const updated = await updateLead(qualifyLead.id, { qualified: true, salesStage: 'Qualified' }); if (updated) setQualifyLead(null) }} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
+  return <div className="app-shell"><Sidebar page={PAGE_ALIASES[page] || page} setPage={navigate} open={sidebarOpen} close={() => setSidebarOpen(false)} counts={counts} currentUser={currentUser} onLogout={onLogout} activity={sidebarActivity} /><main className="main-shell">{leadOpen ? <div className="lead-topbar"><IconButton label="Open navigation" className="mobile-menu" onClick={() => setSidebarOpen(true)}><Menu size={17} /></IconButton></div> : <Topbar title={topTitle} meta={topMeta} actions={topActions} onMenu={() => setSidebarOpen(true)} onSearch={() => setCommandOpen(true)} theme={theme} toggleTheme={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} />}<SystemNotice offline={offline} error={syncError} onRetry={() => { setSyncError(''); setReloadToken((value) => value + 1) }} onDismiss={() => setSyncError('')} /><div className={cn('page-content', (page === 'Clients' || page === 'Leads') && !leadOpen && 'page-clients', page === 'Research' && 'page-research', leadOpen && 'page-lead')}>{content}</div></main>{contractLead && <ContractModal lead={contractLead} close={() => setContractLead(null)} onSave={updateLead} />}{insightLead && <InsightModal lead={insightLead} close={() => setInsightLead(null)} onSave={updateLead} />}{failureLead && <FailureModal lead={failureLead} close={() => setFailureLead(null)} onSave={updateLead} />}{runModalOpen && <NewRunModal close={() => setRunModalOpen(false)} onStart={startRun} connected={apiStatus?.brightDataAdapterReady} maxRecords={apiStatus?.brightDataMaxRecords || 25} defaults={settingsData} />}{createMenuOpen && <NewMenu close={() => setCreateMenuOpen(false)} onRun={() => setRunModalOpen(true)} onImport={openImport} onManual={() => setManualLeadOpen(true)} />}{manualLeadOpen && <ManualLeadModal close={() => setManualLeadOpen(false)} onSave={createManualLead} />}{qualifyLead && <QualifyDialog lead={qualifyLead} close={() => setQualifyLead(null)} onConfirm={async () => { const updated = await updateLead(qualifyLead.id, { qualified: true, salesStage: 'Qualified' }); if (updated) setQualifyLead(null) }} />}{commandOpen && <CommandMenu leads={leads} close={() => setCommandOpen(false)} onOpen={openLead} goTo={navigate} onNewRun={() => { setCommandOpen(false); setRunModalOpen(true) }} />}<input ref={csvInput} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCsv} /><Toast toast={toast} /></div>
 }
 
 export default function App() {

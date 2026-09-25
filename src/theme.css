@@ -19,12 +19,12 @@
    - Layering: --z-* only. Breakpoints: 1180 / 1050 / 767.
    ========================================================================== */
 :root {
-  font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-feature-settings: "cv01", "ss03";
+  font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: normal;
   font-synthesis: none;
   color-scheme: light;
   /* ---- Font stacks ---- */
-  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ---- Type scale: 28-32px page titles, 18-22px sections, 13-14px working
@@ -41,9 +41,9 @@
   --fs-section: 16px;
   --fs-brand: 20px;
   --fs-body: 14px;
-  --fs-ui: 12px;
-  --fs-secondary: 11px;
-  --fs-meta: 10px;
+  --fs-ui: 13px;
+  --fs-secondary: 12px;
+  --fs-meta: 11px;
   --fs-mark: 8px;
   --fs-stat: 22px;
 
@@ -107,23 +107,23 @@
      Cool blue-gray system (see reference screenshot): BLUE owns human
      action + selection; status hues code stages/categories; ORANGE is LIVE
      activity only; violet carries machine/advisory (AI). */
-  --ink-950: #1f2a38;
-  --ink-700: #424e5e;
-  --ink-500: #626d7a;
-  --ink-400: #6b7480;
-  --navy-900: #3e6fc2;
-  --navy-700: #315ea9;
-  --lav-100: #dbe5f9;
-  --lav-50: #e8edf3;
-  --lav-700: #315ea9;
-  --cream-50: #e2e9f0;
-  --paper: #fbfeff;
+  --ink-950: #0e1116;
+  --ink-700: #2a303a;
+  --ink-500: #5b6472;
+  --ink-400: #6b7583;
+  --navy-900: #3b5bfd;
+  --navy-700: #2a45d8;
+  --lav-100: #eef1ff;
+  --lav-50: #f2f4f7;
+  --lav-700: #2a45d8;
+  --cream-50: #f7f8fa;
+  --paper: #ffffff;
   --white: #ffffff;
-  --ink-line: 31, 42, 56;
+  --ink-line: 14, 17, 22;
   --brand-orange: #d76034;
   --brand-orange-hover: #b74e24;
   --ok-green: #337250;
-  --info-blue: #3e6fc2;
+  --info-blue: #3b5bfd;
   --violet: #5b54b5;
   --hue-cyan: #246e7e;
   --hue-amber: #b88513;
@@ -141,7 +141,7 @@
      jobs, active runs, score highlights). Stage dots use status tones.
      Neutral surfaces/icons whenever nothing is being signaled. ---- */
   --bg: var(--cream-50);
-  --sidebar: #f0f4f9;
+  --sidebar: #ffffff;
   --surface: var(--paper);
   --surface-raised: #ffffff;
   --surface-muted: var(--lav-50);
@@ -150,7 +150,7 @@
   --text-soft: var(--ink-700);
   --muted: var(--ink-500);
   --subtle: var(--ink-400);
-  --border: rgba(var(--ink-line), 0.14);
+  --border: rgba(var(--ink-line), 0.11);
   --border-soft: rgba(var(--ink-line), 0.08);
   --border-strong: rgba(var(--ink-line), 0.24);
   --primary: var(--navy-900);
@@ -188,27 +188,37 @@
 
   /* ---- Breakpoints (documented; media queries stay literal) ----
      1180px sidebar-adjacent grids · 1050px two-col stacks · 767px mobile */
-  --sidebar-width: 238px;
+  --sidebar-width: 224px;
+
+  /* ---- Plays (qualification) ---- */
+  --play-redesign-bg: #fdecec;
+  --play-redesign: #c62a2f;
+  --play-audit-bg: #fff4e0;
+  --play-audit: #a86200;
+  --play-skip-bg: #eef0f3;
+  --play-skip: #5b6472;
+  --score-bar: #0e1116;
+  --weak-bar: #e5484d;
 }
 
 html[data-theme="dark"] {
   color-scheme: dark;
   --ink-line: 214, 226, 240;
-  --bg: #10171f;
-  --sidebar: #171f28;
-  --surface: #1b222c;
-  --surface-raised: #212a35;
-  --surface-muted: #252f3b;
+  --bg: #0e1116;
+  --sidebar: #12161c;
+  --surface: #161a21;
+  --surface-raised: #1c212a;
+  --surface-muted: #20262f;
   --surface-hover: rgba(220, 232, 245, 0.06);
-  --text: #dee5ef;
-  --text-soft: #c2ccd8;
-  --muted: #9aa6b4;
-  --subtle: #838d9a;
+  --text: #e8ebf0;
+  --text-soft: #c5ccd6;
+  --muted: #9aa3b1;
+  --subtle: #858e9c;
   --border: rgba(214, 226, 240, 0.13);
   --border-soft: rgba(214, 226, 240, 0.07);
   --border-strong: rgba(214, 226, 240, 0.22);
-  --primary: #446fc0;
-  --primary-hover: #3f68b5;
+  --primary: #5b78ff;
+  --primary-hover: #7a92ff;
   --green: #78bc95;
   --blue: #88aed9;
   --purple: #ab9ddb;
@@ -219,8 +229,8 @@ html[data-theme="dark"] {
   --indigo: #9f9ed2;
   --slate: #a9a497;
   --brown: #bea287;
-  --lav: #243251;
-  --lav-ink: #9db6e8;
+  --lav: #1e2748;
+  --lav-ink: #aab8ff;
   --orange: #df7752;
   --orange-hover: #e8855f;
   --orange-soft: rgba(223, 119, 82, 0.16);
@@ -244,4 +254,12 @@ html[data-theme="dark"] {
   --tint-amber: #4a3620;
   --orange-ink: #e89a7a;
   --amber-ink: #d3aa64;
+  --play-redesign-bg: rgba(229, 72, 77, 0.16);
+  --play-redesign: #ff8a8e;
+  --play-audit-bg: rgba(245, 165, 36, 0.15);
+  --play-audit: #f5b95a;
+  --play-skip-bg: rgba(154, 163, 177, 0.14);
+  --play-skip: #aab2bf;
+  --score-bar: #e8ebf0;
+  --weak-bar: #ff6b70;
 }
