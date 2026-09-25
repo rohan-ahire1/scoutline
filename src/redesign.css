@@ -352,3 +352,13 @@ aside .task-editor { grid-template-columns: 1fr; }
 .table-search, .crawl-filters .table-search { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; }
 .table-search input { flex: 1; min-width: 0; }
 .crawl-filters { align-items: flex-end; }
+
+/* Sidebar profile: long names and emails truncate instead of widening the rail. */
+.sidebar { overflow: hidden; }
+.sidebar-bottom, .sidebar-bottom > * { min-width: 0; max-width: 100%; }
+.profile-row { padding: 10px 4px 0 6px; gap: 10px; }
+.profile-row > span:nth-child(2) { min-width: 0; overflow: hidden; }
+.profile-row strong, .profile-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-row small { font-size: 12px; }
+.profile-row .icon-button { flex: none; }
+.profile-row .avatar { flex: none; }
