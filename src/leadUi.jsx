@@ -111,7 +111,7 @@ export function LeadEvidence({ lead, api, onLeadChanged, onToast, onDraft }) {
           <small className="panel-meta">{CONFIDENCE[q.confidence] || 'Confidence unknown'} · based on {BASIS[weakness.basis] || weakness.basis || 'the scan'}</small>
           <div className="panel-actions">
             {q.needsVisualReview && lead.website && !visual?.verdict && <button type="button" className="button button-secondary button-small" onClick={reviewVisually} disabled={busy === 'visual'}>{busy === 'visual' ? <LoaderCircle className="spin" size={14} /> : <ScanEye size={14} />}Visual review</button>}
-            <button type="button" className="button button-quiet button-small" onClick={requalify} disabled={busy === 'qualify'}>{busy === 'qualify' ? <LoaderCircle className="spin" size={14} /> : <RefreshCw size={14} />}Re-check</button>
+            <button type="button" className="button button-secondary button-small" onClick={requalify} disabled={busy === 'qualify'}>{busy === 'qualify' ? <LoaderCircle className="spin" size={14} /> : <RefreshCw size={14} />}Re-check</button>
           </div>
         </section>
 
