@@ -325,3 +325,30 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); widt
 select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235b6472' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 10px center !important; padding-right: 32px !important; }
 .table-search { gap: 8px; }
 aside .task-editor { grid-template-columns: 1fr; }
+
+/* ---- Remaining legacy surfaces --------------------------------------------- */
+/* Status badges: tinted tags like the play tags, no outlined pills. */
+.badge { min-height: 22px; padding: 2px 8px; border: 0; border-radius: var(--r-md); font-size: 12px; font-weight: 600; }
+.badge-gray { background: var(--surface-muted); color: var(--text-soft); }
+.badge-green { background: color-mix(in srgb, var(--green) 12%, transparent); }
+.badge-blue, .badge-purple, .badge-indigo { background: var(--lav); color: var(--lav-ink); }
+.badge-orange, .badge-amber { background: var(--play-audit-bg); color: var(--play-audit); }
+.badge-red { background: var(--play-redesign-bg); color: var(--play-redesign); }
+.dup-flag { padding: 2px 7px; border: 0; border-radius: var(--r-md); background: var(--surface-muted); color: var(--muted); font-size: 11.5px; font-weight: 600; }
+
+/* Research page rows match the Leads table. */
+.research-table-row { min-height: 64px; }
+.research-client .avatar, .client-name .avatar { display: none; }
+.research-result small { font-size: 11.5px; color: var(--muted); }
+.research-result em { border-radius: var(--r-md); font-family: var(--font-mono); font-weight: 500; }
+
+/* Crawl charts and meters use the product palette. */
+.crawl-bar-completed { fill: var(--primary); opacity: .85; }
+.crawl-bar-failed { fill: var(--weak-bar); opacity: .9; }
+.crawl-swatch-completed { background: var(--primary); }
+.crawl-swatch-failed { background: var(--weak-bar); }
+.crawl-run-track i { background: var(--primary); }
+.crawl-good { color: var(--text) !important; }
+.table-search, .crawl-filters .table-search { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; }
+.table-search input { flex: 1; min-width: 0; }
+.crawl-filters { align-items: flex-end; }
