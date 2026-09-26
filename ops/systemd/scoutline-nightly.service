@@ -1,0 +1,26 @@
+[Unit]
+Description=Scoutline nightly market discovery (Salt Lake City trades)
+After=network-online.target scoutline.service
+Wants=network-online.target scoutline.service
+
+[Service]
+Type=oneshot
+User=rohan
+Group=rohan
+WorkingDirectory=/home/rohan/projects/scoutline
+Environment=PATH=/home/rohan/.hermes/node/bin:/home/rohan/.hermes/bin:/usr/local/bin:/usr/bin:/bin
+Environment=NIGHTLY_MARKET=slc
+Environment=NIGHTLY_AREAS=2
+Environment=NIGHTLY_CATEGORIES=3
+Environment=NIGHTLY_LIMIT=25
+EnvironmentFile=/home/rohan/.hermes/scoutline.env
+ExecStart=/home/rohan/.hermes/bin/bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- /home/rohan/.hermes/node/bin/node /home/rohan/projects/scoutline/ops-nightly/scoutline-nightly.mjs
+TimeoutStartSec=3h
+MemoryMax=512M
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
