@@ -65,11 +65,56 @@ export function canRetryJob(job) {
 
 // Pure watchdog selection over parsed job rows: Running jobs whose recorded
 // start is older than the deadline. Never touches history rows.
+// timeoutMs is a number, or a function of the job for per-type budgets.
 export function findTimedOutJobs(jobs, nowMs, timeoutMs) {
   return (jobs || []).filter((job) => {
     if (!job || job.status !== 'Running') return false
     const started = Date.parse(job.payload?.startedAt || job.startedAt || '')
     if (!Number.isFinite(started)) return false
-    return nowMs - started > timeoutMs
+    return nowMs - started > (typeof timeoutMs === 'function' ? timeoutMs(job) : timeoutMs)
   })
+}
+
+// ── Queue policy shared by the web API and the worker process ───────────────
+
+// Retry backoff: 30s, 2m, 8m, 30m (capped), with ±20% jitter so a batch of
+// failures against one flaky host does not retry in lockstep.
+export function retryDelayMs(attempt, random = Math.random) {
+  const base = Math.min(30 * 60_000, 30_000 * 4 ** Math.max(0, Number(attempt || 1) - 1))
+  return Math.round(base * (0.8 + random() * 0.4))
+}
+
+// Per-type budgets for one Running attempt. Discovery and refresh only poll
+// once per attempt; qualify is a bounded 5-page crawl; visual drives a
+// browser; a local scrape can wait on Bright Data and crawl a batch.
+const JOB_TIMEOUTS_MS = {
+  discover: 3 * 60_000,
+  refresh: 3 * 60_000,
+  qualify: 5 * 60_000,
+  visual: 6 * 60_000,
+  synthesize: 5 * 60_000,
+  audit: 10 * 60_000,
+  'local-scrape': 45 * 60_000,
+}
+
+export function jobTimeoutMs(type, settings = {}) {
+  const configured = Number(settings.jobTimeoutMs) || 600000
+  const byType = JOB_TIMEOUTS_MS[type]
+  // The configured value stays the ceiling for the classic job types; a
+  // local scrape has its own, larger budget.
+  if (type === 'local-scrape') return byType
+  return byType ? Math.min(byType, configured) : configured
+}
+
+// Job types whose timed-out attempt is safe to run again automatically:
+// they only read the public web and overwrite their own result.
+export const RETRY_ON_TIMEOUT = new Set(['qualify', 'visual'])
+
+// Idempotency: at most one active job per key. Lead-scoped scans and a run's
+// discovery get a default key, so double clicks, retries and nightly re-runs
+// can never queue the same work twice.
+export function defaultIdempotencyKey({ type, leadId = null, runId = null }) {
+  if (['qualify', 'visual'].includes(type) && leadId) return `${type}:${leadId}`
+  if (type === 'discover' && runId) return `discover:${runId}`
+  return null
 }

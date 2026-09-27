@@ -1,2 +1,0 @@
-# One URL/domain per line
-https://example.com/
