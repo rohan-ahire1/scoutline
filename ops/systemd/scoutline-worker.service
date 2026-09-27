@@ -15,7 +15,6 @@ Environment=SCOUTLINE_ROLE=worker
 Environment=SCOUTLINE_RELEASE_LINK=/home/rohan/projects/scoutline/current
 Environment=PATH=/home/rohan/.hermes/node/bin:/home/rohan/.hermes/bin:/home/rohan/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
 EnvironmentFile=/home/rohan/.hermes/scoutline.env
-EnvironmentFile=-/home/rohan/.config/scoutline/service.env
 ExecStart=/home/rohan/.hermes/bin/bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- /home/rohan/.hermes/node/bin/node /home/rohan/projects/scoutline/current/server/index.js
 Restart=always
 RestartSec=5

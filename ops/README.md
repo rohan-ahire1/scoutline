@@ -40,19 +40,21 @@ npm run scout -- nightly --dry-run   # show tonight's slice
 On the VPS:
 
 ```bash
-set -a; . ~/.config/scoutline/service.env; set +a
-node ~/projects/scoutline/current/server/cli.js health
+cd ~/projects/scoutline/current
+set -a; . ~/.hermes/scoutline.env; set +a   # read-only bws token
+export PATH=$HOME/.hermes/node/bin:$HOME/.hermes/bin:$PATH
+bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- node server/cli.js health
 ```
 
 `health` exits 3 when jobs are waiting and no worker heartbeat is fresh.
 
 ## Secrets
-- `BRIGHT_DATA_API_KEY`, `MODEL_API_KEY`, Google login: Bitwarden project
-  `f132f7b5-b6cd-49ab-979a-b4c6007f22a6`, injected by `bws run`.
-- `SCOUTLINE_SERVICE_TOKEN`: `~/.config/scoutline/service.env` (0600),
-  generated on the server; used as `Authorization: Bearer` by the CLI.
-- Alerts: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (bws project or
-  service.env). Without them alerts are only logged. Alerts: nightly failed,
+All secrets live in Bitwarden project `f132f7b5-b6cd-49ab-979a-b4c6007f22a6`
+and are injected by `bws run`; no plaintext env file holds them.
+- `BRIGHT_DATA_API_KEY`, `MODEL_API_KEY`, Google login.
+- `SCOUTLINE_SERVICE_TOKEN`: used as `Authorization: Bearer` by the CLI.
+- Alerts: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`. Without them alerts are
+  only logged. Alerts: nightly failed,
   nightly found 0 new leads, a job that ran out of attempts (max one per 10
   minutes; the rest are folded into the next alert).
 
