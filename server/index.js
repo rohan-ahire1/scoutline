@@ -1,11 +1,11 @@
 import express from 'express'
 import Database from 'better-sqlite3'
 import 'dotenv/config'
-import { mkdirSync, existsSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync, readdirSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { AUTH_SESSION_TTL_SECONDS, AuthError, clearedSessionCookie, createAuthService, sessionCookie } from './auth.js'
+import { AUTH_SESSION_TTL_SECONDS, AuthError, clearedSessionCookie, createAuthService, serviceTokenUser, sessionCookie } from './auth.js'
 import { auditWebsite, mergeContactCandidates } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
@@ -16,7 +16,9 @@ import { ATTEMPT_OUTCOMES, CONTACT_OUTCOMES, NEXT_TASK_TYPES, TASK_OWNERS, TASK_
 import { buildQueue, computeReadiness, explainReadiness } from './services/readiness.js'
 import { scoreLeadValue } from './services/leadValue.js'
 import { formatProvenanceScore, resolveMetricProvenance, resolveNestedProvenance } from './services/measure.js'
-import { canRetryJob, classifyJobError, findTimedOutJobs, isActiveJobStatus, isTerminalJobStatus } from './services/jobControl.js'
+import { canRetryJob, classifyJobError, defaultIdempotencyKey, findTimedOutJobs, isActiveJobStatus, isTerminalJobStatus, jobTimeoutMs, retryDelayMs, RETRY_ON_TIMEOUT } from './services/jobControl.js'
+import { ensureQueueSchema, insertJobOnce, queueHealth, readState, writeState } from './services/jobStore.js'
+import { createNotifier } from './services/notify.js'
 import { acceptOutreachCandidate, buildRefreshPatch, dismissOutreachCandidates, getRev, resolveOutreachCompletion, resolveSynthesisCompletion, updateLeadFields } from './services/revisions.js'
 import { auditIdForJob, buildLeadReport, listAuditManifests, loadAuditForSynthesis, readManifest, renderLeadReportMarkdown, saveAuditArtifacts } from './services/artifacts.js'
 import { applyJsonRestore, BACKUP_RESTORE_COLUMNS, BACKUP_TABLES, buildJsonBackup, collectJsonBackupFiles, createBackup, listBackups, planJsonRestore, pruneBackups, storageWritable, validateJsonBackup, verifyBackup } from './services/backup.js'
@@ -32,6 +34,15 @@ const rootDir = join(serverDir, '..')
 const dataDir = process.env.SCOUTLINE_DATA_DIR ? resolve(process.env.SCOUTLINE_DATA_DIR) : join(rootDir, 'data')
 mkdirSync(dataDir, { recursive: true })
 const backupsDir = join(dataDir, 'backups')
+
+// Process roles. "web" serves the UI/API and only enqueues work; "worker"
+// claims and runs jobs (crawls, screenshots, provider polling) with no HTTP
+// listener, so deploying or restarting the web app never kills a crawl.
+// "all" (the default) does both, for local development.
+const ROLE = ['web', 'worker', 'all'].includes(process.env.SCOUTLINE_ROLE) ? process.env.SCOUTLINE_ROLE : 'all'
+const runsJobs = ROLE !== 'web'
+const servesHttp = ROLE !== 'worker'
+const notifier = createNotifier()
 
 // Active background work blocks a live restore (it would wipe the jobs table
 // out from under the worker). Shared by both restore endpoints.
@@ -59,6 +70,9 @@ function readBackupTables(database) {
 const db = new Database(join(dataDir, 'scoutline.db'))
 db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
+// The web and worker processes share this database; wait for the other
+// process's write lock instead of failing with SQLITE_BUSY.
+db.pragma('busy_timeout = 5000')
 const auth = createAuthService(db)
 db.exec(`
   CREATE TABLE IF NOT EXISTS leads (
@@ -112,11 +126,17 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS events_entity_index ON events(entity_type, entity_id, created_at);
 `)
-for (const row of db.prepare("SELECT * FROM jobs WHERE status = 'Running'").all()) {
-  const running = parseJob(row)
-  const { startedAt: _dropped, cancelRequested: _cancel, ...payload } = running.payload || {}
-  db.prepare('UPDATE jobs SET status = ?, error = NULL, payload = ?, updated_at = ? WHERE id = ?')
-    .run('Queued', JSON.stringify(payload), new Date().toISOString(), running.id)
+ensureQueueSchema(db)
+// Jobs left Running by a stopped worker go back to the queue. Only the
+// process that runs jobs may do this: a web restart must not steal the job
+// the worker is running right now.
+if (runsJobs) {
+  for (const row of db.prepare("SELECT * FROM jobs WHERE status = 'Running'").all()) {
+    const running = parseJob(row)
+    const { startedAt: _dropped, cancelRequested: _cancel, ...payload } = running.payload || {}
+    db.prepare('UPDATE jobs SET status = ?, error = NULL, payload = ?, updated_at = ? WHERE id = ?')
+      .run('Queued', JSON.stringify(payload), new Date().toISOString(), running.id)
+  }
 }
 
 const defaultSettings = {
@@ -188,6 +208,11 @@ app.post('/api/auth/logout', (req, res) => {
 })
 
 app.use('/api', (req, res, next) => {
+  const service = serviceTokenUser(req.headers.authorization)
+  if (service) {
+    req.user = service
+    return next()
+  }
   if (!auth.configured) return noStore(res).status(503).json({ error: 'Google login is not configured on this server', code: 'AUTH_NOT_CONFIGURED' })
   const user = auth.session(req.headers.cookie)
   if (!user) {
@@ -551,12 +576,13 @@ function parseJob(row) {
 
 function readJob(id) { return parseJob(db.prepare('SELECT * FROM jobs WHERE id = ?').get(id)) }
 
-function queueJob({ type, runId = null, leadId = null, payload = {}, maxAttempts = 1, triggeredBy = 'system' }) {
-  const id = `job-${randomUUID()}`
+// Idempotent: when an active job already holds the key (by default one per
+// lead for qualify/visual, one per run for discovery) that job is returned
+// instead of queueing the same work twice.
+function queueJob({ type, runId = null, leadId = null, payload = {}, maxAttempts = 1, triggeredBy = 'system', idempotencyKey = defaultIdempotencyKey({ type, leadId, runId }) }) {
   const createdAt = nowIso()
-  db.prepare("INSERT INTO jobs (id, run_id, lead_id, type, status, progress, attempts, max_attempts, payload, created_at, updated_at, triggered_by) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)")
-    .run(id, runId, leadId, type, 'Queued', maxAttempts, JSON.stringify(payload), createdAt, createdAt, triggeredBy)
-  recordEvent('job', id, 'queued', { type, runId, leadId, triggeredBy })
+  const { id, created } = insertJobOnce(db, { id: `job-${randomUUID()}`, runId, leadId, type, maxAttempts, payload: JSON.stringify(payload), createdAt, triggeredBy, idempotencyKey })
+  if (created) recordEvent('job', id, 'queued', { type, runId, leadId, triggeredBy })
   return readJob(id)
 }
 
@@ -1366,7 +1392,33 @@ async function runVisualJob(job) {
   recordEvent('lead', lead.id, 'visual_reviewed', { jobId: job.id, status: visualReview.status, verdict: visualReview.verdict || null, score: visualReview.score })
 }
 
+// Where a job's events are filed: its lead, else its run, else the job.
+function jobEventEntity(job) {
+  if (job.leadId) return ['lead', job.leadId]
+  if (job.runId) return ['run', job.runId]
+  return ['job', job.id]
+}
+
+// A Crawl-tab scrape (Bright Data search or pasted URLs) written to a run
+// file. It is never replayed: a scrape interrupted by a restart could
+// already have placed a paid Bright Data request, so it is marked failed and
+// the user starts it again explicitly.
+async function runLocalScrapeJob(job) {
+  const runPath = localRunPath(job.payload.localRunId)
+  const run = readLocalRunFile(runPath)
+  if (run.status !== 'queued') {
+    writeLocalRunFile(runPath, { ...run, status: 'failed', error: 'Interrupted by a restart before it finished; start the scrape again', finishedAt: nowIso() })
+    throw Object.assign(new Error('Local scrape was interrupted by a restart'), { code: 'VALIDATION' })
+  }
+  await runLocalScrape({ runPath, settings: readSettings() })
+  if (!claimJobCompletion(job.id)) return
+  const finished = readLocalRunFile(runPath)
+  updateJob(job.id, { status: finished.status === 'failed' ? 'Error' : 'Completed', progress: 100, result: { status: finished.status, counts: finished.counts || null }, error: finished.status === 'failed' ? finished.error : null })
+}
+
 let workerBusy = false
+let currentJobId = null
+let stopping = false
 // Maps a terminal job outcome onto the lead so every interruption shows an
 // honest state with a clear next action, and the pipeline never advances on
 // one: interrupted audits leave opportunityScore untouched, so done[1] stays
@@ -1407,29 +1459,101 @@ function applyJobOutcomeToLead(job, outcome, cause = null) {
   return lead
 }
 
-// Watchdog: Running jobs past their deadline become Timed out with honest
-// lead state and a single terminal event. In-flight work that finishes late
-// is ignored by the completion claim, so it cannot resurrect the job.
+// Watchdog: Running jobs past their per-type deadline become Timed out with
+// honest lead state and a single terminal event, or go back to the queue
+// with backoff when the work is safe to repeat (qualify, visual). In-flight
+// work that finishes late is ignored by the completion claim.
 function runJobWatchdog() {
   const settings = readSettings()
-  const timeoutMs = Number(settings.jobTimeoutMs) || 600000
   const running = db.prepare("SELECT * FROM jobs WHERE status = 'Running'").all().map(parseJob)
-  for (const job of findTimedOutJobs(running, Date.now(), timeoutMs)) {
+  for (const job of findTimedOutJobs(running, Date.now(), (candidate) => jobTimeoutMs(candidate.type, settings))) {
+    jobSignals.get(job.id)?.abort()
+    const timeoutMs = jobTimeoutMs(job.type, settings)
+    if (RETRY_ON_TIMEOUT.has(job.type) && job.attempts < job.maxAttempts) {
+      const { startedAt: _started, ...payload } = job.payload || {}
+      updateJob(job.id, { status: 'Queued', error: 'Attempt timed out; retrying', nextAttemptAt: new Date(Date.now() + retryDelayMs(job.attempts)).toISOString(), payload })
+      recordEvent(...jobEventEntity(job), `${job.type}_attempt_timed_out`, { jobId: job.id, timeoutMs, attempt: job.attempts })
+      continue
+    }
     const outcome = classifyJobError({ code: 'TIMEOUT', message: 'Job exceeded its time budget' })
     updateJob(job.id, {
       status: outcome.status, progress: 100, error: outcome.detail, nextAttemptAt: null,
       payload: { ...job.payload, jobOutcome: { code: outcome.code, retryable: outcome.retryable } },
     })
     applyJobOutcomeToLead(job, outcome)
-    recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_timed_out`, { jobId: job.id, timeoutMs })
+    recordEvent(...jobEventEntity(job), `${job.type}_timed_out`, { jobId: job.id, timeoutMs })
+    notifier.jobFailed(job, `timed out after ${Math.round(timeoutMs / 60000)} min`)
     if (job.runId) syncRun(job.runId)
   }
 }
 
+// Cancel requests are written to the job row by whichever process served
+// the request; the worker turns them into an abort for in-flight fetches.
+function propagateCancelRequests() {
+  for (const [id, controller] of jobSignals) {
+    if (!controller.signal.aborted && readJob(id)?.payload?.cancelRequested) controller.abort()
+  }
+}
+
+// A job the watchdog already gave up on but whose code never returned (a
+// hung browser or socket) would hold the single worker slot forever. After a
+// grace period the worker process exits and systemd starts a clean one; in
+// local "all" mode the slot is released instead.
+const HUNG_JOB_GRACE_MS = 90_000
+let hungSince = null
+function releaseHungJob() {
+  if (!workerBusy || !currentJobId) { hungSince = null; return }
+  const job = readJob(currentJobId)
+  if (job && job.status === 'Running') { hungSince = null; return }
+  hungSince = hungSince || Date.now()
+  if (Date.now() - hungSince < HUNG_JOB_GRACE_MS) return
+  console.error(`worker: job ${currentJobId} is still executing ${HUNG_JOB_GRACE_MS / 1000}s after it was stopped`)
+  if (ROLE === 'worker') process.exit(75)
+  workerBusy = false
+  currentJobId = null
+  hungSince = null
+}
+
+let lastHeartbeat = 0
+function heartbeat() {
+  if (Date.now() - lastHeartbeat < 10_000) return
+  lastHeartbeat = Date.now()
+  writeState(db, 'worker', { pid: process.pid, role: ROLE, at: nowIso(), busy: workerBusy, currentJobId, release: rootDir, stopping })
+}
+
+// Deploys switch the `current` symlink; the worker notices and restarts
+// itself (systemd Restart=always) between jobs, so it always runs the
+// deployed code without the deploy having to interrupt a crawl.
+const releaseLink = process.env.SCOUTLINE_RELEASE_LINK || null
+function releaseChanged() {
+  if (!releaseLink) return false
+  try {
+    return realpathSync(releaseLink) !== realpathSync(rootDir)
+  } catch {
+    return false
+  }
+}
+
+function workerTick() {
+  try {
+    runJobWatchdog()
+    runRunWatchdog()
+    propagateCancelRequests()
+    releaseHungJob()
+    heartbeat()
+    if (!workerBusy && (stopping || releaseChanged())) {
+      console.log(stopping ? 'worker: stopped' : 'worker: new release deployed; restarting')
+      writeState(db, 'worker', { pid: process.pid, role: ROLE, at: nowIso(), busy: false, currentJobId: null, release: rootDir, stopping: true })
+      db.close()
+      process.exit(0)
+    }
+  } catch (error) {
+    console.error('worker tick failed', error)
+  }
+}
+
 async function processNextJob() {
-  if (workerBusy) return
-  runJobWatchdog()
-  runRunWatchdog()
+  if (workerBusy || stopping || releaseChanged()) return
   // Run eligibility is enforced inside the query (before LIMIT), so jobs
   // parked behind paused or cancelled runs can never hide runnable work.
   const row = db.prepare(`SELECT * FROM jobs
@@ -1440,6 +1564,7 @@ async function processNextJob() {
   if (!row) return
   workerBusy = true
   const job = parseJob(row)
+  currentJobId = job.id
   const attempt = job.attempts + (job.status === 'Queued' ? 1 : 0)
   const { cancelRequested: _staleCancel, startedAt: _staleStart, jobOutcome: _staleOutcome, ...payload } = job.payload || {}
   updateJob(job.id, { status: 'Running', attempts: attempt, error: null, nextAttemptAt: null, payload: { ...payload, startedAt: nowIso() } })
@@ -1451,6 +1576,7 @@ async function processNextJob() {
     else if (job.type === 'refresh') await runRefreshJob({ ...job, attempts: attempt })
     else if (job.type === 'qualify') await runQualifyJob({ ...job, attempts: attempt })
     else if (job.type === 'visual') await runVisualJob({ ...job, attempts: attempt })
+    else if (job.type === 'local-scrape') await runLocalScrapeJob({ ...job, attempts: attempt })
     else throw new Error(`Unsupported job type: ${job.type}`)
   } catch (error) {
     const current = readJob(job.id)
@@ -1474,7 +1600,7 @@ async function processNextJob() {
         status: retry ? 'Queued' : outcome.status,
         progress: retry ? Math.max(5, current.progress) : 100,
         error: retry ? error.message : outcome.detail,
-        nextAttemptAt: retry ? new Date(Date.now() + 2_000).toISOString() : null,
+        nextAttemptAt: retry ? new Date(Date.now() + retryDelayMs(current.attempts)).toISOString() : null,
         payload: retry ? current.payload : { ...current.payload, jobOutcome: { code: outcome.code, retryable: outcome.retryable, cause } },
       })
       if (retry) {
@@ -1493,16 +1619,28 @@ async function processNextJob() {
         })
       } else {
         applyJobOutcomeToLead({ ...job, payload: current.payload }, outcome, cause)
-        recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_${outcome.status === 'Cancelled' ? 'cancelled' : outcome.status === 'Timed out' ? 'timed_out' : outcome.status === 'Error' ? 'errored' : 'failed'}`, { jobId: job.id, code: outcome.code, error: error.message })
+        if (outcome.status !== 'Cancelled') notifier.jobFailed({ ...job, attempts: current.attempts }, cause || outcome.detail)
+        recordEvent(...jobEventEntity(job), `${job.type}_${outcome.status === 'Cancelled' ? 'cancelled' : outcome.status === 'Timed out' ? 'timed_out' : outcome.status === 'Error' ? 'errored' : 'failed'}`, { jobId: job.id, code: outcome.code, error: error.message })
       }
     }
   } finally {
-    if (job.runId) syncRun(job.runId)
-    releaseJobCancel(job.id)
-    workerBusy = false
+    // Skip the release if the hung-job guard already freed this slot.
+    if (currentJobId === job.id) {
+      if (job.runId) syncRun(job.runId)
+      releaseJobCancel(job.id)
+      workerBusy = false
+      currentJobId = null
+    }
   }
 }
-setInterval(processNextJob, 500).unref()
+if (runsJobs) {
+  // In worker mode this interval is what keeps the process alive.
+  const poll = setInterval(() => processNextJob().catch((error) => console.error('worker: job bookkeeping failed', error)), 500)
+  if (ROLE !== 'worker') poll.unref()
+  setInterval(workerTick, 5_000).unref()
+  setImmediate(workerTick)
+  console.log(`Scoutline worker running (role ${ROLE}, pid ${process.pid})`)
+}
 
 app.get('/api/status', (_req, res) => {
   const settings = readSettings()
@@ -1513,7 +1651,7 @@ app.get('/api/status', (_req, res) => {
     ok: true,
     storage: 'SQLite',
     databasePath: join(dataDir, 'scoutline.db'),
-    worker: { activeJobs, busy: workerBusy },
+    worker: { activeJobs, busy: runsJobs ? workerBusy : Boolean(readState(db, 'worker')?.busy), role: ROLE },
     outreachConfigured: outreach.configured,
     outreachProvider: outreach.provider,
     outreachProviderLabel: outreach.providerLabel,
@@ -1526,6 +1664,22 @@ app.get('/api/status', (_req, res) => {
     brightDataDatasetId: brightData.datasetId,
     brightDataMaxRecords: brightData.maxRecords,
   })
+})
+
+// Queue and worker health for the CLI, the nightly timer and monitoring:
+// 200 when work is flowing, 503 when jobs are waiting and no worker is alive.
+app.get('/api/health', (_req, res) => {
+  const health = queueHealth(db)
+  noStore(res).status(health.ok ? 200 : 503).json({ role: ROLE, ...health })
+})
+
+// The nightly timer (a separate process) records its outcome here so health
+// shows the last night next to the queue.
+app.put('/api/system/nightly', (req, res) => {
+  const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : null
+  if (!body) return badRequest(res, null, 'Request body must be a JSON object')
+  writeState(db, 'nightly', { ...body, recordedAt: nowIso() })
+  res.json({ ok: true })
 })
 
 // ── Local backup / restore (ROH-29): everything stays on this machine ────────
@@ -1651,7 +1805,7 @@ app.post('/api/jobs/:id/cancel', (req, res) => {
       if (job.type === 'refresh' && mirror.refreshJob?.id === job.id) patch.refreshJob = { ...mirror.refreshJob, phase: 'Cancelling…' }
       if (Object.keys(patch).length) saveLead({ ...mirror, ...patch, updated: 'Cancelling job' })
     }
-    recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_cancel_requested`, { jobId: job.id })
+    recordEvent(...jobEventEntity(job), `${job.type}_cancel_requested`, { jobId: job.id })
     return res.json({ job: readJob(job.id), cancelling: true, lead: job.leadId ? readLead(job.leadId) : null })
   }
   updateJob(job.id, {
@@ -1659,7 +1813,7 @@ app.post('/api/jobs/:id/cancel', (req, res) => {
     payload: { ...job.payload, jobOutcome: { code: outcome.code, retryable: outcome.retryable } },
   })
   applyJobOutcomeToLead(job, outcome)
-  recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_cancelled`, { jobId: job.id })
+  recordEvent(...jobEventEntity(job), `${job.type}_cancelled`, { jobId: job.id })
   if (job.runId) syncRun(job.runId)
   res.json({ job: readJob(job.id), cancelling: false, lead: job.leadId ? readLead(job.leadId) : null })
 })
@@ -1687,7 +1841,7 @@ app.post('/api/jobs/:id/retry', (req, res) => {
     payload: { ...payload, retriedFrom: job.id },
     maxAttempts: job.maxAttempts, triggeredBy: 'retry',
   })
-  recordEvent(job.leadId ? 'lead' : 'run', job.leadId || job.runId, `${job.type}_retried`, { jobId: retry.id, retriedFrom: job.id })
+  recordEvent(...jobEventEntity(job), `${job.type}_retried`, { jobId: retry.id, retriedFrom: job.id })
   res.status(201).json({ job: retry })
 })
 app.get('/api/settings', (_req, res) => res.json(readSettings()))
@@ -1880,7 +2034,7 @@ app.get('/api/crawl', (_req, res) => {
 // the first real VPS import. Never written to disk automatically.
 app.get('/api/crawl/sample', (_req, res) => {
   try {
-    const samplePath = join(rootDir, 'crawler', 'crawl-export.sample.json')
+    const samplePath = join(serverDir, 'crawler', 'crawl-export.sample.json')
     if (!existsSync(samplePath)) return notFound(res, 'Sample snapshot is not available')
     const result = validateCrawlExport(JSON.parse(readFileSync(samplePath, 'utf8')))
     if (!result.ok) return notFound(res, 'Sample snapshot is invalid')
@@ -1951,7 +2105,7 @@ app.post('/api/crawl/sites/:siteId/add-lead', (req, res) => {
 })
 
 // Local scrape runs. Each run is a committable JSON file under data/crawl/local
-// (VPS Postgres comes later); the runner updates it in place with progress.
+// run by the worker as a local-scrape job; the runner updates it in place.
 const localRunsDir = join(crawlDir, 'local')
 const localRunPath = (id) => join(localRunsDir, `${id}.json`)
 const summarizeLocalRun = (run) => ({
@@ -2030,16 +2184,8 @@ app.post('/api/crawl/local-runs', (req, res) => {
   mkdirSync(localRunsDir, { recursive: true })
   writeFileSync(localRunPath(id), JSON.stringify(run))
   recordEvent('crawl', id, 'local_run_queued', { mode: request.mode, location: run.location, category: run.category, total: run.progress.total })
-  setImmediate(() => {
-    runLocalScrape({ runPath: localRunPath(id), settings: readSettings() }).catch((error) => {
-      console.error(`local run ${id} crashed`, error)
-      try {
-        writeLocalRunFile(localRunPath(id), { ...readLocalRunFile(localRunPath(id)), status: 'failed', error: 'Runner crashed unexpectedly', finishedAt: new Date().toISOString() })
-      } catch {
-        // Run file already gone; nothing left to mark.
-      }
-    })
-  })
+  // The worker process runs the scrape, so it survives web restarts.
+  queueJob({ type: 'local-scrape', payload: { localRunId: id }, maxAttempts: 1, triggeredBy: req.user?.service ? 'service' : 'user' })
   res.status(201).json(summarizeLocalRun(run))
 })
 
@@ -2080,15 +2226,17 @@ app.post('/api/crawl/local-runs/:runId/sites/:siteId/add-lead', (req, res) => {
   res.status(result.created ? 201 : 200).json({ created: result.created, lead: result.lead })
 })
 
-// Runs stuck mid-flight when the process stopped can never resume (the
-// runner is in-process), so mark them honestly instead of polling forever.
+// Runs left active with no queued job behind them (a worker that died before
+// this queue existed) can never resume, so mark them honestly instead of
+// polling forever. Runs with a live job are the worker's to finish or fail.
 try {
-  if (existsSync(localRunsDir)) {
+  const queuedLocalRuns = new Set(db.prepare("SELECT json_extract(payload, '$.localRunId') AS id FROM jobs WHERE type = 'local-scrape' AND status IN ('Queued', 'Running', 'Waiting')").all().map((row) => row.id))
+  if (runsJobs && existsSync(localRunsDir)) {
     for (const file of readdirSync(localRunsDir).filter((name) => name.endsWith('.json'))) {
       try {
         const runPath = join(localRunsDir, file)
         const run = readLocalRunFile(runPath)
-        if (LOCAL_RUN_ACTIVE.includes(run.status)) {
+        if (LOCAL_RUN_ACTIVE.includes(run.status) && !queuedLocalRuns.has(run.id)) {
           writeLocalRunFile(runPath, { ...run, status: 'interrupted', error: 'Server stopped before the run finished', finishedAt: new Date().toISOString() })
         }
       } catch {
@@ -2485,15 +2633,28 @@ app.post('/api/markets/:id/discover', (req, res) => {
   if (!areas.length) return badRequest(res, 'areas', `No matching areas. Available: ${market.areas.map((a) => a.name).join('; ')}`)
   const categories = Array.isArray(body.categories) && body.categories.length ? body.categories.map((c) => String(c).trim()).slice(0, 20) : market.categories
   const limit = clampInt(body.limit ?? 25, 1, 50) ?? 25
+  // Optional idempotency key (the nightly timer sends one per night): an
+  // area that already has a live or finished run under this key returns
+  // that run instead of placing, and paying for, a second request.
+  const idempotencyKey = body.idempotencyKey == null ? null : String(body.idempotencyKey).trim().slice(0, 120) || null
+  const existingRuns = idempotencyKey ? readRows('runs').filter((run) => run.idempotencyKey && !['Failed', 'Cancelled', 'Timed out'].includes(run.status)) : []
   const runs = []
+  const reused = []
   const errors = []
   areas.forEach((area, index) => {
-    const result = startRun({ location: area.name, latitude: area.latitude, longitude: area.longitude, zoom: market.zoom, country: market.country, categories, limit }, settings, { market: market.id, idSuffix: `-${market.id}${index}` })
+    const areaKey = idempotencyKey ? `${idempotencyKey}:${area.name}` : null
+    const prior = areaKey ? existingRuns.find((run) => run.idempotencyKey === areaKey) : null
+    if (prior) {
+      runs.push(prior.id)
+      reused.push(prior.id)
+      return
+    }
+    const result = startRun({ location: area.name, latitude: area.latitude, longitude: area.longitude, zoom: market.zoom, country: market.country, categories, limit }, settings, { market: market.id, idSuffix: `-${market.id}${index}`, idempotencyKey: areaKey })
     if (result.error) errors.push({ area: area.name, error: result.error })
     else runs.push(result.id)
   })
-  recordEvent('market', market.id, 'discovery_started', { areas: areas.map((a) => a.name), categories, limit, runs })
-  res.status(202).json({ market: market.id, runs, errors, estimatedRecords: runs.length * limit })
+  recordEvent('market', market.id, 'discovery_started', { areas: areas.map((a) => a.name), categories, limit, runs, reused, idempotencyKey, triggeredBy: req.user?.service ? 'service' : 'user' })
+  res.status(202).json({ market: market.id, runs, reused, errors, estimatedRecords: (runs.length - reused.length) * limit })
 })
 
 app.post('/api/leads/:id/analyze', (req, res) => {
@@ -2870,6 +3031,7 @@ function startRun(body, settings, extra = {}) {
     deadlineAt: new Date(now.getTime() + (Number(readSettings().runTimeoutMs) || 7200000)).toISOString(),
     limit, deepAuditLimit, options: (body.options && typeof body.options === 'object' && !Array.isArray(body.options)) ? body.options : {},
     ...(extra.market ? { market: extra.market } : {}),
+    ...(extra.idempotencyKey ? { idempotencyKey: extra.idempotencyKey } : {}),
   }
   db.prepare('INSERT INTO runs (id, payload) VALUES (?, ?)').run(id, JSON.stringify(run))
   recordEvent('run', id, 'started', { source: run.source, categories, location: run.location, searchDefinition })
@@ -3009,10 +3171,23 @@ if (existsSync(distDir)) {
 }
 
 const port = Number(process.env.SCOUTLINE_PORT || 8787)
-const server = app.listen(port, '127.0.0.1', () => {
-  console.log(`Scoutline API ready at http://127.0.0.1:${port}`)
-})
+const server = servesHttp ? app.listen(port, '127.0.0.1', () => {
+  console.log(`Scoutline API ready at http://127.0.0.1:${port} (role ${ROLE})`)
+}) : null
 
+// The worker finishes its current job before exiting (workerTick exits once
+// idle). If the job outlives systemd's stop timeout it is killed and its row
+// goes back to the queue on the next start.
+const WORKER_STOP_GRACE_MS = 100_000
 for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, () => server.close(() => { db.close(); process.exit(0) }))
+  process.on(signal, () => {
+    if (!server) {
+      stopping = true
+      if (!workerBusy) { db.close(); process.exit(0) }
+      console.log(`worker: ${signal} received; finishing job ${currentJobId} first`)
+      setTimeout(() => process.exit(0), WORKER_STOP_GRACE_MS).unref()
+      return
+    }
+    server.close(() => { db.close(); process.exit(0) })
+  })
 }

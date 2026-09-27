@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import Database from 'better-sqlite3'
-import { AUTH_COOKIE_NAME, AuthError, clearedSessionCookie, createAuthService, parseAllowedEmails, readCookie, sessionCookie } from './auth.js'
+import { AUTH_COOKIE_NAME, AuthError, clearedSessionCookie, createAuthService, parseAllowedEmails, readCookie, serviceTokenUser, sessionCookie } from './auth.js'
 
 test('normalizes a comma, semicolon, or whitespace-separated email allowlist', () => {
   assert.deepEqual([...parseAllowedEmails(' Alice@Example.com, bob@example.com;\ninvalid ')], ['alice@example.com', 'bob@example.com'])
@@ -40,4 +40,15 @@ test('rejects a verified Google account that is not allowlisted', async () => {
 test('session cookies are HTTP-only, same-site, and clearable', () => {
   assert.match(sessionCookie('secret', { secure: true }), /HttpOnly; Path=\/; SameSite=Lax; Max-Age=\d+; Secure/)
   assert.match(clearedSessionCookie(), /Max-Age=0/)
+})
+
+test('service token: bearer match only, and only when a long token is configured', () => {
+  const token = 'a'.repeat(40)
+  assert.equal(serviceTokenUser(`Bearer ${token}`, token).service, true)
+  assert.equal(serviceTokenUser(`bearer ${token}`, token).service, true)
+  assert.equal(serviceTokenUser(`Bearer ${token}x`, token), null)
+  assert.equal(serviceTokenUser(token, token), null)
+  assert.equal(serviceTokenUser('Bearer short', 'short'), null)
+  assert.equal(serviceTokenUser('Bearer ', ''), null)
+  assert.equal(serviceTokenUser(undefined, token), null)
 })

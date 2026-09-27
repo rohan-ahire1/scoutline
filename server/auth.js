@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto'
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { OAuth2Client } from 'google-auth-library'
 
 export const AUTH_COOKIE_NAME = 'scoutline_session'
@@ -146,4 +146,20 @@ export function createAuthService(db, {
     session,
     logout,
   }
+}
+
+// Server-to-server access (CLI, nightly timer): `Authorization: Bearer
+// <SCOUTLINE_SERVICE_TOKEN>`. Off unless the token is set; tokens shorter than
+// 32 characters are refused so a placeholder can never unlock the API.
+export const SERVICE_TOKEN_MIN_LENGTH = 32
+
+export function serviceTokenUser(authorizationHeader, expectedToken = process.env.SCOUTLINE_SERVICE_TOKEN) {
+  const expected = String(expectedToken || '')
+  if (expected.length < SERVICE_TOKEN_MIN_LENGTH) return null
+  const match = /^Bearer\s+(\S+)$/i.exec(String(authorizationHeader || '').trim())
+  if (!match) return null
+  const given = createHash('sha256').update(match[1]).digest()
+  const wanted = createHash('sha256').update(expected).digest()
+  if (!timingSafeEqual(given, wanted)) return null
+  return { email: 'service@scoutline.local', name: 'Service token', service: true }
 }
