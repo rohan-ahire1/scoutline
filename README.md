@@ -27,7 +27,7 @@ sorts it into one **play**:
 - **audit**: a decent business with a fixable site. Send 2–3 specific pointers.
 - **skip**: franchises and national brands, utilities and suppliers, chain location pages, very large operations (1,500+ reviews), weak reputations (<4.0★), closed businesses, thin businesses, and sites that already look good.
 
-Pipeline (runs on the VPS inside `scoutline.service`, or locally with `npm run dev`):
+Pipeline (runs on the VPS in `scoutline-worker.service`, or locally with `npm run dev`; see [ops/README.md](ops/README.md)):
 
 ```text
 Market discovery (Bright Data, one run per area)
@@ -43,18 +43,25 @@ Market discovery (Bright Data, one run per area)
 Markup alone cannot tell a tidy modern template from a tired one, so an
 own-site lead without a visual review stays an `audit` with `confidence: low`.
 
+Every scrape, whichever way it starts (UI, `npm run scout`, the nightly
+timer), goes through one SQLite job queue and one worker process. Jobs are
+idempotent (one active qualify/visual job per lead, one discovery per run,
+and an optional per-request key for market discovery), retry with backoff,
+have per-type time budgets, and survive web restarts and deploys.
+
 Endpoints:
 
+- `GET /api/health`: queue depth, worker heartbeat, failures in the last 24h, last nightly
 - `GET /api/prospects?play=redesign|audit|skip|active|all&market=slc&contact=email`
 - `POST /api/leads/:id/qualify`, `POST /api/leads/:id/visual-review`
 - `POST /api/qualify/backfill` with `{"rescan": false}` re-scores saved scans offline (after tuning rules); `{"rescan": true}` crawls again
-- `GET /api/markets`, `POST /api/markets/:id/discover` with `{"areas": ["Murray, UT"], "categories": ["HVAC contractor"], "limit": 25}`. Bright Data bills per record, so choose areas and limits deliberately.
+- `GET /api/markets`, `POST /api/markets/:id/discover` with `{"areas": ["Murray, UT"], "categories": ["HVAC contractor"], "limit": 25, "idempotencyKey": "optional"}`. Bright Data bills per record, so choose areas and limits deliberately.
 - `GET /api/leads/:id/screens/{desktop|mobile}-{fold|full}.jpg`
 
 Markets live in `server/services/markets.js`: Salt Lake City is on, and New York
 City (outer boroughs plus Hempstead) is present but off. Rules live in
-`server/services/qualify.js`, dated-site signals in `crawler/src/dated.js`,
-contact extraction in `crawler/src/contacts.js`.
+`server/services/qualify.js`, dated-site signals in `server/crawler/dated.js`,
+contact extraction in `server/crawler/contacts.js`.
 
 Discovery runs no longer queue Lighthouse audits automatically. Run the deep
 audit on shortlisted leads, or pass `options: { deepAudit: true }` to a run.
@@ -158,20 +165,20 @@ SCOUTLINE_ALLOWED_EMAILS=you@example.com,teammate@example.com
 
 The allowlist is read only by the Express server. Google ID tokens are verified on the server, API routes require an HTTP-only session cookie, and logout revokes the corresponding SQLite session. Removing an address from the allowlist and restarting the server invalidates that account's existing session on its next request.
 
-## VPS crawler tab
+## Crawl tab
 
-The **Crawl** tab reviews snapshots from the always-on crawler in `crawler/`
-(deployed on the VPS). Sync flow: on the VPS run
-`npm run export -- --out crawl-export.json`, copy the file to this machine,
-and import it from the Crawl tab. The tab shows today's totals, a 30-day
-trend, website-type/qualification filters, per-site detail with scores and
-contacts, and an **Add as lead** action that pushes a site into Research
-(duplicate domains resolve to the existing lead). With no import yet, the tab
-offers the bundled `crawler/crawl-export.sample.json` to explore.
+The **Crawl** tab reviews crawl snapshots. The old standalone Postgres
+crawler (`crawler/`) was retired: its scraping engine now lives in
+`server/crawler/` and every scrape runs through Scoutline's job worker. Older
+`crawl-export.json` files can still be imported; the tab shows totals,
+website-type/qualification filters, per-site detail with scores and contacts,
+and an **Add as lead** action (duplicate domains resolve to the existing
+lead). With no import yet, the tab offers the bundled
+`server/crawler/crawl-export.sample.json` to explore.
 
 The same tab also runs **local scrapes**: enter a location + category
 (discovery via Bright Data — needs the API key and coordinates unless the
 location matches your Settings geography) or paste URLs to skip discovery.
-The crawler engine runs on this machine and each run is saved as a
+The worker runs the scrape (it survives web restarts) and each run is saved as a
 committable JSON file under `data/crawl/local/`, with the same detail view
 and add-as-lead action as snapshot sites.

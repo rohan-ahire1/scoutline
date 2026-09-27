@@ -660,12 +660,11 @@ export default function CrawlPage({ onLeadAdded, onToast, brightDataReady, local
         <section className="panel crawl-empty" aria-label="No crawl data yet">
           <div className="empty-state">
             <h3>No crawl snapshot imported</h3>
-            <p>Export on your VPS, copy the file here, and import it — or explore with sample data first.</p>
+            <p>Scrapes now run through Scoutline's job worker. Import an older snapshot file, or explore with sample data first.</p>
           </div>
           <ol className="crawl-steps">
-            <li><span>On the VPS, export a snapshot:</span><code>set -a; source .env; set +a; npm run export -- --out crawl-export.json</code></li>
-            <li><span>Copy it to this machine:</span><code>scp user@vps:~/projects/scoutline-crawler/crawl-export.json ~/Downloads/</code></li>
-            <li><span>Import it with the button above.</span></li>
+            <li><span>Queue a market scrape from a terminal:</span><code>npm run scout -- discover --market slc --areas "Murray, UT" --categories "HVAC contractor" --limit 10</code></li>
+            <li><span>Or import a crawl-export.json snapshot with the button above.</span></li>
           </ol>
           <div className="crawl-empty-actions">
             <button className="button button-secondary" onClick={loadSample} disabled={sampleLoading}>

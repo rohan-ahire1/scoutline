@@ -1,10 +1,10 @@
 // Server-only local scrape runner: location/category discovery (Bright Data)
 // or explicit URLs -> crawler engine -> committable JSON run file.
 import { readFileSync, writeFileSync } from 'node:fs'
-import { aggregateSite, crawlSite } from '../../crawler/src/siteCrawler.js'
+import { aggregateSite, crawlSite } from '../crawler/siteCrawler.js'
 import { DiscoveryError, downloadDiscovery, mapDiscoveryRecord, pollDiscovery, resolveSearchDefinition, triggerDiscovery } from './discovery.js'
 import { mapEngineFailureToSite, mapEngineResultToSite } from './crawl.js'
-import { verifyEmails } from '../../crawler/src/contacts.js'
+import { verifyEmails } from '../crawler/contacts.js'
 import { domainCounts, qualifyLead } from './qualify.js'
 import { compactScan } from './prospect.js'
 

@@ -3,8 +3,8 @@
 //   qualify -> optional visual review -> re-qualify.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { aggregateSite, crawlSite } from '../../crawler/src/siteCrawler.js'
-import { verifyEmails } from '../../crawler/src/contacts.js'
+import { aggregateSite, crawlSite } from '../crawler/siteCrawler.js'
+import { verifyEmails } from '../crawler/contacts.js'
 import { domainCounts, qualifyLead } from './qualify.js'
 import { captureScreenshots, getVisionConfig, reviewScreenshots, saveScreenshots } from './visual.js'
 
