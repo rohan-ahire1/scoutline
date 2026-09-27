@@ -15,7 +15,6 @@ Environment=NIGHTLY_AREAS=2
 Environment=NIGHTLY_CATEGORIES=3
 Environment=NIGHTLY_LIMIT=25
 EnvironmentFile=/home/rohan/.hermes/scoutline.env
-EnvironmentFile=/home/rohan/.config/scoutline/service.env
 # bws supplies the Telegram alert settings when they are in the project.
 ExecStart=/home/rohan/.hermes/bin/bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- /home/rohan/.hermes/node/bin/node /home/rohan/projects/scoutline/current/server/cli.js nightly
 TimeoutStartSec=3h
