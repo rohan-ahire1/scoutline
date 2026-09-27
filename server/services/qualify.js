@@ -40,6 +40,9 @@ const FREE_SUBDOMAIN = /\.(wixsite\.com|wix-vibe-site\.com|weebly\.com|godaddysi
 
 const LARGE_OPERATION_REVIEWS = 1500
 
+// Site weakness at or above this picks the redesign play.
+export const REDESIGN_WEAKNESS = 55
+
 function hostAndPath(website) {
   const input = String(website || '').trim()
   if (!input) return null
@@ -143,7 +146,11 @@ export function scoreSiteWeakness({ presence, site, visualReview = null }) {
   if (visualReview?.score != null) {
     // A reviewed screenshot says more than markup about how the site looks.
     for (const issue of visualReview.issues || []) reasons.push({ text: issue, evidence: 'visual review', weight: 0 })
-    return { score: Math.round(visualReview.score * 0.65 + markup * 0.35), basis: 'visual+markup', markupScore: markup, reasons }
+    // Markup cannot see a dated design, so it must not dilute a "redesign"
+    // verdict below the redesign threshold.
+    const blended = Math.round(visualReview.score * 0.65 + markup * 0.35)
+    const score = visualReview.verdict === 'redesign' ? Math.max(blended, REDESIGN_WEAKNESS) : blended
+    return { score, basis: 'visual+markup', markupScore: markup, reasons }
   }
   return { score: markup, basis: 'markup', markupScore: markup, reasons: reasons.sort((a, b) => b.weight - a.weight) }
 }
@@ -215,7 +222,7 @@ export function qualifyLead({ business = {}, site = null, visualReview = null, k
     play = 'audit'
     playReason = 'Site not scanned yet'
     confidence = 'low'
-  } else if (weakness.score >= 55) {
+  } else if (weakness.score >= REDESIGN_WEAKNESS) {
     play = 'redesign'
     playReason = `Dated site: ${weakness.reasons.slice(0, 3).map((r) => r.text.toLowerCase()).join('; ')}`
   } else if (weakness.score >= 20 || weakness.basis === 'markup') {

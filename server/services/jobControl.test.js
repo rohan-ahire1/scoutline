@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { canRetryJob, classifyJobError, findTimedOutJobs, isActiveJobStatus, isTerminalJobStatus } from './jobControl.js'
+import { canRetryJob, classifyJobError, defaultIdempotencyKey, findTimedOutJobs, isActiveJobStatus, isTerminalJobStatus, jobTimeoutMs, retryDelayMs } from './jobControl.js'
 
 const plain = (label) => {
   assert.ok(!label.includes('_'), `no code fragments in "${label}"`)
@@ -90,4 +90,34 @@ test('terminal and active sets partition every status', () => {
     assert.equal(isActiveJobStatus(status), false)
   }
   assert.equal(isTerminalJobStatus('Running'), false)
+})
+
+test('retry backoff grows 30s → 2m → 8m and caps at 30 minutes', () => {
+  const mid = () => 0.5
+  assert.equal(retryDelayMs(1, mid), 30_000)
+  assert.equal(retryDelayMs(2, mid), 120_000)
+  assert.equal(retryDelayMs(3, mid), 480_000)
+  assert.equal(retryDelayMs(9, mid), 1_800_000)
+  assert.ok(retryDelayMs(1, () => 0) >= 24_000 && retryDelayMs(1, () => 0.999) <= 36_000)
+})
+
+test('per-type job timeouts stay under the configured ceiling, except long local scrapes', () => {
+  assert.equal(jobTimeoutMs('qualify', { jobTimeoutMs: 600000 }), 300000)
+  assert.equal(jobTimeoutMs('audit', { jobTimeoutMs: 120000 }), 120000)
+  assert.equal(jobTimeoutMs('local-scrape', { jobTimeoutMs: 600000 }), 2700000)
+  assert.equal(jobTimeoutMs('unknown', {}), 600000)
+  const now = Date.now()
+  const running = [
+    { id: 'q', type: 'qualify', status: 'Running', payload: { startedAt: new Date(now - 400_000).toISOString() } },
+    { id: 'l', type: 'local-scrape', status: 'Running', payload: { startedAt: new Date(now - 400_000).toISOString() } },
+  ]
+  assert.deepEqual(findTimedOutJobs(running, now, (job) => jobTimeoutMs(job.type, {})).map((job) => job.id), ['q'])
+})
+
+test('idempotency keys cover lead scans and a run\'s discovery only', () => {
+  assert.equal(defaultIdempotencyKey({ type: 'qualify', leadId: 'lead-1' }), 'qualify:lead-1')
+  assert.equal(defaultIdempotencyKey({ type: 'visual', leadId: 'lead-1', runId: 'run-1' }), 'visual:lead-1')
+  assert.equal(defaultIdempotencyKey({ type: 'discover', runId: 'run-1' }), 'discover:run-1')
+  assert.equal(defaultIdempotencyKey({ type: 'audit', leadId: 'lead-1' }), null)
+  assert.equal(defaultIdempotencyKey({ type: 'local-scrape' }), null)
 })

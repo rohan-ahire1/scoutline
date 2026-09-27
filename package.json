@@ -10,8 +10,11 @@
     "eval": "node server/benchmark/run.js",
     "preview": "vite preview",
     "start": "node server/index.js",
+    "worker": "SCOUTLINE_ROLE=worker node server/index.js",
+    "scout": "node server/cli.js",
     "secrets:dev": "bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- npm run dev",
-    "secrets:start": "bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- npm start"
+    "secrets:start": "bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- npm start",
+    "secrets:worker": "bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- npm run worker"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

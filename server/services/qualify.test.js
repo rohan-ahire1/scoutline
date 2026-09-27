@@ -60,6 +60,18 @@ test('a visual "redesign" verdict outweighs clean markup', () => {
   assert.ok(q.pitchHooks.includes('The hero is a blurry stock photo'))
 })
 
+// Real case: Roof-It, Inc. was reviewed "redesign" (score 60) but markup
+// found almost nothing (3), and the blend (40) filed it as an audit.
+test('a "redesign" verdict at the rubric floor is not diluted into an audit by clean markup', () => {
+  const clean = { ...datedSite, dated: { ...datedSite.dated, score: 0, signals: [] }, visualRisk: { score: 0 } }
+  const business = { ...strongBusiness, website: 'joshuasons.com' }
+  const redesign = qualifyLead({ business, site: clean, visualReview: { score: 60, verdict: 'redesign', issues: ['The header is cramped'] } })
+  assert.equal(redesign.play, 'redesign')
+  assert.ok(redesign.siteWeakness.score >= 55)
+  const improve = qualifyLead({ business, site: clean, visualReview: { score: 60, verdict: 'improve', issues: [] } })
+  assert.equal(improve.play, 'audit')
+})
+
 test('exclusions: franchise, utility, chain location page, huge operation, bad reputation, closed', () => {
   const cases = [
     [{ ...strongBusiness, company: 'Mr. Electric of Salt Lake City' }, /Franchise/],

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Scoutline nightly discovery at 02:00 Salt Lake City time
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 America/Denver
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
