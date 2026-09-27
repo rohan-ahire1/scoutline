@@ -1562,6 +1562,9 @@ async function processNextJob() {
       AND (run_id IS NULL OR run_id NOT IN (SELECT id FROM runs WHERE json_extract(payload, '$.status') IN ('Paused', 'Cancelled')))
     ORDER BY created_at ASC LIMIT 1`).get(nowIso())
   if (!row) return
+  // Atomic claim: only one process can move a job to Running.
+  const claimed = db.prepare("UPDATE jobs SET status = 'Running', updated_at = ? WHERE id = ? AND status IN ('Queued', 'Waiting')").run(nowIso(), row.id).changes
+  if (!claimed) return
   workerBusy = true
   const job = parseJob(row)
   currentJobId = job.id
