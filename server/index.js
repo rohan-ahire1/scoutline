@@ -1568,6 +1568,8 @@ async function processNextJob() {
   workerBusy = true
   const job = parseJob(row)
   currentJobId = job.id
+  lastHeartbeat = 0
+  heartbeat()
   const attempt = job.attempts + (job.status === 'Queued' ? 1 : 0)
   const { cancelRequested: _staleCancel, startedAt: _staleStart, jobOutcome: _staleOutcome, ...payload } = job.payload || {}
   updateJob(job.id, { status: 'Running', attempts: attempt, error: null, nextAttemptAt: null, payload: { ...payload, startedAt: nowIso() } })
