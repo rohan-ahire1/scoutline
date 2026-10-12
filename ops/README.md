@@ -5,7 +5,7 @@
 | Unit | Role | What it does |
 |---|---|---|
 | `scoutline.service` | `SCOUTLINE_ROLE=web` | UI + API on 127.0.0.1:8787. Only enqueues work. |
-| `scoutline-worker.service` | `SCOUTLINE_ROLE=worker` | Runs the job queue one job at a time: Bright Data discovery, site scans (`server/crawler/`), screenshots + visual review, Crawl-tab scrapes. MemoryMax 1.5G. |
+| `scoutline-worker.service` | `SCOUTLINE_ROLE=worker` | Runs the job queue one job at a time: Bright Data discovery, site scans (`server/crawler/`), screenshots + visual review, Crawl-tab scrapes. MemoryMax 1.5G. Also runs the email autopilot every minute. |
 | `scoutline-nightly.timer` → `.service` | CLI | 02:00 America/Denver: `server/cli.js nightly` queues tonight's market slice and waits for it. |
 
 Both long-running units share `data/scoutline.db` (SQLite WAL, `busy_timeout`).
@@ -57,6 +57,31 @@ and are injected by `bws run`; no plaintext env file holds them.
   only logged. Alerts: nightly failed,
   nightly found 0 new leads, a job that ran out of attempts (max one per 10
   minutes; the rest are folded into the next alert).
+- Email autopilot: `GMAIL_USER` + `GMAIL_APP_PASSWORD` (a Google app
+  password; the account needs 2-Step Verification). Optional
+  `GMAIL_FROM_NAME`. Both units need them: the web unit for test sends and
+  "Check replies now", the worker for the real sends.
+
+## Email autopilot
+Outreach → Autopilot sends a short sequence (email 1, then follow-ups in the
+same thread) from the Gmail account above. Code: `server/services/sender.js`
+(pure rules), `mailbox.js` (SMTP 587 + IMAP), `autopilot.js` (the loop).
+- Sends nothing until the templates are approved and it is turned on. Any
+  template edit clears the approval and turns it off.
+- Each sending day it queues `dailyNew` leads (best priority first, one per
+  business, MX checked) and spreads them across the window (default 7:00–9:30,
+  Mon–Fri, in the lead's own time zone, at least ~6 minutes apart). Hard cap:
+  40 sends a day including follow-ups.
+- Every 10 minutes it reads All Mail over IMAP. A reply stops the sequence and
+  moves the lead to Replied (Telegram alert). "No" / "unsubscribe" marks it
+  opted out. Out-of-office replies are ignored. Bounces stop that lead.
+- Pauses itself (Telegram alert) if Gmail rejects the login or more than 8%
+  of the last 50 emails bounced.
+- A send cut off by a restart is marked failed, never resent: check Gmail
+  Sent before retrying by hand.
+- State lives in the `autopilot_emails` table. It is in the nightly database
+  snapshot but not in the JSON export, so restoring an export never forgets
+  who was already emailed.
 
 ## Install / update units
 
