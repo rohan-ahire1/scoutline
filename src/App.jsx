@@ -58,6 +58,7 @@ import { buildQueue, computeReadiness, explainReadiness } from '../server/servic
 import PreviewPage from './preview/PreviewPage.jsx'
 import CrawlPage from './CrawlPage.jsx'
 import TodayPage from './TodayPage.jsx'
+import AutopilotPage from './AutopilotPage.jsx'
 import { LeadEvidence, PlayTag } from './leadUi.jsx'
 
 const navItems = [
@@ -1109,7 +1110,23 @@ function OutreachCard({ lead, readiness = null, queueItem = null, commercialLabe
   )
 }
 
-function OutreachPage({ leads, onOpen, onReview, onUpdate, onAttempt, onGenerate, onCandidate, onToast, goTo }) {
+// Autopilot sends the approved sequence on its own; "By hand" keeps the
+// original shortlist for leads you'd rather write to yourself.
+function OutreachPage({ leads, onOpen, onToast, ...rest }) {
+  const [mode, setMode] = useState(() => new URLSearchParams(window.location.search).get('mode') === 'manual' ? 'manual' : 'autopilot')
+  const openById = useCallback((id) => { const lead = leads.find((item) => item.id === id); if (lead) onOpen(lead) }, [leads, onOpen])
+  return (
+    <div className="outreach-modes">
+      <div className="segmented" role="tablist" aria-label="Outreach mode">
+        <button role="tab" aria-selected={mode === 'autopilot'} className={mode === 'autopilot' ? 'active' : ''} onClick={() => setMode('autopilot')}>Autopilot</button>
+        <button role="tab" aria-selected={mode === 'manual'} className={mode === 'manual' ? 'active' : ''} onClick={() => setMode('manual')}>By hand</button>
+      </div>
+      {mode === 'autopilot' ? <AutopilotPage api={apiRequest} onOpenLead={openById} onToast={onToast} /> : <ManualOutreach leads={leads} onOpen={onOpen} onToast={onToast} {...rest} />}
+    </div>
+  )
+}
+
+function ManualOutreach({ leads, onOpen, onReview, onUpdate, onAttempt, onGenerate, onCandidate, onToast, goTo }) {
   const [view, setView] = useState('Ready to contact')
   const [selectedId, setSelectedId] = useState(null)
   const dupCounts = useMemo(() => duplicateLeadCounts(leads), [leads])
@@ -2665,7 +2682,7 @@ function WorkspaceApp({ currentUser, onLogout }) {
     topMeta = `${readyCount} ready to review`
     topActions = <button className="button button-primary button-small" onClick={() => setRunModalOpen(true)}><span className="e" aria-hidden="true">▶️</span>New research run</button>
   } else if (page === 'Outreach') {
-    topMeta = 'You send every email yourself. Drafts come from the evidence; Scoutline remembers who’s due'
+    topMeta = 'Sends your approved emails from Gmail each weekday morning and stops when someone replies'
   } else if (page === 'Pipeline') {
     topActions = <button className="button button-secondary button-small" onClick={() => navigate('Outreach')}><span className="e" aria-hidden="true">✉️</span>Open outreach queue</button>
   } else if (page === 'Contracts') {

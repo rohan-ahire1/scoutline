@@ -28,6 +28,8 @@ import { findMarket, resolveMarkets } from './services/markets.js'
 import { PLAYS } from './services/qualify.js'
 import { requalify, scanAndQualify, visualReviewLead } from './services/prospect.js'
 import { getVisionConfig } from './services/visual.js'
+import { createAutopilot } from './services/autopilot.js'
+import { createMailbox } from './services/mailbox.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
@@ -172,6 +174,18 @@ const defaultSettings = {
 }
 const settingInsert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')
 Object.entries(defaultSettings).forEach(([key, value]) => settingInsert.run(key, JSON.stringify(value)))
+
+// Email autopilot: the worker sends; the web app only edits its state.
+const mailbox = createMailbox()
+const autopilot = createAutopilot({
+  db,
+  mailbox,
+  readLead: (id) => readLead(id),
+  saveLead: (lead) => saveLead(lead),
+  readLeads: () => readRows('leads'),
+  recordEvent: (...args) => recordEvent(...args),
+  notifier,
+})
 
 const app = express()
 app.set('trust proxy', 1)
@@ -1541,7 +1555,7 @@ function workerTick() {
     propagateCancelRequests()
     releaseHungJob()
     heartbeat()
-    if (!workerBusy && (stopping || releaseChanged())) {
+    if (!workerBusy && !autopilot.isBusy() && (stopping || releaseChanged())) {
       console.log(stopping ? 'worker: stopped' : 'worker: new release deployed; restarting')
       writeState(db, 'worker', { pid: process.pid, role: ROLE, at: nowIso(), busy: false, currentJobId: null, release: rootDir, stopping: true })
       db.close()
@@ -1644,6 +1658,8 @@ if (runsJobs) {
   if (ROLE !== 'worker') poll.unref()
   setInterval(workerTick, 5_000).unref()
   setImmediate(workerTick)
+  autopilot.recoverInterrupted()
+  setInterval(() => { if (!stopping && !releaseChanged()) autopilot.tick() }, 60_000).unref()
   console.log(`Scoutline worker running (role ${ROLE}, pid ${process.pid})`)
 }
 
@@ -2577,6 +2593,7 @@ function prospectRow(lead) {
     visualReview: lead.visualReview ? { status: lead.visualReview.status, verdict: lead.visualReview.verdict || null, eraGuess: lead.visualReview.eraGuess || null, summary: lead.visualReview.summary || null, issues: lead.visualReview.issues || [] } : null,
     screens,
     qualifiedAt: q.qualifiedAt,
+    autopilot: lead.autopilot ? { status: lead.autopilot.status, step: lead.autopilot.step ?? 0 } : null,
   }
 }
 
@@ -3154,6 +3171,117 @@ app.post('/api/leads/:id/export', (req, res) => {
   res.json({ markdown: leadMarkdown(lead), filePath })
 })
 
+// ---- Email autopilot
+function autopilotError(res, error) {
+  if (error?.status) return res.status(error.status).json({ error: error.message })
+  throw error
+}
+
+app.get('/api/autopilot', (_req, res) => {
+  noStore(res).json(autopilot.overview())
+})
+
+app.put('/api/autopilot/templates', (req, res) => {
+  const { sequence, signature } = req.body || {}
+  if (sequence != null && (!Array.isArray(sequence) || !sequence.length || sequence.length > 5)) return badRequest(res, 'sequence', 'sequence must list 1 to 5 emails')
+  if (sequence?.some((step) => !step || typeof step !== 'object' || String(step.body || '').length > 5000 || String(step.subject || '').length > 200)) return badRequest(res, 'sequence', 'Each email needs a subject under 200 characters and a body under 5000')
+  if (signature != null && String(signature).length > 1000) return badRequest(res, 'signature', 'Signature is limited to 1000 characters')
+  autopilot.saveTemplates({ sequence, signature })
+  res.json(autopilot.overview())
+})
+
+app.put('/api/autopilot/schedule', (req, res) => {
+  const { dailyNew, window } = req.body || {}
+  if (dailyNew != null && !(Number.isInteger(dailyNew) && dailyNew >= 1 && dailyNew <= 30)) return badRequest(res, 'dailyNew', 'dailyNew must be 1 to 30')
+  if (window != null) {
+    const { startMinute, endMinute, days } = window
+    if (startMinute != null && !(Number.isInteger(startMinute) && startMinute >= 0 && startMinute < 1440)) return badRequest(res, 'window', 'startMinute must be a minute of the day')
+    if (endMinute != null && !(Number.isInteger(endMinute) && endMinute > (startMinute ?? 0) && endMinute <= 1440)) return badRequest(res, 'window', 'endMinute must be after startMinute')
+    if (days != null && !(Array.isArray(days) && days.length && days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6))) return badRequest(res, 'window', 'days must be weekday numbers 0 to 6')
+  }
+  autopilot.saveSchedule({ dailyNew, window })
+  res.json(autopilot.overview())
+})
+
+app.post('/api/autopilot/approve', (req, res) => {
+  try {
+    autopilot.approve(String(req.body?.hash || ''))
+    res.json(autopilot.overview())
+  } catch (error) { autopilotError(res, error) }
+})
+
+app.post('/api/autopilot/running', (req, res) => {
+  try {
+    autopilot.setRunning(req.body?.running === true)
+    recordEvent('autopilot', 'config', req.body?.running === true ? 'autopilot_started' : 'autopilot_paused', { by: req.user?.email || null })
+    res.json(autopilot.overview())
+  } catch (error) { autopilotError(res, error) }
+})
+
+app.post('/api/autopilot/preview', (req, res) => {
+  const { sequence, signature, leadId, step } = req.body || {}
+  if (sequence != null && (!Array.isArray(sequence) || !sequence.length || sequence.length > 5)) return badRequest(res, 'sequence', 'sequence must list 1 to 5 emails')
+  if (leadId != null && !validateIdParam(String(leadId))) return badRequest(res, 'leadId', 'Invalid lead id')
+  res.json(autopilot.previewDraft({ sequence, signature, leadId: leadId ? String(leadId) : null, step: clampInt(step ?? 0, 0, 4) ?? 0 }))
+})
+
+app.post('/api/autopilot/test', async (req, res) => {
+  if (!mailbox.configured) return res.status(400).json({ error: 'Connect Gmail first (GMAIL_USER and GMAIL_APP_PASSWORD)' })
+  const step = clampInt(req.body?.step ?? 0, 0, 4) ?? 0
+  const leadId = req.body?.leadId ? String(req.body.leadId) : autopilot.candidates(autopilot.readConfig(), 1)[0]?.id
+  if (!leadId || !validateIdParam(leadId)) return badRequest(res, 'leadId', 'No lead to build a test email from')
+  try {
+    const email = autopilot.previewFor(leadId, step)
+    if (!email) return notFound(res, 'Lead not found', 'leadId')
+    await mailbox.send({ to: mailbox.user, subject: `[Test] ${email.subject}`, text: email.text })
+    res.json({ ok: true, to: mailbox.user, subject: email.subject })
+  } catch (error) {
+    res.status(502).json({ error: `Gmail could not send the test: ${error.message}` })
+  }
+})
+
+app.post('/api/autopilot/check-replies', async (_req, res) => {
+  if (!mailbox.configured) return res.status(400).json({ error: 'Connect Gmail first' })
+  try {
+    const result = await autopilot.scan({ force: true })
+    res.json({ ...result, overview: autopilot.overview() })
+  } catch (error) {
+    res.status(502).json({ error: `Couldn't read Gmail: ${error.message}` })
+  }
+})
+
+app.post('/api/autopilot/emails/:id/skip', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid id')
+  try {
+    if (!autopilot.skip(req.params.id)) return notFound(res, 'Email not found', 'id')
+    res.json(autopilot.overview())
+  } catch (error) { autopilotError(res, error) }
+})
+
+app.post('/api/autopilot/emails/:id/stop', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid id')
+  try {
+    if (!autopilot.stop(req.params.id)) return notFound(res, 'Email not found', 'id')
+    res.json(autopilot.overview())
+  } catch (error) { autopilotError(res, error) }
+})
+
+app.patch('/api/autopilot/emails/:id', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid id')
+  try {
+    if (!autopilot.editOverrides(req.params.id, req.body || {})) return notFound(res, 'Email not found', 'id')
+    res.json(autopilot.overview())
+  } catch (error) { autopilotError(res, error) }
+})
+
+app.post('/api/autopilot/leads/:id/skip', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id')
+  try {
+    if (!autopilot.skipLead(req.params.id)) return notFound(res, 'Lead not found or has no email', 'id')
+    res.json(autopilot.overview())
+  } catch (error) { autopilotError(res, error) }
+})
+
 app.use('/api', (req, res) => {
   res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}`, code: 'NOT_FOUND' })
 })
@@ -3188,7 +3316,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     if (!server) {
       stopping = true
-      if (!workerBusy) { db.close(); process.exit(0) }
+      if (!workerBusy && !autopilot.isBusy()) { db.close(); process.exit(0) }
       console.log(`worker: ${signal} received; finishing job ${currentJobId} first`)
       setTimeout(() => process.exit(0), WORKER_STOP_GRACE_MS).unref()
       return
