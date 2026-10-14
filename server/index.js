@@ -3292,7 +3292,8 @@ app.use((error, req, res, next) => {
   const tooLarge = error.type === 'entity.too.large'
   const status = tooLarge ? 413 : invalidJson ? 400 : Number(error.status) || 500
   const code = tooLarge ? 'PAYLOAD_TOO_LARGE' : invalidJson ? 'INVALID_JSON' : status >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR'
-  const message = tooLarge ? 'Request body is too large (max 1mb)' : invalidJson ? 'Request body contains invalid JSON' : status >= 500 ? 'The local API could not complete the request' : error.message
+  const limitMb = Math.round((Number(error.limit) || 1_048_576) / 1_048_576)
+  const message = tooLarge ? `Request body is too large (max ${limitMb}mb)` : invalidJson ? 'Request body contains invalid JSON' : status >= 500 ? 'The local API could not complete the request' : error.message
   console.error('Scoutline API error', error)
   res.status(status).json({ error: message, code })
 })
