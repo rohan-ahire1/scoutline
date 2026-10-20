@@ -8,3 +8,7 @@ data/backups/
 *.local
 .env
 .env.local
+
+# Local database and scraped lead data; never commit
+data/*.db
+data/leads/
