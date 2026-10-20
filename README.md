@@ -1,184 +1,110 @@
 # Scoutline
 
-A local-first lead research and sales workspace. It collects or imports businesses, analyzes their websites, prepares evidence-backed outreach, and tracks qualified clients through a manual sales pipeline.
+**A lead research workspace that finds local businesses, audits their websites, and shows the evidence behind every pitch.**
 
-## Workflow
+Scoutline is the internal sales tool for GoodShigoto, a small web studio. It is a private, sign-in-only app, so there is no public demo.
 
-```text
-Bright Data discovery or CSV import
-→ source-backed business enrichment
-→ safe website audit
-→ deterministic opportunity score + saved evidence
-→ optional AI evidence synthesis inside Analyzed
-→ human qualification
-→ three outreach versions
-→ manual send and Kanban follow-up
-→ contract record when won
+## What it does
+
+Scoutline finds local trade businesses (plumbers, roofers, HVAC and so on), scans their websites, and sorts each one into a **play**:
+
+- **redesign**: a business worth pitching whose web presence is missing or weak (no site, only a Facebook or Yelp page, a free builder subdomain, a dead or parked domain, broken HTTPS, or a clearly dated site).
+- **audit**: a solid business with a site that has specific, fixable problems.
+- **skip**: franchises and national brands, chain location pages, very large operations, weak reputations, closed businesses, and sites that already look good.
+
+Every judgement links back to the crawl, screenshot or metric that produced it. Scores are computed from measured signals; AI output is advisory and never changes a score.
+
+```
+discovery (Google Maps via Bright Data, CSV import, or pasted URLs)
+  -> business enrichment (hours, services, reviews, booking links)
+  -> safe website crawl (up to 5 pages) and audit
+  -> contacts: emails ranked and MX-checked, owner names
+  -> dated-site signals + business worth + site weakness -> play
+  -> desktop and mobile screenshots, optional vision-model review
+  -> human review -> outreach drafts -> manual send or approved autopilot
+  -> follow-up pipeline -> contract record
 ```
 
-“Analyzed” remains one complete website-analysis stage. There is no separate LLM-insights checkpoint or ranking checkpoint: the audit evidence and deterministic opportunity score are produced together. When AI is configured, it adds a grounded advisory synthesis inside that stage—priorities, recommendations, strengths, unknowns, qualification guidance, and outreach angles—without changing the score.
+## Key features
 
-## Lead quality: who to pitch, and how
+- **Market discovery** through Bright Data's Google Maps dataset, run per area and category, with a nightly timer that works through a market a slice at a time.
+- **Safe crawling.** SSRF-resistant fetches that block private networks, re-check every redirect, cap response size and enforce timeouts. Crawls respect robots.txt, add delays between requests and stay within page limits.
+- **Website audit.** Mobile Lighthouse (performance, accessibility, SEO, best practices, core timings) plus an HTML audit of content hierarchy, mobile setup, contact paths, form friction, calls to action, image alt text, structured data and technology signals. If Lighthouse can't run, the lead shows a visible partial state instead of made-up numbers.
+- **Contact finding.** Emails from mailto links, Cloudflare-protected and obfuscated addresses, and JSON-LD, ranked and checked against the domain's MX records.
+- **Visual review.** Headless Chrome captures desktop and mobile screenshots with popups removed. With a model key, a vision model rates them on a fixed rubric, because markup alone can't tell a tidy modern template from a tired one.
+- **Outreach drafts** in three lengths from the Meta Model API or OpenAI with structured output, grounded in the saved evidence. Without a key, it falls back to evidence-based templates.
+- **Email autopilot (optional).** Sends an approved sequence through a Gmail mailbox, at most 40 emails a day inside a sending window, and stops a sequence when the lead replies, opts out or bounces (replies are checked over IMAP). Any edit to the sequence stops sending until it is approved again.
+- **Google sign-in with an email allowlist.** ID tokens are verified on the server, sessions are HTTP-only cookies stored in SQLite, and removing an address invalidates its session.
+- **Backups and restore** of the database from the UI and API.
 
-Scoutline qualifies every discovered business for GoodShigoto outreach and
-sorts it into one **play**:
+## Tech stack
 
-- **redesign**: a business worth pitching (reviews, rating, ticket size) whose web presence is missing or weak: no website, a Facebook/Yelp link, a free builder subdomain, a dead domain, a parked page, broken HTTPS, or a clearly dated site. Build a concept and send it.
-- **audit**: a decent business with a fixable site. Send 2–3 specific pointers.
-- **skip**: franchises and national brands, utilities and suppliers, chain location pages, very large operations (1,500+ reviews), weak reputations (<4.0★), closed businesses, thin businesses, and sites that already look good.
+- React and Vite single-page app (`src/`)
+- Node.js and Express 5 API (`server/`)
+- SQLite via better-sqlite3 (WAL mode), shared by the web and worker processes
+- Cheerio and robots-parser for crawling; Lighthouse and chrome-launcher for audits and screenshots
+- OpenAI SDK (also used for the Meta Model API), google-auth-library, nodemailer and ImapFlow
+- Node's built-in test runner
+- Deployed on a VPS with systemd units, a GitHub Actions deploy workflow and Bitwarden Secrets Manager for credentials
 
-Pipeline (runs on the VPS in `scoutline-worker.service`, or locally with `npm run dev`; see [ops/README.md](ops/README.md)):
+## Architecture notes
 
-```text
-Market discovery (Bright Data, one run per area)
-→ qualify job per business: crawl up to 5 pages (crawler engine) → emails
-  (mailto, Cloudflare-protected, obfuscated, JSON-LD) ranked + MX-checked
-  → owner names → dated-site signals → business worth + site weakness → play
-→ visual job (own sites that are not skipped): desktop + mobile screenshots,
-  popups removed; with OPENAI_API_KEY a vision model rates them on a fixed
-  rubric and the play is re-scored (with MODEL_API_KEY or OPENAI_API_KEY)
-→ GET /api/prospects: the ranked shortlist
-```
+- **One job queue for every scrape.** The UI, the CLI and the nightly timer all enqueue work into a SQLite-backed queue; a separate worker process runs it. Jobs are idempotent (one active qualify or visual job per lead, one discovery per run), retry with backoff (30s, 2m, 8m, 30m), have per-type time budgets, and survive restarts and deploys. Paid Bright Data requests are never replayed automatically; the worker resumes the existing snapshot instead.
+- **Self-healing worker.** A job that runs past its budget is abandoned, and if its code still hasn't returned 90 seconds later the worker exits so systemd starts a clean one. After a deploy the worker notices the new release and restarts between jobs.
+- **Deterministic scoring.** Qualification rules live in `server/services/qualify.js`, dated-site signals in `server/crawler/dated.js` and contact extraction in `server/crawler/contacts.js`. Saved scans can be re-scored offline after the rules change.
+- **Offline benchmark.** `server/benchmark/` runs 22 versioned fixtures (fetch failures, malformed discovery records, grounded and ungrounded AI output) through the real services with a fake network and a local model server, then checks four release gates. Run it with `npm run eval`.
 
-Markup alone cannot tell a tidy modern template from a tired one, so an
-own-site lead without a visual review stays an `audit` with `confidence: low`.
-
-Every scrape, whichever way it starts (UI, `npm run scout`, the nightly
-timer), goes through one SQLite job queue and one worker process. Jobs are
-idempotent (one active qualify/visual job per lead, one discovery per run,
-and an optional per-request key for market discovery), retry with backoff,
-have per-type time budgets, and survive web restarts and deploys.
-
-Endpoints:
-
-- `GET /api/health`: queue depth, worker heartbeat, failures in the last 24h, last nightly
-- `GET /api/prospects?play=redesign|audit|skip|active|all&market=slc&contact=email`
-- `POST /api/leads/:id/qualify`, `POST /api/leads/:id/visual-review`
-- `POST /api/qualify/backfill` with `{"rescan": false}` re-scores saved scans offline (after tuning rules); `{"rescan": true}` crawls again
-- `GET /api/markets`, `POST /api/markets/:id/discover` with `{"areas": ["Murray, UT"], "categories": ["HVAC contractor"], "limit": 25, "idempotencyKey": "optional"}`. Bright Data bills per record, so choose areas and limits deliberately.
-- `GET /api/leads/:id/screens/{desktop|mobile}-{fold|full}.jpg`
-
-Markets live in `server/services/markets.js`: Salt Lake City is on, and New York
-City (outer boroughs plus Hempstead) is present but off. Rules live in
-`server/services/qualify.js`, dated-site signals in `server/crawler/dated.js`,
-contact extraction in `server/crawler/contacts.js`.
-
-Discovery runs no longer queue Lighthouse audits automatically. Run the deep
-audit on shortlisted leads, or pass `options: { deepAudit: true }` to a run.
-
-## Backend now included
-
-- SQLite persistence for leads, runs, jobs, settings, and audit events
-- API-owned job progress; the browser no longer simulates run completion
-- Restart-safe in-process worker with queued, running, waiting, completed, failed, and cancelled states
-- Retryable per-client website analysis
-- SSRF-resistant fetches that block local/private networks, re-check redirects, cap response size, enforce timeouts, and respect a site-wide robots.txt disallow
-- Bounded same-site crawling with robots enforcement, redirect revalidation, request delays, and per-run page limits
-- Internal-link verification with saved status/error evidence and a 50-link safety cap per client
-- Real mobile Lighthouse collection for performance, accessibility, SEO, best practices, and core timing metrics
-- HTML audit for content hierarchy, mobile setup, contact paths, form friction, CTA visibility, image alt coverage, structured data, trust language, and technology signals
-- Deterministic opportunity score and confidence with the exact evidence saved under `data/leads/{lead-id}/`
-- Retryable AI synthesis jobs grounded in the saved crawl, broken-link checks, Lighthouse metrics, and selected Lighthouse failures
-- Structured AI recommendations remain advisory and are persisted separately in `muse-analysis.json`
-- Bright Data Google Maps discovery adapter using its async snapshot workflow
-- Google business enrichment for claimed status, hours, services, booking/estimate links, review distribution and recency, photos, categories, and observed locations
-- Transparent digital-maturity scoring from measured website, technology, profile, booking, and maintenance signals
-- Source-required company metrics for employees, revenue, profit, founding year, and total branches; unavailable values remain explicitly unknown
-- Meta Model API and OpenAI Responses API integrations with strict structured output for concise, balanced, and detailed outreach drafts
-- Deterministic outreach fallback when no model API key is configured
-- Manual outreach only; the app does not send email automatically
-
-Deep audits retain a lightweight HTML fallback. If Lighthouse cannot launch or load a page, the client remains analyzed with a visible partial component state rather than fabricated performance data.
-
-## Run locally
+## Run it locally
 
 ```bash
 npm install
+cp .env.example .env   # set GOOGLE_CLIENT_ID and SCOUTLINE_ALLOWED_EMAILS at minimum
 npm run dev
 ```
 
-This starts:
-
-- UI: `http://127.0.0.1:5174`
-- API: `http://127.0.0.1:8787`
-- database: `data/scoutline.db`
-
-Production build:
+This starts the UI at `http://127.0.0.1:5174`, the API at `http://127.0.0.1:8787`, and a SQLite database at `data/scoutline.db`.
 
 ```bash
-npm test
-npm run build
-npm start
+npm test              # node --test
+npm run eval          # offline benchmark and release gates
+npm run build && npm start
+npm run worker        # run the job worker as its own process
+npm run scout -- health   # CLI; see ops/README.md
 ```
 
-To load the Google settings from Bitwarden Secrets Manager instead of the
-local `.env`, set the `BWS_ACCESS_TOKEN` for the `scoutline-deploy` machine
-account and use the wrapped commands:
+### Google sign-in
 
-```bash
-export BWS_ACCESS_TOKEN='paste-the-machine-account-token-here'
-npm run secrets:dev    # local UI + API
-npm run secrets:start  # production server after npm run build
-```
-
-The token is never committed to the repository. The machine account is
-read-only and scoped to the Bitwarden `Scoutline` project. That project
-contains `GOOGLE_CLIENT_ID` and `SCOUTLINE_ALLOWED_EMAILS`, which `bws run`
-injects into the server process.
-
-## Optional integrations
-
-Copy `.env.example` to `.env` and add only the providers you want:
-
-```bash
-cp .env.example .env
-```
-
-- `BRIGHT_DATA_API_KEY` enables live Google Maps discovery. The map center is editable in Settings.
-- `BRIGHT_DATA_DATASET_ID` is optional; the official Google Maps full-info dataset is the default.
-- `MODEL_API_KEY` enables Meta Model API website synthesis and outreach generation.
-- `META_MODEL` defaults to `muse-spark-1.2-contributor`.
-- `META_REASONING_EFFORT` defaults to `minimal` for synthesis and outreach generation.
-- `META_MODEL_API_BASE_URL` optionally overrides Meta's `https://api.meta.ai/v1` endpoint.
-- `OPENAI_API_KEY` enables the optional OpenAI fallback when no Meta key is present.
-- `OPENAI_MODEL` overrides the default OpenAI model.
-- Screenshot reviews use the same provider order: Meta (`MODEL_API_KEY`, model `META_VISION_MODEL` or `META_MODEL`) first, then OpenAI (`OPENAI_VISION_MODEL` or `OPENAI_MODEL`). With no key, screenshots are still captured for manual review. Try it on one site: `node scripts/visual-probe.mjs https://example.com`.
-
-When a provider is not configured, the UI states the fallback explicitly: saved-client audits for discovery and evidence templates for outreach.
-
-Secrets, databases, and generated lead artifacts are excluded from Git.
-
-## Google login and email allowlist
-
-Scoutline requires a Google account whose verified email is listed by the server. To configure it:
-
-1. In Google Cloud Console, configure the OAuth consent screen and create an OAuth 2.0 Client ID of type **Web application**.
-2. Add `http://127.0.0.1:5174` as an authorized JavaScript origin for local development. Add the HTTPS origin of the deployed site for production.
-3. Add the client ID and the exact email addresses that may sign in to `.env`:
+1. In Google Cloud Console, create an OAuth 2.0 Client ID of type **Web application**.
+2. Add `http://127.0.0.1:5174` as an authorized JavaScript origin (and the HTTPS origin of any deployment).
+3. Put the client ID and the allowed addresses in `.env`, then restart:
 
 ```bash
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 SCOUTLINE_ALLOWED_EMAILS=you@example.com,teammate@example.com
 ```
 
-4. Restart `npm run dev` after changing the allowlist.
+### Optional integrations
 
-The allowlist is read only by the Express server. Google ID tokens are verified on the server, API routes require an HTTP-only session cookie, and logout revokes the corresponding SQLite session. Removing an address from the allowlist and restarting the server invalidates that account's existing session on its next request.
+| Variable | Enables |
+| --- | --- |
+| `BRIGHT_DATA_API_KEY` (`BRIGHT_DATA_DATASET_ID`, `BRIGHT_DATA_MAX_RECORDS`) | Live Google Maps discovery (billed per record) |
+| `MODEL_API_KEY`, `META_MODEL`, `META_REASONING_EFFORT`, `META_MODEL_API_BASE_URL` | Meta Model API for analysis, outreach and visual review |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | OpenAI fallback when no Meta key is set |
+| `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `GMAIL_FROM_NAME` | Email autopilot |
+| `SCOUTLINE_PORT`, `SCOUTLINE_DATA_DIR`, `CHROME_PATH` | Local overrides |
 
-## Crawl tab
+When a provider isn't configured, the UI says which fallback it is using.
 
-The **Crawl** tab reviews crawl snapshots. The old standalone Postgres
-crawler (`crawler/`) was retired: its scraping engine now lives in
-`server/crawler/` and every scrape runs through Scoutline's job worker. Older
-`crawl-export.json` files can still be imported; the tab shows totals,
-website-type/qualification filters, per-site detail with scores and contacts,
-and an **Add as lead** action (duplicate domains resolve to the existing
-lead). With no import yet, the tab offers the bundled
-`server/crawler/crawl-export.sample.json` to explore.
+## Project layout
 
-The same tab also runs **local scrapes**: enter a location + category
-(discovery via Bright Data — needs the API key and coordinates unless the
-location matches your Settings geography) or paste URLs to skip discovery.
-The worker runs the scrape (it survives web restarts) and each run is saved as a
-committable JSON file under `data/crawl/local/`, with the same detail view
-and add-as-lead action as snapshot sites.
+```
+src/               React UI: Today, leads, Crawl, Outreach/autopilot
+server/index.js    Express API and worker entry point
+server/crawler/    Page fetching, robots, same-site crawl, contacts, dated-site signals
+server/services/   Discovery, enrichment, audit, qualify, visual review, outreach, jobs, autopilot, backups
+server/benchmark/  Offline fixtures, evaluation and release gates
+server/cli.js      Command-line client for the API
+ops/               systemd units, deploy scripts and the operations guide
+```
+
+See [ops/README.md](ops/README.md) for how the web, worker and nightly processes run in production.
