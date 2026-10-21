@@ -4,7 +4,7 @@ import Database from 'better-sqlite3'
 import { createAutopilot } from './autopilot.js'
 import { contentHash, DEFAULT_AUTOPILOT } from './sender.js'
 
-const SIGNATURE = 'Rohan Ahire\nGoodShigoto\n123 Main St, Salt Lake City, UT 84101'
+const SIGNATURE = 'Rohan Ahire\nExample Studio\n123 Main St, Salt Lake City, UT 84101'
 
 function makeLead(id, priority, overrides = {}) {
   return {
@@ -33,13 +33,13 @@ function setup({ leads = [], start = '2026-10-13T12:00:00Z' } = {}) {
   const notes = []
   const mailbox = {
     configured: true,
-    user: 'rohan@goodshigoto.com',
+    user: 'rohan@example.com',
     inbox: { replies: [], bounces: [] },
     fail: null,
     async send(message) {
       if (this.fail) throw new Error(this.fail)
       sent.push({ ...message, at: clock.now })
-      return { messageId: `<m${sent.length}@goodshigoto.com>`, response: '250 OK' }
+      return { messageId: `<m${sent.length}@example.com>`, response: '250 OK' }
     },
     async scan() { return this.inbox },
   }
@@ -119,7 +119,7 @@ test('sends the day batch inside the morning window, best leads first, then foll
   await runUntil(env, '2026-10-16T16:00:00Z')
   const followUps = env.sent.filter((item) => item.subject.startsWith('Re: '))
   assert.equal(followUps.length, 2)
-  assert.equal(followUps[0].inReplyTo, '<m1@goodshigoto.com>')
+  assert.equal(followUps[0].inReplyTo, '<m1@example.com>')
 })
 
 test('a reply stops the sequence and moves the lead to Replied', async () => {

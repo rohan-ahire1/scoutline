@@ -2,7 +2,7 @@
 
 **A lead research workspace that finds local businesses, audits their websites, and shows the evidence behind every pitch.**
 
-Scoutline is the internal sales tool for GoodShigoto, a small web studio. It is a private, sign-in-only app, so there is no public demo.
+I built Scoutline to run outbound sales for a small web studio. It is a single-operator app behind Google sign-in, so you run it locally with the steps below.
 
 ## What it does
 

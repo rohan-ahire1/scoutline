@@ -1,4 +1,4 @@
-// Lead qualification for GoodShigoto outreach. Answers three questions:
+// Lead qualification for studio outreach. Answers three questions:
 //   1. Is the business worth pitching? (businessWorth, from Google reviews)
 //   2. Is its web presence weak enough to pitch? (siteWeakness, from the crawl)
 //   3. Which play fits: a free redesign, an audit email, or skip?

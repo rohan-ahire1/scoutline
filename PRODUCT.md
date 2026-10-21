@@ -8,11 +8,11 @@ web
 
 ## Users
 
-One operator: the owner of GoodShigoto, a small web studio, doing outbound sales for the studio. They sign in with Google (allowlist) and work mostly on a laptop; phone use is rare and only has to work. No teams or roles.
+One operator: the owner of a small web studio, doing outbound sales for the studio. They sign in with Google (allowlist) and work mostly on a laptop; phone use is rare and only has to work. No teams or roles.
 
 ## Product Purpose
 
-Scoutline is the GoodShigoto lead engine. It finds local trade businesses (Salt Lake City first; NYC outer boroughs configured but disabled), scans their websites, and sorts each lead into a **play**:
+Scoutline is a lead engine for a small web studio. It finds local trade businesses (Salt Lake City first; NYC outer boroughs configured but disabled), scans their websites, and sorts each lead into a **play**:
 
 - **redesign**: no site, or a bad/static one. The studio builds a free concept by hand and emails it.
 - **audit**: a decent site with specific, evidenced problems. The email carries concrete pointers.
@@ -40,7 +40,7 @@ Evidence over black-box scores. Every judgement traces back to the crawl, scan, 
 
 ## Brand Commitments
 
-Name: Scoutline, an internal tool for GoodShigoto. No other binding voice, asset or identity constraints.
+Name: Scoutline. No other binding voice, asset or identity constraints.
 
 ## Evidence on Hand
 

@@ -6,7 +6,7 @@ import {
 } from './sender.js'
 
 const TZ = 'America/Denver'
-const signed = { ...DEFAULT_AUTOPILOT, signature: 'Rohan Ahire\nGoodShigoto\n123 Main St, Salt Lake City, UT 84101' }
+const signed = { ...DEFAULT_AUTOPILOT, signature: 'Rohan Ahire\nExample Studio\n123 Main St, Salt Lake City, UT 84101' }
 
 function lead(overrides = {}) {
   return {
