@@ -5,7 +5,7 @@ import { mkdirSync, existsSync, readFileSync, readdirSync, realpathSync, rmSync,
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { AUTH_SESSION_TTL_SECONDS, AuthError, clearedSessionCookie, createAuthService, guestUser, serviceTokenUser, sessionCookie } from './auth.js'
+import { AUTH_SESSION_TTL_SECONDS, AuthError, clearedSessionCookie, createAuthService, proxyUser, serviceTokenUser, sessionCookie } from './auth.js'
 import { auditWebsite, mergeContactCandidates } from './services/audit.js'
 import { enrichLead } from './services/enrichment.js'
 import { generateMuseAnalysis } from './services/insights.js'
@@ -195,7 +195,7 @@ const noStore = (res) => res.set('Cache-Control', 'no-store')
 
 // Guests may only read. The gate already refuses their writes; this is the second lock.
 app.use('/api', (req, res, next) => {
-  if (!guestUser(req.headers) || req.method === 'GET' || req.method === 'HEAD') return next()
+  if (!proxyUser(req.headers)?.guest || req.method === 'GET' || req.method === 'HEAD') return next()
   noStore(res).status(403).json({ error: 'Guest access is read-only.', code: 'GUEST_READ_ONLY' })
 })
 
@@ -204,7 +204,7 @@ app.get('/api/auth/config', (_req, res) => {
 })
 
 app.get('/api/auth/session', (req, res) => {
-  const user = auth.session(req.headers.cookie) || guestUser(req.headers)
+  const user = proxyUser(req.headers) || auth.session(req.headers.cookie)
   noStore(res).json({ authenticated: Boolean(user), user })
 })
 
@@ -233,9 +233,9 @@ app.use('/api', (req, res, next) => {
     req.user = service
     return next()
   }
-  const guest = auth.session(req.headers.cookie) ? null : guestUser(req.headers)
-  if (guest) {
-    req.user = guest
+  const proxied = proxyUser(req.headers)
+  if (proxied) {
+    req.user = proxied
     return next()
   }
   if (!auth.configured) return noStore(res).status(503).json({ error: 'Google login is not configured on this server', code: 'AUTH_NOT_CONFIGURED' })

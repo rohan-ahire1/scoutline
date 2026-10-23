@@ -2746,12 +2746,14 @@ export default function App() {
   }, [])
 
   const logout = useCallback(async () => {
+    // Behind the login gate there is no Google session; sign out of the gate instead.
+    if (authState.user?.proxy) return window.location.assign('/_auth/logout')
     try { await fetch('/api/auth/logout', { method: 'POST' }) }
     finally {
       window.google?.accounts?.id?.disableAutoSelect?.()
       setAuthState((current) => ({ ...current, user: null, error: '', signingIn: false }))
     }
-  }, [])
+  }, [authState.user])
 
   const showLoginError = useCallback((message) => setAuthState((current) => ({ ...current, error: message })), [])
 

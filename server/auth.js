@@ -164,13 +164,16 @@ export function serviceTokenUser(authorizationHeader, expectedToken = process.en
   return { email: 'service@scoutline.local', name: 'Service token', service: true }
 }
 
-// Read-only guest: the login gate in front of Scoutline (phone-login + Caddy)
-// sets `X-Scoutline-Guest: 1` after its own guest password check, and Caddy
-// strips any copy a visitor sends. Off unless SCOUTLINE_TRUST_GUEST_HEADER=1,
-// so a server reachable without that proxy never trusts the header.
+// Proxy login (SCOUTLINE_PROXY_AUTH=1): the gate in front of Scoutline (Caddy +
+// phone-login) already let only Tailscale devices or password holders through,
+// so everyone who reaches the app is the owner, except a read-only guest, which
+// the gate marks with `X-Scoutline-Guest: 1` (Caddy strips any copy a visitor
+// sends). Off by default, so a server reachable without that proxy keeps Google login.
 export const GUEST_HEADER = 'x-scoutline-guest'
-export const GUEST_USER = Object.freeze({ id: 'guest', email: 'guest@scoutline.local', name: 'Guest (read-only)', guest: true })
+export const GUEST_USER = Object.freeze({ id: 'guest', email: 'guest@scoutline.local', name: 'Guest (read-only)', guest: true, proxy: true })
+export const OWNER_USER = Object.freeze({ id: 'owner', email: 'owner@scoutline.local', name: 'Owner', proxy: true })
 
-export function guestUser(headers, trusted = process.env.SCOUTLINE_TRUST_GUEST_HEADER === '1') {
-  return trusted && headers?.[GUEST_HEADER] === '1' ? GUEST_USER : null
+export function proxyUser(headers, enabled = process.env.SCOUTLINE_PROXY_AUTH === '1') {
+  if (!enabled) return null
+  return headers?.[GUEST_HEADER] === '1' ? GUEST_USER : OWNER_USER
 }
