@@ -163,3 +163,14 @@ export function serviceTokenUser(authorizationHeader, expectedToken = process.en
   if (!timingSafeEqual(given, wanted)) return null
   return { email: 'service@scoutline.local', name: 'Service token', service: true }
 }
+
+// Read-only guest: the login gate in front of Scoutline (phone-login + Caddy)
+// sets `X-Scoutline-Guest: 1` after its own guest password check, and Caddy
+// strips any copy a visitor sends. Off unless SCOUTLINE_TRUST_GUEST_HEADER=1,
+// so a server reachable without that proxy never trusts the header.
+export const GUEST_HEADER = 'x-scoutline-guest'
+export const GUEST_USER = Object.freeze({ id: 'guest', email: 'guest@scoutline.local', name: 'Guest (read-only)', guest: true })
+
+export function guestUser(headers, trusted = process.env.SCOUTLINE_TRUST_GUEST_HEADER === '1') {
+  return trusted && headers?.[GUEST_HEADER] === '1' ? GUEST_USER : null
+}

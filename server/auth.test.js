@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import Database from 'better-sqlite3'
-import { AUTH_COOKIE_NAME, AuthError, clearedSessionCookie, createAuthService, parseAllowedEmails, readCookie, serviceTokenUser, sessionCookie } from './auth.js'
+import { AUTH_COOKIE_NAME, AuthError, clearedSessionCookie, createAuthService, guestUser, parseAllowedEmails, readCookie, serviceTokenUser, sessionCookie } from './auth.js'
 
 test('normalizes a comma, semicolon, or whitespace-separated email allowlist', () => {
   assert.deepEqual([...parseAllowedEmails(' Alice@Example.com, bob@example.com;\ninvalid ')], ['alice@example.com', 'bob@example.com'])
@@ -51,4 +51,11 @@ test('service token: bearer match only, and only when a long token is configured
   assert.equal(serviceTokenUser('Bearer short', 'short'), null)
   assert.equal(serviceTokenUser('Bearer ', ''), null)
   assert.equal(serviceTokenUser(undefined, token), null)
+})
+
+test('trusts the guest header only when the proxy is set up to send it', () => {
+  assert.equal(guestUser({ 'x-scoutline-guest': '1' }, true).guest, true)
+  assert.equal(guestUser({ 'x-scoutline-guest': '1' }, false), null)
+  assert.equal(guestUser({ 'x-scoutline-guest': '' }, true), null)
+  assert.equal(guestUser({}, true), null)
 })
