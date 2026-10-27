@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { checkConcept, conceptCandidates, conceptFacts, conceptKey, conceptPreviewHtml, conceptPrompt, generateConcept, imageCandidates, publishConcept, takenKeys } from './concept.js'
+import { looksLikeLeadGen, checkConcept, conceptCandidates, conceptFacts, conceptKey, conceptPreviewHtml, conceptPrompt, generateConcept, imageCandidates, publishConcept, takenKeys } from './concept.js'
 
 const lead = {
   id: 'lead-1',
@@ -123,14 +123,18 @@ test('publishing replaces the live folder in one step', () => {
   assert.ok(takenKeys([], { webRoot }).has('harrisair'))
 })
 
-test('candidates are redesign leads with an email and no concept, best first', () => {
+test('candidates are real redesign leads with an email and no concept, one per site, best first', () => {
+  const at = (id, extra = {}) => ({ ...lead, id, website: `${id}.example`, ...extra })
   const leads = [
-    { ...lead, id: 'a', qualification: { ...lead.qualification, priority: 40 } },
-    { ...lead, id: 'b' },
-    { ...lead, id: 'c', concept: { status: 'review' } },
-    { ...lead, id: 'd', concept: { status: 'failed' }, qualification: { ...lead.qualification, priority: 10 } },
-    { ...lead, id: 'e', qualification: { play: 'audit', priority: 99, contact: { email: 'x@y.example' } } },
-    { ...lead, id: 'f', qualification: { ...lead.qualification, contact: { email: null } } },
+    at('a', { qualification: { ...lead.qualification, priority: 40 } }),
+    at('b'),
+    at('c', { concept: { status: 'review' } }),
+    at('d', { concept: { status: 'failed' }, qualification: { ...lead.qualification, priority: 10 } }),
+    at('e', { qualification: { play: 'audit', priority: 99, contact: { email: 'x@y.example' } } }),
+    at('f', { qualification: { ...lead.qualification, contact: { email: null } } }),
+    at('g', { website: 'bestprovohvacrepair.site', reviews: 6, qualification: { ...lead.qualification, priority: 80 } }),
+    at('h', { website: 'www.b.example', qualification: { ...lead.qualification, priority: 60 } }),
+    at('i', { website: 'https://c.example/home' }),
   ]
   assert.deepEqual(conceptCandidates(leads).map((item) => item.id), ['b', 'a', 'd'])
   assert.deepEqual(conceptCandidates(leads, { limit: 1 }).map((item) => item.id), ['b'])
@@ -142,4 +146,12 @@ test('the preview inlines the page images', () => {
   assert.equal((html.match(/data:image\/png;base64,eA==/g) || []).length, 2)
   assert.match(html, /src="assets\/nope\.png"/)
   assert.equal(conceptPreviewHtml(mkdtempSync(join(tmpdir(), 'concept-'))), null)
+})
+
+test('lead-gen sites are not real businesses to pitch', () => {
+  assert.equal(looksLikeLeadGen({ website: 'chillhvacrepairwestvalleycityut.site', reviews: 5 }), true)
+  assert.equal(looksLikeLeadGen({ website: 'https://cheap.xyz', reviews: 15 }), true)
+  assert.equal(looksLikeLeadGen({ website: 'olympuscontractor.online', reviews: 35 }), false)
+  assert.equal(looksLikeLeadGen({ website: 'www.sammyshvac.com', reviews: 971 }), false)
+  assert.equal(looksLikeLeadGen({ website: 'tiny.com', reviews: 3 }), true)
 })

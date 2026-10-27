@@ -343,14 +343,36 @@ export async function generateConcept(lead, { leadDir, key, scan = null, run = r
   }
 }
 
+// Lead-gen sites ("Best Provo HVAC Repair" on bestprovohvacrepair.site) are
+// not real businesses to pitch: a throwaway TLD or a handful of reviews.
+const THROWAWAY_TLDS = new Set(['site', 'online', 'xyz', 'top', 'click', 'icu', 'live', 'buzz', 'space', 'website', 'fun'])
+const siteHost = (website) => String(website || '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase()
+
+export function looksLikeLeadGen(lead) {
+  const tld = siteHost(lead.website).split('.').pop()
+  const reviews = Number(lead.reviews || 0)
+  return reviews < 10 || (THROWAWAY_TLDS.has(tld) && reviews < 20)
+}
+
 // Leads that should get a concept: redesign play, an email to send it to,
-// and no concept yet (or one that failed). Highest priority first.
+// a real business, and no concept yet (or one that failed). One per
+// website, highest priority first.
 export function conceptCandidates(leads, { limit = 5 } = {}) {
-  return leads
+  const covered = new Set(leads.filter((lead) => lead.concept && lead.concept.status !== 'failed').map((lead) => siteHost(lead.website)))
+  const picked = []
+  const sorted = leads
     .filter((lead) => lead.qualification?.play === 'redesign' && lead.qualification.contact?.email && lead.website)
     .filter((lead) => !lead.concept || lead.concept.status === 'failed')
+    .filter((lead) => !looksLikeLeadGen(lead))
     .sort((a, b) => (b.qualification.priority || 0) - (a.qualification.priority || 0))
-    .slice(0, limit)
+  for (const lead of sorted) {
+    const host = siteHost(lead.website)
+    if (covered.has(host)) continue
+    covered.add(host)
+    picked.push(lead)
+    if (picked.length >= limit) break
+  }
+  return picked
 }
 
 const PREVIEW_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.gif': 'image/gif' }
