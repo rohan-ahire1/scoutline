@@ -260,7 +260,7 @@ export function checkConcept(siteDir, facts) {
   $('script[src]').each((_, el) => { problems.push(`External script is not allowed: ${$(el).attr('src')}`) })
   $('link[href]').each((_, el) => {
     const href = $(el).attr('href')
-    if (/^https?:/i.test(href) && !/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(href)) problems.push(`External resource is not allowed: ${href}`)
+    if (/^https?:/i.test(href) && !/^https:\/\/fonts\.(googleapis|gstatic)\.com(\/|$)/.test(href)) problems.push(`External resource is not allowed: ${href}`)
   })
   $('iframe').each(() => { problems.push('Iframes are not allowed') })
   $('form').each((_, el) => {

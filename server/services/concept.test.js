@@ -70,6 +70,8 @@ test('image candidates put the logo first and skip badges and pixels', () => {
 
 test('a clean page passes the checks', () => {
   assert.deepEqual(checkConcept(site(goodPage()), conceptFacts(lead)), [])
+  const fonts = goodPage().replace('</head>', '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet"></head>')
+  assert.deepEqual(checkConcept(site(fonts), conceptFacts(lead)), [])
 })
 
 test('checks catch wrong numbers, invented emails, external code and missing parts', () => {
