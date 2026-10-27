@@ -88,7 +88,7 @@ export default function TodayPage({ api, leads, onOpen, goTo, onNewCrawl, reload
             {item.label} <span className="num">{counts[item.id] ?? 0}</span>
           </button>
         ))}
-        {tab === 'concepts'
+        {tab === 'concepts' && data?.canReviewConcepts
           ? <span className="tabs-note concept-draft"><button type="button" className="button" onClick={draftConcepts} disabled={drafting === 'Queuing…'}><Sparkles size={14} aria-hidden="true" />Draft 3 concepts</button>{drafting && <small>{drafting}</small>}</span>
           : <span className="tabs-note">Sorted by priority</span>}
       </div>
@@ -103,7 +103,7 @@ export default function TodayPage({ api, leads, onOpen, goTo, onNewCrawl, reload
             </div>
           ) : tab === 'concepts' ? (
             <div className="concept-grid">
-              {visible.map((prospect) => <ConceptCard key={prospect.id} api={api} prospect={prospect} onChanged={reload} />)}
+              {visible.map((prospect) => <ConceptCard key={prospect.id} api={api} prospect={prospect} canAct={Boolean(data.canReviewConcepts)} onChanged={reload} />)}
             </div>
           ) : (
             <div className="lead-grid">

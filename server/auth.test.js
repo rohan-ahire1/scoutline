@@ -58,5 +58,8 @@ test('trusts the login proxy only when it is turned on', () => {
   assert.equal(proxyUser({ 'x-scoutline-guest': '' }, true).id, 'owner')
   assert.equal(proxyUser({}, true).guest, undefined)
   assert.equal(proxyUser({ 'x-scoutline-guest': '1' }, false), null)
+  assert.equal(proxyUser({ 'x-scoutline-tailnet': '1' }, true).tailnet, true)
+  assert.equal(proxyUser({}, true).tailnet, undefined)
+  assert.equal(proxyUser({ 'x-scoutline-guest': '1', 'x-scoutline-tailnet': '1' }, true).tailnet, undefined)
   assert.equal(proxyUser({}, false), null)
 })

@@ -2658,7 +2658,7 @@ app.get('/api/prospects', (req, res) => {
     counts[lead.qualification.play] = (counts[lead.qualification.play] || 0) + 1
     if (lead.qualification.play !== 'skip' && lead.qualification.contact?.email) counts.withEmail += 1
   }
-  res.json({ counts, total: rows.length, prospects: rows.slice(0, limit).map(prospectRow) })
+  res.json({ counts, total: rows.length, canReviewConcepts: Boolean(req.user?.tailnet), prospects: rows.slice(0, limit).map(prospectRow) })
 })
 
 app.get('/api/leads/:id/screens/:file', (req, res) => {
@@ -2671,6 +2671,15 @@ app.get('/api/leads/:id/screens/:file', (req, res) => {
 
 // Redesign concepts -------------------------------------------------------
 
+// Concept actions are for the owner on a Tailscale device only. A password
+// login from elsewhere can look but not generate, publish or take down. The
+// nightly service token may queue drafts, never publish.
+function requireTailnet(req, res, { allowService = false } = {}) {
+  if (req.user?.tailnet || (allowService && req.user?.service)) return true
+  noStore(res).status(403).json({ error: 'Concept actions only work from your Tailscale devices.', code: 'TAILNET_ONLY' })
+  return false
+}
+
 function queueConcept(lead, triggeredBy = 'user') {
   const active = activeJobFor(lead.id, 'concept')
   if (active) return { queued: false, jobId: active.id }
@@ -2679,6 +2688,7 @@ function queueConcept(lead, triggeredBy = 'user') {
 }
 
 app.post('/api/leads/:id/concept', (req, res) => {
+  if (!requireTailnet(req, res)) return
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
   if (!lead) return notFound(res, 'Lead not found', 'id')
@@ -2690,6 +2700,7 @@ app.post('/api/leads/:id/concept', (req, res) => {
 // Queues concepts for the best redesign leads that have an email and no
 // concept yet. The nightly timer calls this with a small limit.
 app.post('/api/concepts/queue', (req, res) => {
+  if (!requireTailnet(req, res, { allowService: true })) return
   const limit = clampInt(req.body?.limit ?? 3, 1, 20) ?? 3
   const leads = readRows('leads').filter((lead) => !activeJobFor(lead.id, 'concept'))
   const picked = conceptCandidates(leads, { limit })
@@ -2711,6 +2722,7 @@ app.get('/api/leads/:id/concept/preview', (req, res) => {
 })
 
 app.post('/api/leads/:id/concept/approve', (req, res) => {
+  if (!requireTailnet(req, res)) return
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
   if (!lead) return notFound(res, 'Lead not found', 'id')
@@ -2730,6 +2742,7 @@ app.post('/api/leads/:id/concept/approve', (req, res) => {
 })
 
 app.post('/api/leads/:id/concept/reject', (req, res) => {
+  if (!requireTailnet(req, res)) return
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
   if (!lead) return notFound(res, 'Lead not found', 'id')

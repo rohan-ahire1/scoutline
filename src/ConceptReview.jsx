@@ -12,7 +12,7 @@ const STATUS_LABEL = {
 
 // One generated concept: a phone-width preview of the page, what the checks
 // found, and the review actions. Nothing goes live until Approve.
-export function ConceptCard({ api, prospect, onChanged }) {
+export function ConceptCard({ api, prospect, canAct, onChanged }) {
   const concept = prospect.concept
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
@@ -28,7 +28,7 @@ export function ConceptCard({ api, prospect, onChanged }) {
       setBusy('')
     }
   }
-  const canApprove = ['review', 'needs-fix'].includes(concept.status)
+  const canApprove = canAct && ['review', 'needs-fix'].includes(concept.status)
   return (
     <div className="concept-card">
       {concept.preview && concept.status !== 'generating'
@@ -39,13 +39,14 @@ export function ConceptCard({ api, prospect, onChanged }) {
         <small>{STATUS_LABEL[concept.status] || concept.status} · {concept.key}.goodshigoto.com</small>
         {concept.problems?.length > 0 && <ul className="concept-problems">{concept.problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
         {error && <p className="concept-error" role="alert">{error}</p>}
+        {!canAct && <small>Connect over Tailscale to approve or change concepts.</small>}
         <div className="concept-actions">
           {canApprove && <button type="button" className="button button-primary" disabled={Boolean(busy)} onClick={() => act('approve', { override: concept.status === 'needs-fix' })}><Check size={14} aria-hidden="true" />{concept.status === 'needs-fix' ? 'Publish anyway' : 'Approve & publish'}</button>}
           {concept.status === 'live' && concept.url && <a className="button" href={concept.url} target="_blank" rel="noreferrer"><ExternalLink size={14} aria-hidden="true" />Open</a>}
           {concept.preview && concept.status !== 'live' && <a className="button" href={concept.preview} target="_blank" rel="noreferrer"><ExternalLink size={14} aria-hidden="true" />Full preview</a>}
           {prospect.website && <a className="button" href={`https://${String(prospect.website).replace(/^https?:\/\//, '')}`} target="_blank" rel="noreferrer">Their site</a>}
-          {concept.status !== 'generating' && concept.status !== 'live' && <button type="button" className="button" disabled={Boolean(busy)} onClick={() => act('generate')}><RefreshCw size={14} aria-hidden="true" />Redo</button>}
-          {['review', 'needs-fix', 'live'].includes(concept.status) && <button type="button" className="button" disabled={Boolean(busy)} onClick={() => act('reject')}><X size={14} aria-hidden="true" />{concept.status === 'live' ? 'Take down' : 'Reject'}</button>}
+          {canAct && concept.status !== 'generating' && concept.status !== 'live' && <button type="button" className="button" disabled={Boolean(busy)} onClick={() => act('generate')}><RefreshCw size={14} aria-hidden="true" />Redo</button>}
+          {canAct && ['review', 'needs-fix', 'live'].includes(concept.status) && <button type="button" className="button" disabled={Boolean(busy)} onClick={() => act('reject')}><X size={14} aria-hidden="true" />{concept.status === 'live' ? 'Take down' : 'Reject'}</button>}
         </div>
       </div>
     </div>

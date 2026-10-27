@@ -170,10 +170,14 @@ export function serviceTokenUser(authorizationHeader, expectedToken = process.en
 // the gate marks with `X-Scoutline-Guest: 1` (Caddy strips any copy a visitor
 // sends). Off by default, so a server reachable without that proxy keeps Google login.
 export const GUEST_HEADER = 'x-scoutline-guest'
+// Caddy sets this only for requests from a Tailscale address (and strips any
+// copy a visitor sends). Concept review and publishing need it.
+export const TAILNET_HEADER = 'x-scoutline-tailnet'
 export const GUEST_USER = Object.freeze({ id: 'guest', email: 'guest@scoutline.local', name: 'Guest (read-only)', guest: true, proxy: true })
 export const OWNER_USER = Object.freeze({ id: 'owner', email: 'owner@scoutline.local', name: 'Owner', proxy: true })
 
 export function proxyUser(headers, enabled = process.env.SCOUTLINE_PROXY_AUTH === '1') {
   if (!enabled) return null
-  return headers?.[GUEST_HEADER] === '1' ? GUEST_USER : OWNER_USER
+  if (headers?.[GUEST_HEADER] === '1') return GUEST_USER
+  return headers?.[TAILNET_HEADER] === '1' ? { ...OWNER_USER, tailnet: true } : OWNER_USER
 }
