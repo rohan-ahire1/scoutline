@@ -30,6 +30,7 @@ const OUTCOME_BY_CODE = {
   PROVIDER_FAILED: { status: 'Error', retryable: true, autoRetry: true, label: 'Provider reported a failure', detail: 'The data provider reported this request as failed. Retry resumes the same provider snapshot.' },
   PROVIDER_ERROR: { status: 'Error', retryable: true, autoRetry: true, label: 'Provider returned an error', detail: 'The data provider answered with an error payload. Retry resumes the same provider snapshot.' },
   BAD_PROVIDER_RESPONSE: { status: 'Error', retryable: true, autoRetry: true, label: 'Provider answer was unusable', detail: 'The data provider returned a malformed answer. Retry resumes the same provider snapshot.' },
+  RATE_LIMIT: { status: 'Error', retryable: true, autoRetry: false, label: 'Usage limit reached', detail: 'Claude Code hit its usage limit. Retry once the limit resets.' },
   NOT_CONFIGURED: { status: 'Error', retryable: true, autoRetry: false, label: 'Provider not configured', detail: 'The provider key is missing. Add it in settings, then retry.' },
   SOURCE_URL_MISSING: { status: 'Error', retryable: false, autoRetry: false, label: 'No source record', detail: 'This client has no saved provider source URL to refresh.' },
 }
@@ -95,14 +96,16 @@ const JOB_TIMEOUTS_MS = {
   synthesize: 5 * 60_000,
   audit: 10 * 60_000,
   'local-scrape': 45 * 60_000,
+  concept: 25 * 60_000,
 }
 
 export function jobTimeoutMs(type, settings = {}) {
   const configured = Number(settings.jobTimeoutMs) || 600000
   const byType = JOB_TIMEOUTS_MS[type]
   // The configured value stays the ceiling for the classic job types; a
-  // local scrape has its own, larger budget.
-  if (type === 'local-scrape') return byType
+  // local scrape and a concept (Claude writing a page) have their own,
+  // larger budgets.
+  if (type === 'local-scrape' || type === 'concept') return byType
   return byType ? Math.min(byType, configured) : configured
 }
 
@@ -114,7 +117,7 @@ export const RETRY_ON_TIMEOUT = new Set(['qualify', 'visual'])
 // discovery get a default key, so double clicks, retries and nightly re-runs
 // can never queue the same work twice.
 export function defaultIdempotencyKey({ type, leadId = null, runId = null }) {
-  if (['qualify', 'visual'].includes(type) && leadId) return `${type}:${leadId}`
+  if (['qualify', 'visual', 'concept'].includes(type) && leadId) return `${type}:${leadId}`
   if (type === 'discover' && runId) return `discover:${runId}`
   return null
 }

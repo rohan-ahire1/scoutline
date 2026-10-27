@@ -150,6 +150,14 @@ async function nightly(values) {
       return 1
     }
     await record('ok', message, { runs: started.runs, summary })
+    // Draft a few redesign concepts for review. Claude Code runs on the
+    // subscription, so the nightly cap stays small.
+    const conceptLimit = Number(process.env.NIGHTLY_CONCEPTS ?? 3)
+    if (conceptLimit > 0) {
+      await api('POST', '/api/concepts/queue', { limit: conceptLimit, triggeredBy: 'nightly' })
+        .then((queued) => log(`concepts queued: ${queued.queued}`))
+        .catch((error) => log(`could not queue concepts: ${error.message}`))
+    }
     if (summary.newLeads === 0) await notifier.send(`nightly ${night} found 0 new leads (${plan.areas.join('; ')} × ${plan.categories.join(', ')}).`)
     return 0
   } catch (error) {

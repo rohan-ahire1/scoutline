@@ -28,6 +28,7 @@ import { findMarket, resolveMarkets } from './services/markets.js'
 import { PLAYS } from './services/qualify.js'
 import { requalify, scanAndQualify, visualReviewLead } from './services/prospect.js'
 import { getVisionConfig } from './services/visual.js'
+import { conceptCandidates, conceptKey, conceptPreviewHtml, generateConcept, publishConcept, takenKeys, unpublishConcept } from './services/concept.js'
 import { createAutopilot } from './services/autopilot.js'
 import { createMailbox } from './services/mailbox.js'
 
@@ -1417,6 +1418,26 @@ async function runVisualJob(job) {
   recordEvent('lead', lead.id, 'visual_reviewed', { jobId: job.id, status: visualReview.status, verdict: visualReview.verdict || null, score: visualReview.score })
 }
 
+// Redesign concept: Claude Code writes a homepage into the lead's concept
+// folder. It is held for review; nothing goes live until it is approved.
+async function runConceptJob(job) {
+  const lead = readLead(job.leadId)
+  if (!lead) throw Object.assign(new Error('Lead no longer exists'), { code: 'NOT_FOUND' })
+  updateJob(job.id, { progress: 10 })
+  const leadDir = join(dataDir, 'leads', lead.id)
+  const scanPath = join(leadDir, 'site-scan.json')
+  let scan = null
+  try { scan = existsSync(scanPath) ? JSON.parse(readFileSync(scanPath, 'utf8')) : null } catch { scan = null }
+  const key = lead.concept?.key || conceptKey(lead.company, takenKeys(readRows('leads'), { exceptLeadId: lead.id }))
+  scopedLeadUpdate(lead.id, { concept: { ...(lead.concept || {}), key, status: 'generating', jobId: job.id } })
+  const concept = await generateConcept(lead, { leadDir, key, scan, signal: jobSignals.get(job.id)?.signal })
+  throwIfJobCancelled(job.id)
+  if (!claimJobCompletion(job.id)) return
+  scopedLeadUpdate(lead.id, { concept, updated: 'Just now' })
+  updateJob(job.id, { status: 'Completed', progress: 100, result: { key, status: concept.status, problems: concept.problems.length }, error: null })
+  recordEvent('lead', lead.id, 'concept_generated', { jobId: job.id, key, status: concept.status, problems: concept.problems, costUsd: concept.costUsd })
+}
+
 // Where a job's events are filed: its lead, else its run, else the job.
 function jobEventEntity(job) {
   if (job.leadId) return ['lead', job.leadId]
@@ -1480,6 +1501,9 @@ function applyJobOutcomeToLead(job, outcome, cause = null) {
       ...(job.payload.manualAction ? { manualRun: manualRunState(lead, job.payload.manualAction, { status: outcome.status, progress: 100, phase: outcome.label, jobId: job.id, error: outcome.detail, completedAt: nowIso() }) } : {}),
       updated: 'Just now',
     })
+  }
+  if (job.type === 'concept') {
+    return saveLead({ ...lead, concept: { ...(lead.concept || {}), status: 'failed', error: failure.cause || outcome.detail, jobId: job.id }, updated: 'Just now' })
   }
   return lead
 }
@@ -1607,6 +1631,7 @@ async function processNextJob() {
     else if (job.type === 'qualify') await runQualifyJob({ ...job, attempts: attempt })
     else if (job.type === 'visual') await runVisualJob({ ...job, attempts: attempt })
     else if (job.type === 'local-scrape') await runLocalScrapeJob({ ...job, attempts: attempt })
+    else if (job.type === 'concept') await runConceptJob({ ...job, attempts: attempt })
     else throw new Error(`Unsupported job type: ${job.type}`)
   } catch (error) {
     const current = readJob(job.id)
@@ -2605,6 +2630,7 @@ function prospectRow(lead) {
     screens,
     qualifiedAt: q.qualifiedAt,
     autopilot: lead.autopilot ? { status: lead.autopilot.status, step: lead.autopilot.step ?? 0 } : null,
+    concept: lead.concept ? { status: lead.concept.status, key: lead.concept.key, url: lead.concept.url || null, problems: lead.concept.problems || [], generatedAt: lead.concept.generatedAt || null, preview: lead.concept.generatedAt ? `/api/leads/${lead.id}/concept/preview` : null } : null,
   }
 }
 
@@ -2641,6 +2667,78 @@ app.get('/api/leads/:id/screens/:file', (req, res) => {
   const file = join(dataDir, 'leads', req.params.id, 'screens', req.params.file)
   if (!existsSync(file)) return notFound(res, 'Screenshot not found')
   res.type('image/jpeg').sendFile(file)
+})
+
+// Redesign concepts -------------------------------------------------------
+
+function queueConcept(lead, triggeredBy = 'user') {
+  const active = activeJobFor(lead.id, 'concept')
+  if (active) return { queued: false, jobId: active.id }
+  const job = queueJob({ type: 'concept', leadId: lead.id, payload: {}, maxAttempts: 1, triggeredBy })
+  return { queued: true, jobId: job.id }
+}
+
+app.post('/api/leads/:id/concept', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (!lead.website) return unprocessable(res, 'Lead has no website to redesign', 'website')
+  if (lead.concept?.status === 'live') return unprocessable(res, 'This concept is live; take it down before generating a new one', 'concept')
+  res.status(202).json(queueConcept(lead))
+})
+
+// Queues concepts for the best redesign leads that have an email and no
+// concept yet. The nightly timer calls this with a small limit.
+app.post('/api/concepts/queue', (req, res) => {
+  const limit = clampInt(req.body?.limit ?? 3, 1, 20) ?? 3
+  const leads = readRows('leads').filter((lead) => !activeJobFor(lead.id, 'concept'))
+  const picked = conceptCandidates(leads, { limit })
+  const jobs = picked.map((lead) => ({ leadId: lead.id, company: lead.company, ...queueConcept(lead, req.body?.triggeredBy === 'nightly' ? 'nightly' : 'user') }))
+  recordEvent('concept', 'queue', 'started', { limit, queued: jobs.length })
+  res.status(202).json({ queued: jobs.length, jobs })
+})
+
+// The review preview. The page is untrusted (it was written from a lead's
+// website text), so it is served sandboxed: no Scoutline origin, no cookies,
+// no form posts. A sandboxed page cannot fetch its own images with the
+// session cookie, so they are inlined as data URIs.
+app.get('/api/leads/:id/concept/preview', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const html = conceptPreviewHtml(join(dataDir, 'leads', req.params.id, 'concept', 'site'))
+  if (html == null) return notFound(res, 'Concept not found')
+  res.set('Content-Security-Policy', "sandbox allow-scripts allow-forms; default-src 'none'; img-src data:; font-src data: https://fonts.gstatic.com; style-src 'unsafe-inline' https://fonts.googleapis.com; script-src 'unsafe-inline'; form-action 'none'")
+  noStore(res).type('text/html').send(html)
+})
+
+app.post('/api/leads/:id/concept/approve', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (!lead.concept || !['review', 'needs-fix', 'live'].includes(lead.concept.status)) return unprocessable(res, 'There is no generated concept to approve', 'concept')
+  if (lead.concept.status === 'needs-fix' && req.body?.override !== true) return unprocessable(res, `The concept failed its checks: ${lead.concept.problems.join('; ')}`, 'concept')
+  const siteDir = join(dataDir, 'leads', lead.id, 'concept', 'site')
+  if (!existsSync(join(siteDir, 'index.html'))) return unprocessable(res, 'The concept files are missing; generate it again', 'concept')
+  try {
+    const published = publishConcept({ siteDir, key: lead.concept.key })
+    const concept = { ...lead.concept, status: 'live', url: published.url, approvedAt: nowIso() }
+    scopedLeadUpdate(lead.id, { concept })
+    recordEvent('lead', lead.id, 'concept_published', { key: concept.key, url: concept.url })
+    res.json({ concept })
+  } catch (error) {
+    res.status(500).json({ error: `Could not publish the concept: ${error.message}` })
+  }
+})
+
+app.post('/api/leads/:id/concept/reject', (req, res) => {
+  if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
+  const lead = readLead(req.params.id)
+  if (!lead) return notFound(res, 'Lead not found', 'id')
+  if (!lead.concept) return unprocessable(res, 'This lead has no concept', 'concept')
+  if (lead.concept.status === 'live') unpublishConcept({ key: lead.concept.key })
+  const concept = { ...lead.concept, status: 'rejected', rejectedAt: nowIso(), note: String(req.body?.note || '').slice(0, 500) || null }
+  scopedLeadUpdate(lead.id, { concept })
+  recordEvent('lead', lead.id, 'concept_rejected', { key: concept.key })
+  res.json({ concept })
 })
 
 app.get('/api/markets', (_req, res) => {

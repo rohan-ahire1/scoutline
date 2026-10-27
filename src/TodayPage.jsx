@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Clock, Globe, Mail, Plus, SearchX, WifiOff } from 'lucide-react'
+import { ArrowRight, Clock, Globe, Mail, Plus, SearchX, Sparkles, WifiOff } from 'lucide-react'
 import { taskBucket } from '../server/services/brief.js'
 import { PlayTag } from './leadUi.jsx'
+import { ConceptCard } from './ConceptReview.jsx'
 
 const TABS = [
   { id: 'pitch', label: 'To pitch', match: (p) => p.play !== 'skip' },
   { id: 'redesign', label: 'Redesign', match: (p) => p.play === 'redesign' },
+  { id: 'concepts', label: 'Concepts', match: (p) => Boolean(p.concept) && p.concept.status !== 'rejected' },
   { id: 'audit', label: 'Audit', match: (p) => p.play === 'audit' },
   { id: 'email', label: 'Needs an email', match: (p) => p.play !== 'skip' && !p.contact?.email },
   { id: 'skip', label: 'Skipped', match: (p) => p.play === 'skip' },
@@ -38,6 +40,8 @@ export default function TodayPage({ api, leads, onOpen, goTo, onNewCrawl, reload
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [tab, setTab] = useState('pitch')
+  const [localReload, setLocalReload] = useState(0)
+  const [drafting, setDrafting] = useState('')
 
   useEffect(() => {
     let stopped = false
@@ -45,13 +49,24 @@ export default function TodayPage({ api, leads, onOpen, goTo, onNewCrawl, reload
       .then((body) => { if (!stopped) { setData(body); setError('') } })
       .catch((caught) => { if (!stopped) setError(caught.message) })
     return () => { stopped = true }
-  }, [api, reloadKey])
+  }, [api, reloadKey, localReload])
 
   const prospects = data?.prospects || []
   const counts = useMemo(() => Object.fromEntries(TABS.map((item) => [item.id, prospects.filter(item.match).length])), [prospects])
   const visible = prospects.filter(TABS.find((item) => item.id === tab).match)
   const dueLeads = leads.filter((lead) => ['today', 'overdue'].includes(taskBucket(lead.nextTask)))
   const unqualified = leads.filter((lead) => !lead.qualification).length
+  const reload = () => setLocalReload((value) => value + 1)
+  const draftConcepts = async () => {
+    setDrafting('Queuing…')
+    try {
+      const body = await api('/api/concepts/queue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ limit: 3 }) })
+      setDrafting(body.queued ? `${body.queued} queued. Each takes a few minutes.` : 'No redesign leads with an email are waiting.')
+      reload()
+    } catch (caught) {
+      setDrafting(caught.message)
+    }
+  }
   const open = (prospect) => {
     const lead = leads.find((item) => item.id === prospect.id)
     if (lead) onOpen(lead, { queue: visible.map((item) => item.id) })
@@ -73,7 +88,9 @@ export default function TodayPage({ api, leads, onOpen, goTo, onNewCrawl, reload
             {item.label} <span className="num">{counts[item.id] ?? 0}</span>
           </button>
         ))}
-        <span className="tabs-note">Sorted by priority</span>
+        {tab === 'concepts'
+          ? <span className="tabs-note concept-draft"><button type="button" className="button" onClick={draftConcepts} disabled={drafting === 'Queuing…'}><Sparkles size={14} aria-hidden="true" />Draft 3 concepts</button>{drafting && <small>{drafting}</small>}</span>
+          : <span className="tabs-note">Sorted by priority</span>}
       </div>
 
       {error ? <div className="today-empty" role="alert"><strong>Couldn’t load today’s leads</strong><span>{error}</span></div>
@@ -83,6 +100,10 @@ export default function TodayPage({ api, leads, onOpen, goTo, onNewCrawl, reload
               <strong>{prospects.length ? 'Nothing in this view' : 'No qualified leads yet'}</strong>
               <span>{prospects.length ? 'Try another tab.' : unqualified ? `${unqualified} leads are waiting to be sorted into plays. Start a crawl or run qualification.` : 'Run a crawl to find trade businesses and sort them into plays.'}</span>
               {!prospects.length && <button type="button" className="button button-primary" onClick={onNewCrawl}><Plus size={15} aria-hidden="true" />New crawl</button>}
+            </div>
+          ) : tab === 'concepts' ? (
+            <div className="concept-grid">
+              {visible.map((prospect) => <ConceptCard key={prospect.id} api={api} prospect={prospect} onChanged={reload} />)}
             </div>
           ) : (
             <div className="lead-grid">

@@ -105,6 +105,7 @@ test('per-type job timeouts stay under the configured ceiling, except long local
   assert.equal(jobTimeoutMs('qualify', { jobTimeoutMs: 600000 }), 300000)
   assert.equal(jobTimeoutMs('audit', { jobTimeoutMs: 120000 }), 120000)
   assert.equal(jobTimeoutMs('local-scrape', { jobTimeoutMs: 600000 }), 2700000)
+  assert.equal(jobTimeoutMs('concept', { jobTimeoutMs: 600000 }), 1500000)
   assert.equal(jobTimeoutMs('unknown', {}), 600000)
   const now = Date.now()
   const running = [
