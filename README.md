@@ -90,6 +90,7 @@ SCOUTLINE_ALLOWED_EMAILS=you@example.com,teammate@example.com
 | `BRIGHT_DATA_API_KEY` (`BRIGHT_DATA_DATASET_ID`, `BRIGHT_DATA_MAX_RECORDS`) | Live Google Maps discovery (billed per record) |
 | `MODEL_API_KEY`, `META_MODEL`, `META_REASONING_EFFORT`, `META_MODEL_API_BASE_URL` | Meta Model API for analysis, outreach and visual review |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | OpenAI fallback when no Meta key is set |
+| `TYPESAFE_API_KEY` (`JEV_MODEL`, `JEV_PASS_THRESHOLD`) | Jev pre-screen: a confident Pass (default above 0.8) skips the full written analysis on automatic runs |
 | `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `GMAIL_FROM_NAME` | Email autopilot |
 | `SCOUTLINE_PORT`, `SCOUTLINE_DATA_DIR`, `CHROME_PATH` | Local overrides |
 

@@ -52,6 +52,9 @@ bws run --project-id f132f7b5-b6cd-49ab-979a-b4c6007f22a6 -- node server/cli.js 
 All secrets live in Bitwarden project `f132f7b5-b6cd-49ab-979a-b4c6007f22a6`
 and are injected by `bws run`; no plaintext env file holds them.
 - `BRIGHT_DATA_API_KEY`, `MODEL_API_KEY`, Google login.
+- `TYPESAFE_API_KEY`: Jev pre-screen before AI synthesis (worker). Optional;
+  without it every lead gets the full analysis. `JEV_PASS_THRESHOLD` (default
+  0.8) sets how sure Jev must be before a Pass skips the write-up.
 - `SCOUTLINE_SERVICE_TOKEN`: used as `Authorization: Bearer` by the CLI.
 - Alerts: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`. Without them alerts are
   only logged. Alerts: nightly failed,
