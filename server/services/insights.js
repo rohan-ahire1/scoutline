@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { assertNoInventedClaims, buildObservations, extractResponseText, getOutreachConfig } from './outreach.js'
 import { parseFiniteNumber as finiteNumber, resolveMetricProvenance, resolveNestedProvenance } from './measure.js'
+import { askJev, asChoice, getJevConfig } from './jev.js'
 
 const opportunitySchema = {
   type: 'object',
@@ -215,13 +216,100 @@ export function validateMuseAnalysis(result, { observations = null, allowedEvide
   }
 }
 
+// Jev pre-screen. The criteria restate the synthesis prompt's qualification
+// rule and the qualify.js rubric (business worth, site weakness, exclusions).
+export const JEV_QUALIFICATION_INSTRUCTIONS = 'You are screening one local service business as a lead for website redesign or audit outreach. Using only the evidence packet, choose the qualification a careful human reviewer would give. Missing information is unknown, not evidence either way. Deterministic scores are inputs, not conclusions.'
+
+export const JEV_QUALIFICATION_CRITERIA = {
+  Pursue: 'The evidence shows clear, addressable website opportunities: specific measured or observed problems such as poor mobile performance, confirmed broken links, no visible phone, email, form or call to action, a dated, placeholder or free-builder site, or no real website of its own. The business also looks worth pitching: an open, owner-run local service business with a healthy Google rating (4.0 stars or more) and a meaningful number of reviews.',
+  Review: 'Mixed or incomplete evidence: some problems are present but they are minor, estimated or unverified; key measurements are missing; the site could not be fully scanned; or business signals such as reviews, rating or category are thin or unknown. A human should look before deciding.',
+  Pass: 'Little addressable website opportunity or unreliable evidence: the site already measures and looks good with few or no real problems, or the business is a poor fit for outreach because it is closed, a franchise or national brand, not an owner-run service business (utility, government, bank, school, store, supplier, nonprofit), a large operation with in-house marketing, has a weak reputation under 4.0 stars, or shares its website with other listings; or the audit evidence is too unreliable to act on.',
+}
+
+export function jevStateFromPacket(evidencePacket) {
+  return `Website opportunity research for one business lead. Evidence packet (JSON):\n${JSON.stringify(evidencePacket, null, 1)}`
+}
+
+function cleanProbabilities(probabilities) {
+  return Object.fromEntries(['Pursue', 'Review', 'Pass'].map((key) => [key, Number.isFinite(Number(probabilities?.[key])) ? Number(probabilities[key]) : 0]))
+}
+
+// Returns { decision: 'pass' } for a confident Pass, { decision: 'continue' }
+// for everything else (a low-confidence Pass counts as Review), or
+// { decision: 'skipped' } when Jev is not configured or fails, so the caller
+// falls back to the full analysis.
+export async function runJevGate(evidencePacket, options = {}) {
+  const config = getJevConfig(options)
+  if (!config.configured) return { decision: 'skipped', reason: 'TYPESAFE_API_KEY is not set' }
+  try {
+    const response = await askJev({
+      apiKey: config.apiKey,
+      model: config.model,
+      state: jevStateFromPacket(evidencePacket),
+      questions: { qualification: { type: 'choice', instructions: JEV_QUALIFICATION_INSTRUCTIONS, criteria: JEV_QUALIFICATION_CRITERIA } },
+      signal: AbortSignal.timeout(options.jevTimeoutMs ?? 20_000),
+      fetchImpl: options.fetch || fetch,
+    })
+    const answer = asChoice(response?.answers?.qualification, 'qualification')
+    const probabilities = cleanProbabilities(answer.probabilities)
+    const result = {
+      model: response.model || config.model,
+      choice: answer.choice,
+      probabilities,
+      confidence: finiteNumber(answer.confidence),
+      threshold: config.passThreshold,
+      usage: response.usage || null,
+      checkedAt: new Date().toISOString(),
+    }
+    if (answer.choice === 'Pass' && probabilities.Pass > config.passThreshold) return { decision: 'pass', ...result }
+    return { decision: 'continue', treatedAs: answer.choice === 'Pursue' ? 'Pursue' : 'Review', ...result }
+  } catch (error) {
+    console.warn(`[jev] gate skipped, running full analysis: ${error.message}`)
+    return { decision: 'skipped', reason: `Jev failed: ${error.message}` }
+  }
+}
+
+// The saved result for a gated lead. It goes through validateMuseAnalysis as
+// the existing "no supported opportunity" Pass outcome, so the UI, reports and
+// outreach read it like any other completed synthesis.
+export function buildJevGatedAnalysis(gate) {
+  const percent = (value) => `${Math.round(value * 100)}%`
+  const analysis = validateMuseAnalysis({
+    summary: `Jev pre-screen rated this lead a clear Pass (${percent(gate.probabilities.Pass)} probability), so the full written AI analysis was skipped. The deterministic audit stands. Regenerate to run the full analysis.`,
+    topOpportunities: [],
+    strengths: [],
+    unknowns: [],
+    outreachAngles: [],
+    qualificationRecommendation: 'Pass',
+    qualificationRationale: `Gated by Jev: ${percent(gate.probabilities.Pass)} Pass, above the ${percent(gate.threshold)} threshold. Little addressable website opportunity or unreliable evidence.`,
+    noSupportedOpportunity: true,
+  })
+  const { decision, ...jevGate } = gate
+  return {
+    ...analysis,
+    gatedBy: 'jev',
+    jevGate: { decision, ...jevGate },
+    generation: {
+      source: 'jev',
+      provider: 'typesafe',
+      providerLabel: 'TypeSafe Jev',
+      model: gate.model,
+      responseId: null,
+      generatedAt: new Date().toISOString(),
+      evidenceVersion: 1,
+    },
+  }
+}
+
 export async function generateMuseAnalysis(lead, options = {}) {
   if (lead.opportunityScore == null) throw new Error('A completed deterministic website audit is required before AI synthesis')
   const config = getOutreachConfig(options)
   if (!config.configured) throw new Error('AI is not configured')
-  const client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: 60_000, maxRetries: 2 })
   const observations = buildObservations(lead)
   const evidencePacket = { ...buildMuseEvidencePacket(lead, options), observations }
+  const gate = await runJevGate(evidencePacket, options)
+  if (gate.decision === 'pass') return buildJevGatedAnalysis(gate)
+  const client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: 60_000, maxRetries: 2 })
   const developerPrompt = `You are the evidence-synthesis layer for a website opportunity research tool. Analyze only the supplied evidence packet.
 
 Grounding rules:
@@ -260,6 +348,7 @@ Grounding rules:
   const analysis = validateMuseAnalysis(parsed, { observations })
   return {
     ...analysis,
+    ...(gate.decision === 'continue' ? { jevGate: gate } : {}),
     generation: {
       source: config.provider,
       provider: config.provider,

@@ -1246,7 +1246,9 @@ async function runSynthesisJob(job) {
   })
   const synthesisStartedAt = nowIso()
   throwIfJobCancelled(job.id)
-  const result = await generateMuseAnalysis(readLead(job.leadId), { lighthouseReport })
+  // A person clicking Analyze/Regenerate wants the written analysis, so the
+  // Jev Pass gate only screens automatic runs.
+  const result = await generateMuseAnalysis(readLead(job.leadId), { lighthouseReport, ...(job.payload.requestedManually ? { jev: false } : {}) })
   result.generatedAt = synthesisStartedAt
   if (!claimJobCompletion(job.id)) return readLead(job.leadId) || lead
   const synthesisDecision = resolveSynthesisCompletion({ current: readLead(job.leadId) || {}, result })
@@ -1267,9 +1269,9 @@ async function runSynthesisJob(job) {
     })
   updateJob(job.id, {
     status: 'Completed', progress: 100, error: null,
-    result: { recommendation: result.qualificationRecommendation, opportunities: result.topOpportunities.length, model: result.generation.model, stale: synthesisDecision.type === 'stale' },
+    result: { recommendation: result.qualificationRecommendation, opportunities: result.topOpportunities.length, model: result.generation.model, gatedBy: result.gatedBy || null, stale: synthesisDecision.type === 'stale' },
   })
-  recordEvent('lead', lead.id, synthesisDecision.type === 'stale' ? 'muse_synthesis_stale' : 'muse_synthesis_completed', { jobId: job.id, recommendation: result.qualificationRecommendation, model: result.generation.model })
+  recordEvent('lead', lead.id, synthesisDecision.type === 'stale' ? 'muse_synthesis_stale' : 'muse_synthesis_completed', { jobId: job.id, recommendation: result.qualificationRecommendation, model: result.generation.model, gatedBy: result.gatedBy || null })
   if (job.payload.workflow === 'full' && !isRunCancelled(job.runId)) return generateAndSaveOutreach(updated, { manualAction: 'full' })
   return updated
 }
