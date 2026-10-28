@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMuseEvidencePacket, extractLighthouseEvidence, validateMuseAnalysis } from './insights.js'
+import { buildJevGatedAnalysis, buildMuseEvidencePacket, extractLighthouseEvidence, generateMuseAnalysis, JEV_QUALIFICATION_CRITERIA, runJevGate, validateMuseAnalysis } from './insights.js'
+import { buildObservations } from './outreach.js'
+import { startFakeModelServer } from '../benchmark/fakes.js'
 
 test('builds a bounded AI packet from saved audit evidence', () => {
   const lead = {
@@ -173,4 +175,129 @@ test('packet carries link denominators and never calls blocked links broken', ()
   assert.equal(packet.measuredAudit.linkSummary.unverified, 6)
   assert.equal(packet.measuredAudit.unverifiedLinks[0].outcome, 'blocked')
   assert.ok(packet.brokenLinkDetails.every((item) => item.outcome === 'confirmed_broken'))
+})
+
+// Jev pre-screen gate
+
+function jevFetch(probabilities, { calls = [], status = 200 } = {}) {
+  const choice = Object.entries(probabilities).sort((a, b) => b[1] - a[1])[0][0]
+  const fake = async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body), auth: init.headers.Authorization })
+    if (status !== 200) return new Response('upstream error', { status })
+    return new Response(JSON.stringify({ model: 'jev-latest', answers: { qualification: { type: 'choice', choice, probabilities, confidence: Math.max(...Object.values(probabilities)) } }, usage: { input_tokens: 900, output_tokens: 0 } }), { status: 200 })
+  }
+  fake.calls = calls
+  return fake
+}
+
+function gateLead() {
+  return {
+    company: 'Gate Fixture Co', category: 'Plumbing', location: 'Boise, ID', website: 'gatefixture.example',
+    opportunityScore: 62, confidence: 70, analysisSource: 'Deterministic website audit',
+    mainIssue: 'Contact path', issueDetail: 'No obvious phone, email, or enquiry form was detected.',
+    problems: ['No obvious phone, email, or enquiry form was detected.'],
+    evidence: ['Direct contact methods detected: 0'],
+  }
+}
+
+async function fullAnalysisServer(lead) {
+  const cited = buildObservations(lead)[0]
+  return startFakeModelServer([], { defaultResponse: { body: JSON.stringify({
+    summary: 'Contact paths are missing.', qualificationRecommendation: 'Review', qualificationRationale: 'Mixed evidence.', noSupportedOpportunity: false,
+    topOpportunities: [{ title: 'Add visible contact paths', severity: 'High', evidence: cited.text, evidenceIds: [cited.id], whyItMatters: 'Visitors cannot reach the business.', recommendation: 'Add the phone number above the fold.' }],
+  }) } })
+}
+
+test('Jev gate sends the evidence packet as text with a Pursue/Review/Pass choice question', async () => {
+  const fetch = jevFetch({ Pursue: 0.1, Review: 0.2, Pass: 0.7 })
+  const packet = { business: { company: 'Gate Fixture Co' }, observations: [{ id: 'obs-1', text: 'x' }] }
+  await runJevGate(packet, { jevApiKey: 'test-key', fetch })
+  const body = fetch.calls[0].body
+  assert.equal(fetch.calls[0].auth, 'Bearer test-key')
+  assert.equal(body.model, 'jev-latest')
+  assert.equal(typeof body.state, 'string')
+  assert.match(body.state, /"company": "Gate Fixture Co"/)
+  assert.equal(body.questions.qualification.type, 'choice')
+  assert.deepEqual(Object.keys(body.questions.qualification.criteria), ['Pursue', 'Review', 'Pass'])
+  assert.deepEqual(body.questions.qualification.criteria, JEV_QUALIFICATION_CRITERIA)
+})
+
+test('Jev gate: confident Pass gates, low-confidence Pass becomes Review, others continue', async () => {
+  const pass = await runJevGate({}, { jevApiKey: 'k', fetch: jevFetch({ Pursue: 0.02, Review: 0.06, Pass: 0.92 }) })
+  assert.equal(pass.decision, 'pass')
+  assert.equal(pass.probabilities.Pass, 0.92)
+  const unsure = await runJevGate({}, { jevApiKey: 'k', fetch: jevFetch({ Pursue: 0.1, Review: 0.2, Pass: 0.7 }) })
+  assert.equal(unsure.decision, 'continue')
+  assert.equal(unsure.treatedAs, 'Review')
+  const atThreshold = await runJevGate({}, { jevApiKey: 'k', jevPassThreshold: 0.92, fetch: jevFetch({ Pursue: 0.02, Review: 0.06, Pass: 0.92 }) })
+  assert.equal(atThreshold.decision, 'continue')
+  const pursue = await runJevGate({}, { jevApiKey: 'k', fetch: jevFetch({ Pursue: 0.9, Review: 0.08, Pass: 0.02 }) })
+  assert.equal(pursue.decision, 'continue')
+  assert.equal(pursue.treatedAs, 'Pursue')
+})
+
+test('Jev gate is skipped without a key and on errors', async () => {
+  const previous = process.env.TYPESAFE_API_KEY
+  delete process.env.TYPESAFE_API_KEY
+  try {
+    assert.equal((await runJevGate({}, {})).decision, 'skipped')
+  } finally {
+    if (previous !== undefined) process.env.TYPESAFE_API_KEY = previous
+  }
+  assert.equal((await runJevGate({}, { jevApiKey: 'k', jev: false })).decision, 'skipped')
+  const failed = await runJevGate({}, { jevApiKey: 'k', fetch: jevFetch({ Pass: 1 }, { status: 503 }) })
+  assert.equal(failed.decision, 'skipped')
+  assert.match(failed.reason, /Jev API 503/)
+  const malformed = await runJevGate({}, { jevApiKey: 'k', fetch: async () => new Response(JSON.stringify({ answers: {} }), { status: 200 }) })
+  assert.equal(malformed.decision, 'skipped')
+})
+
+test('a gated result is a valid no-supported-opportunity Pass that records Jev', () => {
+  const gated = buildJevGatedAnalysis({ decision: 'pass', model: 'jev-latest', choice: 'Pass', probabilities: { Pursue: 0.02, Review: 0.06, Pass: 0.92 }, confidence: 0.92, threshold: 0.8 })
+  assert.equal(gated.qualificationRecommendation, 'Pass')
+  assert.equal(gated.noSupportedOpportunity, true)
+  assert.equal(gated.outcome, 'no-supported-opportunity')
+  assert.deepEqual(gated.topOpportunities, [])
+  assert.equal(gated.gatedBy, 'jev')
+  assert.deepEqual(gated.jevGate.probabilities, { Pursue: 0.02, Review: 0.06, Pass: 0.92 })
+  assert.equal(gated.generation.source, 'jev')
+  assert.equal(gated.generation.model, 'jev-latest')
+  assert.match(gated.summary, /92%/)
+  // Still passes the same validator the full analysis goes through.
+  assert.doesNotThrow(() => validateMuseAnalysis(gated, {}))
+})
+
+test('generateMuseAnalysis skips the model call on a confident Jev Pass', async () => {
+  const lead = gateLead()
+  const server = await fullAnalysisServer(lead)
+  try {
+    const result = await generateMuseAnalysis(lead, { metaApiKey: 'dummy', baseURL: server.url, model: 'bench-fake', jevApiKey: 'k', fetch: jevFetch({ Pursue: 0.01, Review: 0.04, Pass: 0.95 }) })
+    assert.equal(result.gatedBy, 'jev')
+    assert.equal(result.qualificationRecommendation, 'Pass')
+    assert.equal(server.ledger.length, 0)
+  } finally {
+    await server.close()
+  }
+})
+
+test('generateMuseAnalysis runs the full analysis for Review, Pursue, unsure Pass and Jev errors', async () => {
+  const lead = gateLead()
+  const cases = [
+    jevFetch({ Pursue: 0.1, Review: 0.8, Pass: 0.1 }),
+    jevFetch({ Pursue: 0.8, Review: 0.1, Pass: 0.1 }),
+    jevFetch({ Pursue: 0.1, Review: 0.2, Pass: 0.7 }),
+    jevFetch({ Pass: 1 }, { status: 500 }),
+  ]
+  for (const fetch of cases) {
+    const server = await fullAnalysisServer(lead)
+    try {
+      const result = await generateMuseAnalysis(lead, { metaApiKey: 'dummy', baseURL: server.url, model: 'bench-fake', jevApiKey: 'k', fetch })
+      assert.equal(result.gatedBy, undefined)
+      assert.equal(result.topOpportunities.length, 1)
+      assert.equal(result.generation.model, 'bench-fake')
+      assert.equal(server.ledger.length, 1)
+    } finally {
+      await server.close()
+    }
+  }
 })

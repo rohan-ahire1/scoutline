@@ -94,7 +94,7 @@ function museLead() {
 }
 
 function museOptions(server) {
-  return { metaApiKey: DUMMY_KEY, baseURL: server.url, model: 'bench-fake' }
+  return { metaApiKey: DUMMY_KEY, baseURL: server.url, model: 'bench-fake', jev: false }
 }
 
 async function groundedAnalysisPayload(lead) {
