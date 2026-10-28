@@ -153,7 +153,7 @@ export async function collectImages(homeUrl, dir, { fetchImpl = fetch, lookup } 
 export function conceptPrompt({ facts, images, key }) {
   return `You are designing a one-page homepage concept for a real local business, as a portfolio piece for GoodShigoto, a small web design studio. The owner will receive a link to it in a cold email, so it has to look clearly better than their current site and be completely accurate.
 
-Read ../facts.json first. It holds everything we know: company details, the text of their current website, Google rating, and the problems with their current site. Look at the images in site/assets/ (listed below) with the Read tool to see the logo and photos before you use them.
+Read ../facts.json first. It holds everything we know: company details, ${facts.website ? 'the text of their current website, Google rating, and the problems with their current site' : 'their Google listing details and rating. They have no website at all, so this would be their first one'}. Look at the images in site/assets/ (listed below) with the Read tool to see the logo and photos before you use them.
 
 Write the finished page to site/index.html. One self-contained file: inline <style> and, only if needed, a small inline <script>. Google Fonts are the only allowed external resource. Reference images by relative path (assets/...). Do not create any other files.
 

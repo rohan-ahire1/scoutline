@@ -127,12 +127,11 @@ export function LeadEvidence({ lead, api, onLeadChanged, onToast, onDraft }) {
           <h2>Redesign concept</h2>
           {lead.concept && lead.concept.status !== 'rejected'
             ? <p className="panel-text">{CONCEPT_STATUS_LABEL[lead.concept.status] || lead.concept.status} · {lead.concept.key}.goodshigoto.com</p>
-            : <p className="panel-text">A new homepage for them, written by Claude and held for your review in Today, then Concepts.</p>}
+            : <p className="panel-text">{lead.website ? 'A new homepage for them' : 'A first website for them, built from their Google listing'}, written by Claude and held for your review in Today, then Concepts.</p>}
           {lead.concept?.problems?.length > 0 && lead.concept.status === 'needs-fix' && <small className="panel-meta">{lead.concept.problems.join(' · ')}</small>}
           {conceptWarning && <p className="panel-text is-missing" role="alert">This lead has no email, so you’d have to reach them by phone or their website form. Generate anyway?</p>}
           <div className="panel-actions">
-            {!lead.website ? <small className="panel-meta">No website to redesign.</small>
-              : lead.concept?.status === 'live' ? <a className="button button-secondary button-small" href={lead.concept.url} target="_blank" rel="noreferrer"><ExternalLink size={14} />Open live concept</a>
+            {lead.concept?.status === 'live' ? <a className="button button-secondary button-small" href={lead.concept.url} target="_blank" rel="noreferrer"><ExternalLink size={14} />Open live concept</a>
                 : lead.concept?.status === 'generating' ? <span className="panel-meta"><LoaderCircle className="spin" size={14} /> Claude is writing it</span>
                   : <>
                     <button type="button" className="button button-secondary button-small" onClick={generateConcept} disabled={busy === 'concept'}>{busy === 'concept' ? <LoaderCircle className="spin" size={14} /> : <Sparkles size={14} />}{conceptWarning ? 'Generate anyway' : lead.concept && lead.concept.status !== 'rejected' ? 'Generate again' : 'Generate concept'}</button>

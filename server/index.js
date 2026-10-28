@@ -2692,7 +2692,6 @@ app.post('/api/leads/:id/concept', (req, res) => {
   if (!validateIdParam(req.params.id)) return badRequest(res, 'id', 'Invalid lead id format')
   const lead = readLead(req.params.id)
   if (!lead) return notFound(res, 'Lead not found', 'id')
-  if (!lead.website) return unprocessable(res, 'Lead has no website to redesign', 'website')
   if (lead.concept?.status === 'live') return unprocessable(res, 'This concept is live; take it down before generating a new one', 'concept')
   res.status(202).json(queueConcept(lead))
 })

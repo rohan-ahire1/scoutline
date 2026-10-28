@@ -155,3 +155,9 @@ test('lead-gen sites are not real businesses to pitch', () => {
   assert.equal(looksLikeLeadGen({ website: 'www.sammyshvac.com', reviews: 971 }), false)
   assert.equal(looksLikeLeadGen({ website: 'tiny.com', reviews: 3 }), true)
 })
+
+test('a lead with no website still gets a brief built from its Google listing', () => {
+  const prompt = conceptPrompt({ facts: conceptFacts({ ...lead, website: null }), images: [], key: 'harrisair' })
+  assert.match(prompt, /no website at all/)
+  assert.doesNotMatch(prompt, /View current site/)
+})
