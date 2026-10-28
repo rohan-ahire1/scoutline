@@ -654,7 +654,7 @@ function OverviewPage({ leads, runs, onOpen, onImport, onExport, goTo, onNewRun 
 
 const CLIENT_PAGE_SIZES = [25, 50, 100]
 
-const CLIENT_VIEWS = ['All', 'Redesign', 'Audit', 'Skip', 'Not sorted', 'Starred', 'Pipeline', 'Won', 'Lost']
+const CLIENT_VIEWS = ['All', 'Redesign', 'Audit', 'Skip', 'Not sorted', 'Starred', 'Pipeline', 'Won', 'Lost', 'Email, no website']
 
 function StarToggle({ lead, onToggle, size = 14 }) {
   if (!onToggle) return lead.starred ? <span className="star-glyph" aria-label="Starred">★</span> : null
@@ -682,6 +682,8 @@ function collapseRepeatRecords(allLeads) {
   return { primaries, repeats }
 }
 
+const leadEmail = (lead) => lead.qualification?.contact?.email || (/@/.test(lead.email || '') ? lead.email : null)
+
 function ClientsPage({ leads: allLeads, runs, onOpen, onImport, onExport, goTo, onNewRun, onToggleStar, initialFilter }) {
   const { primaries: leads, repeats } = useMemo(() => collapseRepeatRecords(allLeads), [allLeads])
   const [query, setQuery] = useState('')
@@ -697,6 +699,7 @@ function ClientsPage({ leads: allLeads, runs, onOpen, onImport, onExport, goTo, 
     { label: 'Audit', count: leads.filter((lead) => lead.qualification?.play === 'audit').length, tone: 'amber' },
     { label: 'Skip', count: leads.filter((lead) => lead.qualification?.play === 'skip').length, tone: 'gray' },
     { label: 'Not sorted', count: leads.filter((lead) => !lead.qualification).length, tone: 'gray' },
+    { label: 'Email, no website', count: leads.filter((lead) => leadEmail(lead) && !lead.website).length, tone: 'green' },
     { label: 'Starred', count: leads.filter((lead) => lead.starred).length, tone: 'orange' },
     { label: 'Pipeline', count: leads.filter(isOpenPipelineLead).length, tone: 'blue' },
     { label: 'Won', count: leads.filter((lead) => lead.salesStage === 'Won').length, tone: 'green' },
@@ -709,6 +712,7 @@ function ClientsPage({ leads: allLeads, runs, onOpen, onImport, onExport, goTo, 
     if (view === 'Starred') return Boolean(lead.starred)
     if (view === 'Redesign' || view === 'Audit' || view === 'Skip') return lead.qualification?.play === view.toLowerCase()
     if (view === 'Not sorted') return !lead.qualification
+    if (view === 'Email, no website') return Boolean(leadEmail(lead)) && !lead.website
     if (view === 'Pipeline') return isOpenPipelineLead(lead)
     if (view === 'Won') return lead.salesStage === 'Won'
     if (view === 'Lost') return lead.salesStage === 'Lost'

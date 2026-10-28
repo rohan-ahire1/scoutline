@@ -5,11 +5,10 @@ import { PlayTag } from './leadUi.jsx'
 import { ConceptCard } from './ConceptReview.jsx'
 
 const TABS = [
-  { id: 'pitch', label: 'To pitch', match: (p) => p.play !== 'skip' },
-  { id: 'redesign', label: 'Redesign', match: (p) => p.play === 'redesign' },
+  { id: 'pitch', label: 'To pitch', match: (p) => p.play !== 'skip' && Boolean(p.contact?.email) },
+  { id: 'redesign', label: 'Redesign', match: (p) => p.play === 'redesign' && Boolean(p.contact?.email) },
   { id: 'concepts', label: 'Concepts', match: (p) => Boolean(p.concept) && p.concept.status !== 'rejected' },
-  { id: 'audit', label: 'Audit', match: (p) => p.play === 'audit' },
-  { id: 'email', label: 'Needs an email', match: (p) => p.play !== 'skip' && !p.contact?.email },
+  { id: 'audit', label: 'Audit', match: (p) => p.play === 'audit' && Boolean(p.contact?.email) },
   { id: 'skip', label: 'Skipped', match: (p) => p.play === 'skip' },
 ]
 
@@ -90,7 +89,7 @@ export default function TodayPage({ api, leads, onOpen, goTo, onNewCrawl, reload
         ))}
         {tab === 'concepts' && data?.canReviewConcepts
           ? <span className="tabs-note concept-draft"><button type="button" className="button" onClick={draftConcepts} disabled={drafting === 'Queuing…'}><Sparkles size={14} aria-hidden="true" />Draft 3 concepts</button>{drafting && <small>{drafting}</small>}</span>
-          : <span className="tabs-note">Sorted by priority</span>}
+          : <span className="tabs-note">Only leads with an email · sorted by priority</span>}
       </div>
 
       {error ? <div className="today-empty" role="alert"><strong>Couldn’t load today’s leads</strong><span>{error}</span></div>
