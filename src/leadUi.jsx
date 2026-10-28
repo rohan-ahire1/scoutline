@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Copy, ExternalLink, LoaderCircle, RefreshCw, ScanEye } from 'lucide-react'
+import { Copy, ExternalLink, LoaderCircle, RefreshCw, ScanEye, Sparkles } from 'lucide-react'
+import { CONCEPT_STATUS_LABEL } from './ConceptReview.jsx'
 
 const PLAY_LABEL = { redesign: 'Redesign', audit: 'Audit', skip: 'Skip' }
 
@@ -50,6 +51,13 @@ export function LeadEvidence({ lead, api, onLeadChanged, onToast, onDraft }) {
   }
   const requalify = () => run('qualify', `/api/leads/${lead.id}/qualify`, `${lead.company} queued for qualification`)
   const reviewVisually = () => run('visual', `/api/leads/${lead.id}/visual-review`, `${lead.company} queued for visual review`)
+  const [conceptWarning, setConceptWarning] = useState(false)
+  const leadEmail = lead.qualification?.contact?.email || (/@/.test(lead.email || '') ? lead.email : null)
+  const generateConcept = () => {
+    if (!leadEmail && !conceptWarning) return setConceptWarning(true)
+    setConceptWarning(false)
+    run('concept', `/api/leads/${lead.id}/concept`, `${lead.company} queued for a redesign concept. It takes a few minutes.`)
+  }
   const copyEmail = async (email) => {
     try { await navigator.clipboard.writeText(email); onToast('Email copied') } catch { onToast({ message: 'Could not copy the email', tone: 'error' }) }
   }
@@ -112,6 +120,25 @@ export function LeadEvidence({ lead, api, onLeadChanged, onToast, onDraft }) {
           <div className="panel-actions">
             {q.needsVisualReview && lead.website && !visual?.verdict && <button type="button" className="button button-secondary button-small" onClick={reviewVisually} disabled={busy === 'visual'}>{busy === 'visual' ? <LoaderCircle className="spin" size={14} /> : <ScanEye size={14} />}Visual review</button>}
             <button type="button" className="button button-secondary button-small" onClick={requalify} disabled={busy === 'qualify'}>{busy === 'qualify' ? <LoaderCircle className="spin" size={14} /> : <RefreshCw size={14} />}Re-check</button>
+          </div>
+        </section>
+
+        <section className="panel">
+          <h2>Redesign concept</h2>
+          {lead.concept && lead.concept.status !== 'rejected'
+            ? <p className="panel-text">{CONCEPT_STATUS_LABEL[lead.concept.status] || lead.concept.status} · {lead.concept.key}.goodshigoto.com</p>
+            : <p className="panel-text">A new homepage for them, written by Claude and held for your review in Today, then Concepts.</p>}
+          {lead.concept?.problems?.length > 0 && lead.concept.status === 'needs-fix' && <small className="panel-meta">{lead.concept.problems.join(' · ')}</small>}
+          {conceptWarning && <p className="panel-text is-missing" role="alert">This lead has no email, so you’d have to reach them by phone or their website form. Generate anyway?</p>}
+          <div className="panel-actions">
+            {!lead.website ? <small className="panel-meta">No website to redesign.</small>
+              : lead.concept?.status === 'live' ? <a className="button button-secondary button-small" href={lead.concept.url} target="_blank" rel="noreferrer"><ExternalLink size={14} />Open live concept</a>
+                : lead.concept?.status === 'generating' ? <span className="panel-meta"><LoaderCircle className="spin" size={14} /> Claude is writing it</span>
+                  : <>
+                    <button type="button" className="button button-secondary button-small" onClick={generateConcept} disabled={busy === 'concept'}>{busy === 'concept' ? <LoaderCircle className="spin" size={14} /> : <Sparkles size={14} />}{conceptWarning ? 'Generate anyway' : lead.concept && lead.concept.status !== 'rejected' ? 'Generate again' : 'Generate concept'}</button>
+                    {conceptWarning && <button type="button" className="button button-quiet button-small" onClick={() => setConceptWarning(false)}>Cancel</button>}
+                  </>}
+            {lead.concept?.generatedAt && lead.concept.status !== 'live' && <a className="button button-quiet button-small" href={`/api/leads/${lead.id}/concept/preview`} target="_blank" rel="noreferrer"><ExternalLink size={14} />Preview</a>}
           </div>
         </section>
 

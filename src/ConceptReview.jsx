@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, ExternalLink, RefreshCw, X } from 'lucide-react'
 
-const STATUS_LABEL = {
+export const CONCEPT_STATUS_LABEL = {
   generating: 'Claude is writing it',
   review: 'Ready for review',
   'needs-fix': 'Failed its checks',
@@ -33,10 +33,10 @@ export function ConceptCard({ api, prospect, canAct, onChanged }) {
     <div className="concept-card">
       {concept.preview && concept.status !== 'generating'
         ? <iframe className="concept-frame" src={concept.preview} title={`${prospect.company} concept`} sandbox="allow-scripts allow-forms" loading="lazy" />
-        : <div className="concept-frame concept-frame-empty">{STATUS_LABEL[concept.status] || concept.status}</div>}
+        : <div className="concept-frame concept-frame-empty">{CONCEPT_STATUS_LABEL[concept.status] || concept.status}</div>}
       <div className="concept-body">
         <strong>{prospect.company}</strong>
-        <small>{STATUS_LABEL[concept.status] || concept.status} · {concept.key}.goodshigoto.com</small>
+        <small>{CONCEPT_STATUS_LABEL[concept.status] || concept.status} · {concept.key}.goodshigoto.com</small>
         {concept.problems?.length > 0 && <ul className="concept-problems">{concept.problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
         {error && <p className="concept-error" role="alert">{error}</p>}
         {!canAct && <small>Connect over Tailscale to approve or change concepts.</small>}
