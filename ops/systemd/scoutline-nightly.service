@@ -10,7 +10,6 @@ Group=rohan
 WorkingDirectory=/home/rohan/projects/scoutline/current
 Environment=PATH=/home/rohan/.hermes/node/bin:/home/rohan/.hermes/bin:/usr/local/bin:/usr/bin:/bin
 Environment=SCOUTLINE_API=http://127.0.0.1:8787
-Environment=NIGHTLY_MARKET=slc
 Environment=NIGHTLY_AREAS=2
 Environment=NIGHTLY_CATEGORIES=3
 Environment=NIGHTLY_LIMIT=25

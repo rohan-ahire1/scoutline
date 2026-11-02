@@ -20,7 +20,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { parseArgs } from 'node:util'
 import { createNotifier } from './services/notify.js'
-import { NIGHTLY_DEFAULTS, nightOf, nightlyIdempotencyKey, planNight, summarizeNight } from './services/nightly.js'
+import { NIGHTLY_DEFAULTS, nightOf, nightlyIdempotencyKey, planRotation, summarizeNight } from './services/nightly.js'
 
 const API = (process.env.SCOUTLINE_API || 'http://127.0.0.1:8787').replace(/\/+$/, '')
 const TOKEN = process.env.SCOUTLINE_SERVICE_TOKEN || ''
@@ -105,27 +105,44 @@ function writeStateFile(file, state) {
 // with a per-night idempotency key (a rerun resumes instead of re-billing),
 // waits for the runs and their qualify/visual jobs, then records and alerts.
 async function nightly(values) {
-  const marketId = process.env.NIGHTLY_MARKET || 'slc'
   const stateFile = values.state || process.env.NIGHTLY_STATE || `${process.env.HOME}/.local/state/scoutline-nightly/state.json`
-  const options = {
-    areasPerNight: Number(process.env.NIGHTLY_AREAS || NIGHTLY_DEFAULTS.areasPerNight),
-    categoriesPerNight: Number(process.env.NIGHTLY_CATEGORIES || NIGHTLY_DEFAULTS.categoriesPerNight),
-  }
+  const categoriesPerNight = Number(process.env.NIGHTLY_CATEGORIES || NIGHTLY_DEFAULTS.categoriesPerNight)
   const limit = Number(process.env.NIGHTLY_LIMIT || NIGHTLY_DEFAULTS.limitPerArea)
   const notifier = createNotifier()
   const night = nightOf()
+  let marketId = null
+  let autopilot = null
   const record = (status, message, extra = {}) => api('PUT', '/api/system/nightly', { night, market: marketId, status, message, ...extra }).catch((error) => log(`could not record nightly state: ${error.message}`))
+  // While the autopilot runs, draft a day's worth of concepts for the emails.
+  // Otherwise just a few for review: Claude Code runs on the subscription.
+  const queueConcepts = async () => {
+    const conceptLimit = Number(process.env.NIGHTLY_CONCEPTS ?? (autopilot?.config?.running ? autopilot.config.dailyNew : 3))
+    if (conceptLimit <= 0) return
+    await api('POST', '/api/concepts/queue', { limit: conceptLimit, triggeredBy: 'nightly' })
+      .then((queued) => log(`concepts queued: ${queued.queued}`))
+      .catch((error) => log(`could not queue concepts: ${error.message}`))
+  }
 
   try {
     const status = await api('GET', '/api/status')
     const { markets } = await api('GET', '/api/markets')
-    const market = markets.find((m) => m.id === marketId)
-    if (!market) throw new Error(`market ${marketId} not found`)
-    if (!market.enabled) { log(`market ${marketId} is disabled; nothing to do`); return 0 }
     if (!status.brightDataAdapterReady) throw new Error('Bright Data is not configured on the server (BRIGHT_DATA_API_KEY missing)')
+    autopilot = await api('GET', '/api/autopilot').catch(() => null)
+    const areasPerNight = Number(autopilot?.config?.running
+      ? process.env.NIGHTLY_SENDING_AREAS || NIGHTLY_DEFAULTS.sendingAreasPerNight
+      : process.env.NIGHTLY_AREAS || NIGHTLY_DEFAULTS.areasPerNight)
 
-    const plan = planNight(market, readStateFile(stateFile), { night, ...options })
-    log(`night ${night}${plan.repeat ? ' (rerun)' : ''}: areas=[${plan.areas.join('; ')}] categories=[${plan.categories.join(', ')}] limit/area=${limit}`)
+    const plan = planRotation(markets, readStateFile(stateFile), { night, areasPerNight, categoriesPerNight })
+    if (!plan) {
+      const message = 'every enabled market has been searched; add more to server/services/markets.js'
+      log(message)
+      await record('ok', message)
+      await notifier.send(`nightly ${night}: ${message}.`)
+      if (!values['dry-run']) await queueConcepts()
+      return 0
+    }
+    marketId = plan.market.id
+    log(`night ${night}${plan.repeat ? ' (rerun)' : ''}: market=${marketId} areas=[${plan.areas.join('; ')}] categories=[${plan.categories.join(', ')}] limit/area=${limit}`)
     if (values['dry-run']) { log('dry run: not starting discovery'); return 0 }
 
     const started = await api('POST', `/api/markets/${marketId}/discover`, {
@@ -147,17 +164,12 @@ async function nightly(values) {
       const problem = `${summary.failedRuns.length} run(s) failed, ${summary.unfinished.length} unfinished (${[...summary.failedRuns, ...summary.unfinished].join(', ')})`
       await record('failed', `${problem}; ${message}`, { runs: started.runs, summary })
       await notifier.send(`nightly ${night} had problems: ${problem}. ${message}.`)
+      // One bad search shouldn't cost tomorrow's emails: older leads still need concepts.
+      await queueConcepts()
       return 1
     }
     await record('ok', message, { runs: started.runs, summary })
-    // Draft a few redesign concepts for review. Claude Code runs on the
-    // subscription, so the nightly cap stays small.
-    const conceptLimit = Number(process.env.NIGHTLY_CONCEPTS ?? 3)
-    if (conceptLimit > 0) {
-      await api('POST', '/api/concepts/queue', { limit: conceptLimit, triggeredBy: 'nightly' })
-        .then((queued) => log(`concepts queued: ${queued.queued}`))
-        .catch((error) => log(`could not queue concepts: ${error.message}`))
-    }
+    await queueConcepts()
     if (summary.newLeads === 0) await notifier.send(`nightly ${night} found 0 new leads (${plan.areas.join('; ')} × ${plan.categories.join(', ')}).`)
     return 0
   } catch (error) {

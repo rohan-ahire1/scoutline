@@ -1,11 +1,13 @@
-// Nightly market rotation. Each night covers a slice of the market (a few
-// areas × a few categories), so the whole market is covered over a cycle
-// instead of paying for the same top results every night.
+// Nightly market rotation. Each night covers a slice of one market (a few
+// areas × a few categories). Once every slice is done the rotation moves to the
+// next market for good: a second pass mostly finds the same businesses.
 //
-// State file (compatible with the first ops-nightly script):
-//   { areaCursor, categoryCursor, lastRunAt, lastRuns, night?, slice? }
+// State file (an older one with no marketId starts at the first market):
+//   { marketId, finished, areaCursor, categoryCursor, lastRunAt, lastRuns, night?, slice? }
 
-export const NIGHTLY_DEFAULTS = { areasPerNight: 2, categoriesPerNight: 3, limitPerArea: 25 }
+// About 1 in 10 businesses searched can be pitched, so 100 new emails a week
+// takes about 150 businesses a night: 6 areas at 25 each while the autopilot runs.
+export const NIGHTLY_DEFAULTS = { areasPerNight: 2, sendingAreasPerNight: 6, categoriesPerNight: 3, limitPerArea: 25 }
 
 function take(list, start, count) {
   return Array.from({ length: Math.min(count, list.length) }, (_, i) => list[(start + i) % list.length])
@@ -26,17 +28,33 @@ export function planNight(market, state = {}, { night, areasPerNight = NIGHTLY_D
   if (night && state.night === night && state.slice) {
     return { night, areas: state.slice.areas, categories: state.slice.categories, repeat: true, nextState: state }
   }
-  const areas = take(market.areas, areaCursor, areasPerNight).map((a) => a.name)
+  const areas = market.areas.slice(areaCursor, areaCursor + areasPerNight).map((a) => a.name)
   const categories = take(market.categories, categoryCursor, categoriesPerNight)
-  // Areas advance every night; categories advance each time areas wrap.
+  // Areas advance every night; categories advance when areas reach the end. A
+  // short last night is cheaper than searching the first areas twice.
   const nextArea = areaCursor + areasPerNight
+  const areasDone = nextArea >= market.areas.length
+  const nextCategory = categoryCursor + categoriesPerNight
   const nextState = {
-    areaCursor: nextArea % market.areas.length,
-    categoryCursor: nextArea >= market.areas.length ? (categoryCursor + categoriesPerNight) % market.categories.length : categoryCursor,
+    areaCursor: areasDone ? 0 : nextArea,
+    categoryCursor: areasDone ? nextCategory % market.categories.length : categoryCursor,
     night,
     slice: { areas, categories },
   }
-  return { night, areas, categories, repeat: false, nextState }
+  return { night, areas, categories, repeat: false, passDone: areasDone && nextCategory >= market.categories.length, nextState }
+}
+
+// Tonight's market and slice, or null once every enabled market has had its pass.
+export function planRotation(markets, state = {}, options = {}) {
+  const finished = state.finished || []
+  const current = markets.find((market) => market.id === state.marketId)
+  const rerun = options.night && state.night === options.night && state.slice && current
+  const open = (market) => market.enabled && market.areas.length && !finished.includes(market.id)
+  const market = rerun || (current && open(current)) ? current : markets.find(open)
+  if (!market) return null
+  const plan = planNight(market, market === current ? state : {}, options)
+  if (plan.repeat) return { ...plan, market }
+  return { ...plan, market, nextState: { ...plan.nextState, marketId: market.id, finished: plan.passDone ? [...finished, market.id] : finished } }
 }
 
 export function nightlyIdempotencyKey(marketId, night) {
