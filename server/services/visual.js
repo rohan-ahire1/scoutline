@@ -81,15 +81,7 @@ export async function captureScreenshots(input, options = {}) {
             throw error
           })
         await new Promise((resolve) => setTimeout(resolve, 1200))
-        // Nudge lazy-loaded sections into view, then return to the top.
-        await page.evaluate(async (cap) => {
-          for (let y = 0; y < Math.min(document.body.scrollHeight, cap); y += 700) {
-            window.scrollTo(0, y)
-            await new Promise((r) => setTimeout(r, 120))
-          }
-          window.scrollTo(0, 0)
-        }, MAX_FULL_HEIGHT)
-        await new Promise((resolve) => setTimeout(resolve, 400))
+        const videos = await settlePage(page)
         const overlays = await clearOverlays(page)
         const fold = await page.screenshot({ type: 'jpeg', quality: 72 })
         const height = await page.evaluate(() => document.documentElement.scrollHeight)
@@ -100,7 +92,7 @@ export async function captureScreenshots(input, options = {}) {
         })
         // Puppeteer returns a plain Uint8Array, whose toString() ignores the
         // 'base64' argument and yields "255,216,…"; normalise to Buffer.
-        shots[name] = { fold: Buffer.from(fold), full: Buffer.from(full), status: response?.status() ?? null, finalUrl: page.url(), pageHeight: height, overlays }
+        shots[name] = { fold: Buffer.from(fold), full: Buffer.from(full), status: response?.status() ?? null, finalUrl: page.url(), pageHeight: height, overlays, videos }
       } finally {
         await page.close().catch(() => {})
       }
@@ -110,6 +102,30 @@ export async function captureScreenshots(input, options = {}) {
     await browser?.disconnect().catch(() => {})
     await chrome.kill()
   }
+}
+
+// Wix and Elementor build sections as they scroll into view. Walk the page
+// slowly and let images finish, or the review reports blank space a visitor
+// never sees. Returns the video count: video often stays black in headless
+// Chrome, even when it reports as playing.
+async function settlePage(page) {
+  return page.evaluate(async (cap) => {
+    const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+    // Wix scrolls the body, not the window, so neither this walk nor the full
+    // page shot would reach anything below the first screen.
+    document.documentElement.style.overflow = 'visible'
+    document.body.style.overflow = 'auto'
+    const step = Math.round(window.innerHeight * 0.7)
+    for (let y = 0; y < Math.min(document.documentElement.scrollHeight, cap); y += step) {
+      window.scrollTo(0, y)
+      await pause(300)
+    }
+    window.scrollTo(0, 0)
+    const loading = [...document.images].filter((image) => !image.complete)
+    await Promise.race([Promise.all(loading.map((image) => new Promise((resolve) => { image.onload = image.onerror = resolve }))), pause(3000)])
+    await pause(1200)
+    return document.querySelectorAll('video').length
+  }, MAX_FULL_HEIGHT)
 }
 
 // Popups and cookie banners hide the design. Click an obvious dismiss button
@@ -143,7 +159,7 @@ async function clearOverlays(page) {
       layer.style.setProperty('display', 'none', 'important')
       removed.push({ kind, text: text.slice(0, 60) })
     }
-    document.documentElement.style.overflow = 'auto'
+    document.documentElement.style.overflow = 'visible'
     document.body.style.overflow = 'auto'
     return removed
   }).catch(() => [])
@@ -194,11 +210,18 @@ Judge only what is visible. Be strict and specific: a generic but tidy template 
 - verdict "improve": decent base with clear, fixable problems.
 - verdict "leave": modern and professional; we could not credibly pitch it.
 
-Write each issue as one plain-English sentence a business owner would understand and agree with on sight. Name the exact element ("the header phone number is tiny and grey", "the hero is a blurry stock photo of a handshake"). No jargon, no SEO or code talk, and no claims about revenue or conversions.`
+Write each issue as one plain-English sentence a business owner would understand and agree with on sight. Name the exact element ("the header phone number is tiny and grey", "the main photo is a blurry stock shot of a handshake"). No jargon (say "the top of the page", never "hero"), no SEO or code talk, and no claims about revenue or conversions.
+The owner may read these. Say what a visitor would struggle with, and never call anything cheap, ugly, messy, harsh or unprofessional.
+
+Never report a blank, black or empty area, or a box asking to confirm you are not a bot. In these screenshots that is usually a video, slider or animation that has not shown yet, or a check shown only to our tool, and a visitor sees the real page. Leave it out of your scores too.`
 
 function overlayNote(shots) {
   const found = Object.entries(shots).flatMap(([view, shot]) => (shot.overlays || []).filter((o) => o.kind === 'popup').map((o) => `${view}: "${o.text}"`))
   return found.length ? `\nPopups that covered the page on load (removed before the screenshots): ${found.join('; ')}.` : ''
+}
+
+function videoNote(shots) {
+  return Object.values(shots).some((shot) => shot.videos) ? '\nThis page has video, which usually shows as a black area in our screenshots.' : ''
 }
 
 export function weaknessFromReview(review) {
@@ -214,7 +237,7 @@ export async function reviewScreenshots(shots, { company = '', category = '', we
   const config = getVisionConfig(options)
   if (!config.configured) throw new Error('Visual review needs MODEL_API_KEY (Meta) or OPENAI_API_KEY')
   const client = options.client || new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: 120_000, maxRetries: 2 })
-  const prompt = `${REVIEW_PROMPT}\n\nBusiness: ${company} (${category}). Website: ${website}.${overlayNote(shots)}`
+  const prompt = `${REVIEW_PROMPT}\n\nBusiness: ${company} (${category}). Website: ${website}.${overlayNote(shots)}${videoNote(shots)}`
   const images = [shots.desktop.fold, shots.desktop.full, shots.mobile.fold, shots.mobile.full]
     .map((buffer) => `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`)
   let text
