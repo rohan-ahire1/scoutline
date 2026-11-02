@@ -8,3 +8,9 @@ data/backups/
 *.local
 .env
 .env.local
+data/visual-probe/
+# Local database, scraped lead data and crawl runs; never commit
+data/*.db
+data/leads/
+data/crawl/
+data/visual-probe/
