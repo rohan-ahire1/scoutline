@@ -14,3 +14,4 @@ data/*.db
 data/leads/
 data/crawl/
 data/visual-probe/
+remodel-*.html
