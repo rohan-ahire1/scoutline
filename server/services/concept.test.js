@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { looksLikeLeadGen, checkConcept, conceptCandidates, conceptFacts, conceptKey, conceptPreviewHtml, conceptPrompt, generateConcept, imageCandidates, publishConcept, takenKeys } from './concept.js'
+import { looksLikeLeadGen, checkConcept, conceptCandidates, conceptFacts, conceptKey, conceptPreviewHtml, conceptPrompt, generateConcept, imageCandidates, publishConcept, runClaude, takenKeys } from './concept.js'
 
 const lead = {
   id: 'lead-1',
@@ -91,6 +91,15 @@ test('an image path cannot point outside the site folder', () => {
   assert.match(problems.join('\n'), /missing: \.\.\/\.\.\/facts\.json/)
 })
 
+test('claims have to come from what we collected', () => {
+  const facts = { ...conceptFacts(lead), googleRating: 4.8, googleReviewCount: 120 }
+  const invented = checkConcept(site(goodPage('<p>Licensed and insured. 25 years of experience. Free estimates. From $99.</p>')), facts).join('\n')
+  for (const expected of [/"licensed"/, /"insured"/, /"25 years"/, /"free estimates"/, /"\$99"/]) assert.match(invented, expected)
+  assert.deepEqual(checkConcept(site(goodPage('<p>Rated 4.8 stars from 120 reviews.</p>')), facts), [])
+  const stated = { ...facts, pages: [{ text: 'Fully licensed since 1993.' }] }
+  assert.deepEqual(checkConcept(site(goodPage('<p>Licensed. Since 1993.</p>')), stated), [])
+})
+
 test('generateConcept writes facts, runs the agent and strips stray files', async () => {
   const leadDir = mkdtempSync(join(tmpdir(), 'lead-'))
   let seen = null
@@ -111,6 +120,14 @@ test('generateConcept writes facts, runs the agent and strips stray files', asyn
   assert.equal(concept.status, 'review')
   assert.equal(concept.url, 'https://harrisair.goodshigoto.com')
   assert.deepEqual(concept.problems, [])
+})
+
+test('concepts are built with Sonnet at medium effort unless told otherwise', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claude-bin-'))
+  const bin = join(dir, 'claude')
+  writeFileSync(bin, '#!/usr/bin/env node\nconsole.log(JSON.stringify({ result: process.argv.slice(2).join(" ") }))\n', { mode: 0o755 })
+  assert.match((await runClaude({ cwd: dir, prompt: 'x', bin })).result, /--model sonnet --effort medium/)
+  assert.match((await runClaude({ cwd: dir, prompt: 'x', bin, model: 'opus', effort: 'high' })).result, /--model opus --effort high/)
 })
 
 test('publishing replaces the live folder in one step', () => {

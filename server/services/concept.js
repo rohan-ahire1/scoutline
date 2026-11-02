@@ -74,7 +74,8 @@ export function conceptFacts(lead, scan = null) {
     ownerName: lead.ownerName || null,
     familyOwned: Boolean(lead.siteScan?.familyOwned),
     socialLinks: lead.siteScan?.socialLinks || [],
-    currentSiteProblems: lead.visualReview?.issues || [],
+    // Includes the pitch hooks: the email names one, so the page has to fix it.
+    currentSiteProblems: [...new Set([...(lead.visualReview?.issues || []), ...(lead.qualification?.pitchHooks || [])])],
     currentSiteEra: lead.visualReview?.eraGuess || null,
     pages,
   }
@@ -158,7 +159,7 @@ Read ../facts.json first. It holds everything we know: company details, ${facts.
 Write the finished page to site/index.html. One self-contained file: inline <style> and, only if needed, a small inline <script>. Google Fonts are the only allowed external resource. Reference images by relative path (assets/...). Do not create any other files.
 
 Hard rules:
-- Use only facts from facts.json. Do not invent services, prices, years in business, licenses, awards, guarantees, team members, testimonials, review quotes, statistics or service areas. If something is unknown, leave it out. You may quote the Google rating and review count exactly as given.
+- Use only facts from facts.json. Do not invent services, prices, years in business, licenses, awards, guarantees, team members, testimonials, review quotes, statistics or service areas. Claims such as "24/7", "free estimates", "licensed" or "insured" must appear in facts.json, or stay off the page. If something is unknown, leave it out. You may quote the Google rating and review count exactly as given.
 - Phone: ${facts.phone || 'none known'}. Show it as a tap-to-call tel: link near the top and in the contact section. Use no other phone numbers.${facts.email ? ` Email: ${facts.email}. Use no other email address.` : ' Use no email address.'}
 - Include a quote/estimate request form. It must not submit anywhere: no action attribute, and an inline script that prevents submit and shows "This is a concept. On the live site this would reach ${facts.company}."
 - Put this bar at the very top, above the header: "A redesign concept by GoodShigoto · Not the live website." with GoodShigoto linking to https://goodshigoto.com${facts.website ? ` and a "View current site" link to ${facts.website}` : ''}.
@@ -179,15 +180,16 @@ When the file is written, reply with one line: DONE.`
 
 // Runs Claude Code headless in <cwd>. File tools only, no shell, no network.
 // The child gets a clean environment so no Scoutline secret reaches it.
-export function runClaude({ cwd, prompt, timeoutMs = 20 * 60_000, signal, bin = process.env.CONCEPT_CLAUDE_BIN || 'claude', model = process.env.CONCEPT_MODEL || null }) {
+export function runClaude({ cwd, prompt, timeoutMs = 20 * 60_000, signal, bin = process.env.CONCEPT_CLAUDE_BIN || 'claude', model = process.env.CONCEPT_MODEL || 'sonnet', effort = process.env.CONCEPT_EFFORT || 'medium' }) {
   const args = [
     '-p', prompt,
     '--output-format', 'json',
     '--permission-mode', 'acceptEdits',
     '--allowedTools', 'Read,Write,Edit,Glob,Grep,Skill',
     '--disallowedTools', 'Bash,WebFetch,WebSearch,Task,NotebookEdit',
+    '--model', model,
+    '--effort', effort,
   ]
-  if (model) args.push('--model', model)
   const env = { HOME: process.env.HOME, PATH: process.env.PATH, LANG: process.env.LANG || 'C.UTF-8' }
   return new Promise((resolvePromise, reject) => {
     const child = spawn(bin, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -276,7 +278,33 @@ export function checkConcept(siteDir, facts) {
     }
   })
   if (/lorem ipsum|\[(your|insert|company)[^\]]*\]|TODO/i.test(text)) problems.push('The page still has placeholder text')
+  problems.push(...claimProblems(text, facts))
   return [...new Set(problems)]
+}
+
+// Claims a model tends to make up on a trade site. The page can only say one
+// of these if it is in what we collected about the business.
+const CLAIM_WORDS = /\b(licensed|insured|bonded|warrant(?:y|ies)|guarantee[ds]?|awards?|award-winning|certified|accredited|(?:family|veteran|woman)[- ]owned|24\/7|financing|free (?:estimates?|quotes?)|testimonials?)\b/gi
+// A price, a number next to something countable, or a founding year.
+const CLAIM_NUMBERS = /\$\s?\d[\d,.]*|\b\d[\d,.]*\+?[\s-]*(?:%|percent\b|years?\b|yrs?\b|decades?\b|reviews?\b|stars?\b|customers?\b|clients?\b|homes?\b|projects?\b|jobs?\b|crews?\b|technicians?\b|trucks?\b)|\b(?:since|est\.?|established|founded(?: in)?)\s+\d{4}\b/gi
+const squash = (value) => value.toLowerCase().replace(/[\s-]+/g, '')
+
+function claimProblems(text, facts) {
+  const { familyOwned, ...known } = facts
+  const source = `${JSON.stringify(known)}${familyOwned ? ' family-owned' : ''}`.toLowerCase()
+  const words = squash(source)
+  const numbers = source.replaceAll(',', '')
+  const problems = []
+  for (const word of new Set((text.match(CLAIM_WORDS) || []).map((match) => match.toLowerCase()))) {
+    // "licensed" also counts when we only collected "license #1234".
+    if (!words.includes(squash(word).replace(/ed$/, ''))) problems.push(`The page says "${word}", which is not in what we collected`)
+  }
+  for (const match of new Set(text.match(CLAIM_NUMBERS) || [])) {
+    const claim = match.trim().replace(/[,.]+$/, '')
+    const number = claim.match(/\d[\d,.]*/)[0].replaceAll(',', '').replace(/\.0+$/, '')
+    if (!new RegExp(`(^|[^\\d.])${number.replace('.', '\\.')}([^\\d]|$)`).test(numbers)) problems.push(`The page says "${claim}", which is not in what we collected`)
+  }
+  return problems
 }
 
 // Copies the approved site into the web root through a temp folder and a
