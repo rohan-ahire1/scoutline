@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Smoke-test production server
+        run: |
+          set -euo pipefail
+          nohup node server/index.js > /tmp/scoutline-server.log 2>&1 &
+          echo $! > /tmp/scoutline-server.pid
+          cleanup() {
+            kill "$(cat /tmp/scoutline-server.pid 2>/dev/null)" 2>/dev/null || true
+            wait "$(cat /tmp/scoutline-server.pid 2>/dev/null)" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          echo "Waiting for server at http://127.0.0.1:8787 ..."
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8787/api/auth/config > /dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+            if ! kill -0 "$(cat /tmp/scoutline-server.pid 2>/dev/null)" 2>/dev/null; then
+              echo "Server process exited early" >&2
+              cat /tmp/scoutline-server.log >&2 || true
+              exit 1
+            fi
+          done
+          if ! curl --fail --silent http://127.0.0.1:8787/api/auth/config > /dev/null 2>&1; then
+            echo "Server failed to become ready at /api/auth/config" >&2
+            cat /tmp/scoutline-server.log >&2 || true
+            exit 1
+          fi
+          echo "Checking / ..."
+          curl --fail --silent --show-error http://127.0.0.1:8787/ > /dev/null
+          echo "Checking /api/auth/config ..."
+          curl --fail --silent --show-error http://127.0.0.1:8787/api/auth/config > /dev/null
+          echo "Smoke tests passed"
+          cleanup
+          trap - EXIT
