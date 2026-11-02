@@ -3,19 +3,21 @@
 // the SMTP/IMAP side lives in mailbox.js and the scheduling loop in index.js.
 
 import { createHash } from 'node:crypto'
+import { DEFAULT_MARKETS } from './markets.js'
 import { assertNoInventedClaims } from './outreach.js'
 
 export const SENDER_VERSION = 1
 
 // Trade owners read email before they head out to a job and again in the
-// evening. Early weekday mornings in the lead's own time zone are the best
-// guess until our own reply data says otherwise.
-export const DEFAULT_WINDOW = { startMinute: 7 * 60, endMinute: 9 * 60 + 30, days: [1, 2, 3, 4, 5] }
+// evening. Weekday mornings in the lead's own time zone are the best guess
+// until our own reply data says otherwise. The window runs to noon so a full
+// day of follow-ups still goes out minutes apart.
+export const DEFAULT_WINDOW = { startMinute: 7 * 60, endMinute: 12 * 60, days: [1, 2, 3, 4, 5] }
 export const DEFAULT_TIMEZONE = 'America/Denver'
-export const MARKET_TIMEZONES = { slc: 'America/Denver', nyc: 'America/New_York' }
-export const DEFAULT_DAILY_NEW = 10
+export const MARKET_TIMEZONES = Object.fromEntries(DEFAULT_MARKETS.map((market) => [market.id, market.timeZone]))
+export const DEFAULT_DAILY_NEW = 20
 // Hard ceiling for all sends in one day (new + follow-ups), whatever the settings say.
-export const MAX_DAILY_SENDS = 40
+export const MAX_DAILY_SENDS = 60
 // Minimum gap between two sends, so a batch never goes out as a burst.
 export const MIN_GAP_MINUTES = 6
 
@@ -26,25 +28,31 @@ export const TEMPLATE_VARIABLES = {
   website: 'Their website address',
   trade: 'Trade, e.g. "plumber"',
   city: 'City',
+  conceptUrl: 'Link to their live concept site',
   signature: 'Your signature (Settings below)',
 }
+
+const OPT_OUT_LINE = 'If you\'d rather not hear from me, reply "no" and I won\'t email again.'
 
 export const DEFAULT_SEQUENCE = [
   {
     delayDays: 0,
-    subject: 'Idea for {{company}}',
+    subject: '{{company}} website',
     body: [
       'Hi {{firstName}},',
       '',
-      'I was looking at {{website}} and noticed something: {{observation}}',
+      'I was looking at {{website}} and noticed {{observation}}',
       '',
-      'I run GoodShigoto, a small studio that builds websites for trade businesses. I\'d like to put together a free mockup of a new homepage for {{company}}, so you can see what it could look like. No cost and no strings.',
+      'So I made a cleaner, more modern homepage for {{company}}:',
+      '{{conceptUrl}}',
       '',
-      'Want me to make one?',
+      'Why? We\'re a small studio building our portfolio, and {{company}} is exactly the kind of work we want to show.',
+      '',
+      'Worth a look? If not, no worries.',
       '',
       '{{signature}}',
       '',
-      'If this isn\'t useful, just reply "no" and I won\'t email again.',
+      OPT_OUT_LINE,
     ].join('\n'),
   },
   {
@@ -53,9 +61,14 @@ export const DEFAULT_SEQUENCE = [
     body: [
       'Hi {{firstName}},',
       '',
-      'Just bumping this in case it got buried. Happy to send over a free homepage mockup for {{company}}. Want one?',
+      'Bumping this in case it got buried. People often look up local businesses on a phone, so try the new homepage on yours:',
+      '{{conceptUrl}}',
+      '',
+      'Still worth a look?',
       '',
       '{{signature}}',
+      '',
+      OPT_OUT_LINE,
     ].join('\n'),
   },
   {
@@ -64,9 +77,14 @@ export const DEFAULT_SEQUENCE = [
     body: [
       'Hi {{firstName}},',
       '',
-      'I\'ll leave it here. If a new website ever moves up the list for {{company}}, just reply and I\'ll put the mockup together.',
+      'Last one from me, promise. The {{company}} homepage is still up if you want a look later:',
+      '{{conceptUrl}}',
+      '',
+      'If now\'s not the right time, no worries.',
       '',
       '{{signature}}',
+      '',
+      OPT_OUT_LINE,
     ].join('\n'),
   },
 ]
@@ -137,6 +155,7 @@ export function templateProblems(autopilot) {
       if (!known.has(name)) problems.push(`${label} uses {{${name}}}, which isn't a known field`)
     }
     if (!/\{\{\s*signature\s*\}\}/.test(step.body)) problems.push(`${label} must include {{signature}} (US law needs your postal address in every email)`)
+    if (!/\breply\b[^\n]*\b(no|stop|unsubscribe)\b/i.test(step.body)) problems.push(`${label} must say how to opt out, for example: reply "no" (US law needs this in every email)`)
     try { assertNoInventedClaims(`${step.subject}\n${step.body}`, label) } catch (error) { problems.push(error.message) }
   })
   if (!signature.trim() || /\[postal address\]/i.test(signature)) problems.push('Add your postal address to the signature (US law requires it)')
@@ -146,6 +165,11 @@ export function templateProblems(autopilot) {
 
 export function variablesIn(text) {
   return [...String(text || '').matchAll(/\{\{\s*([a-zA-Z]+)\s*\}\}/g)].map((match) => match[1])
+}
+
+// A sequence that links the concept can only go to leads with one live.
+export function usesConcept(autopilot) {
+  return normalizeAutopilot(autopilot).sequence.some((step) => variablesIn(`${step.subject}\n${step.body}`).includes('conceptUrl'))
 }
 
 // ---------------------------------------------------------------------------
@@ -159,8 +183,10 @@ export function cleanCompany(name) {
 }
 
 export function firstNameOf(ownerName) {
-  const first = String(ownerName || '').trim().split(/\s+/)[0] || ''
+  const [first = '', last = ''] = String(ownerName || '').trim().split(/\s+/)
   if (!/^[A-Za-z][A-Za-z'-]{1,20}$/.test(first)) return null
+  // Scraped names can be page text ("Meet Connor") or a company ("Milne Co").
+  if (/^(meet|our|the|about|contact)$/i.test(first) || /^(co|inc|llc)\.?$/i.test(last)) return null
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
 }
 
@@ -190,25 +216,48 @@ function tradeOf(category) {
 // markup scan carry an evidence suffix such as "(© 2013)". Visual ones make a
 // better first line, and anything technical is left out.
 const TECHNICAL_HOOK = /deprecated|spacer|html|schema|meta |lighthouse|lcp|kb\b|mb\b|last-modified|seconds|tap-to-call|copyright|builder|alt text|viewport/i
+// Older reviews saw video, half-run counters and unbuilt sections as broken, so
+// these claims may be false. Telling an owner their working site is empty loses
+// the reply.
+const UNSURE_HOOK = /\b(blank|empty|nothing in it|solid black|black box|loading icon|appears to stop|not a bot|gradient|flat \w+ colou?r|colou?r fade|visible anywhere|entire website|makes no sense|closure notice)\b/i
+// A firewall or error page means the review never saw the site at all, so none
+// of its hooks can be trusted.
+const BLOCKED_HOOK = /\b(403|404|forbidden|cannot be accepted|critical error)\b/i
+// A stranger calling your site cheap gets deleted, however true it is.
+const HARSH_HOOK = /\b(cheap|ugly|messy|harsh|amateur\w*|unprofessional|unflattering|look(s)? worse|clip-art|shouting|trash|dull|sloppy)\b/i
+
+const HERO_WORDS = String.raw`(?:(?:big|main|top|large|desktop|mobile)\s+)*hero`
+const HERO_WITH_NOUN = new RegExp(String.raw`\b${HERO_WORDS}(?=\s+(?:photos?|images?|headline|text|paragraph|buttons?|background|section|area|box|block|slider)\b)`, 'gi')
+const HERO_ALONE = new RegExp(String.raw`\b${HERO_WORDS}\b`, 'gi')
+
+// Owners don't call the top of their homepage the "hero".
+function plainWords(text) {
+  return text
+    .replace(/\bin the hero\b/gi, 'at the top of the page')
+    .replace(/\bhero at the top\b/gi, 'section at the top')
+    .replace(HERO_WITH_NOUN, 'main')
+    .replace(HERO_ALONE, 'top of the page')
+}
 
 export function pickObservation(lead) {
   const q = lead.qualification || {}
   const hooks = Array.isArray(q.pitchHooks) ? q.pitchHooks : []
+  if (hooks.some((hook) => BLOCKED_HOOK.test(hook))) return null
   const ranked = hooks
     .map((hook) => String(hook || '').trim())
     .filter(Boolean)
     .map((hook) => {
       const device = /\((mobile|desktop)\)\s*$/i.exec(hook)?.[1]?.toLowerCase() || null
       const evidence = /\(([^()]+)\)\s*$/.exec(hook)
-      const technical = TECHNICAL_HOOK.test(hook) || (evidence && !device)
-      return { hook, device, technical }
+      const skip = TECHNICAL_HOOK.test(hook) || (evidence && !device) || UNSURE_HOOK.test(hook) || HARSH_HOOK.test(hook)
+      return { hook, device, skip }
     })
-    .filter((item) => !item.technical)
+    .filter((item) => !item.skip)
   const best = ranked.find((item) => !item.device) || ranked[0]
   if (!best) return null
-  let text = best.hook.replace(/\s*\((mobile|desktop)\)\s*$/i, '').replace(/[.!\s]+$/, '')
+  let text = plainWords(best.hook.replace(/\s*\((mobile|desktop)\)\s*$/i, '').replace(/[.!\s]+$/, ''))
   text = text.charAt(0).toLowerCase() + text.slice(1)
-  if (best.device === 'mobile' && !/\b(phone|mobile)\b/i.test(text)) text = `on phones, ${text}`
+  if (best.device === 'mobile' && !/\b(phones?|mobile)\b/i.test(text)) text = `on phones, ${text}`
   text = text.replace(/\byou cannot\b/g, "you can't").replace(/\bit is\b/g, "it's")
   return `${text}.`
 }
@@ -222,6 +271,7 @@ export function leadFields(lead, { signature = '', overrides = {} } = {}) {
     website: displayHost(lead.website) || 'your website',
     trade: tradeOf(lead.category),
     city: cityOf(lead),
+    conceptUrl: lead.concept?.status === 'live' ? lead.concept.url : '',
     signature,
   }
 }
@@ -255,7 +305,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i
 const NEVER_EMAIL = /^(no-?reply|donotreply|do-not-reply|postmaster|abuse|webmaster|privacy|legal|billing|accounts?|careers|jobs|hr|press|media)@/i
 
 // Why a lead can't go into the queue, or null when it can.
-export function ineligibleReason(lead, { enrolledEmails = new Set(), suppressed = new Set() } = {}) {
+export function ineligibleReason(lead, { enrolledEmails = new Set(), suppressed = new Set(), requireConcept = false } = {}) {
   const q = lead.qualification
   if (!q) return 'Not qualified yet'
   if (q.play === 'skip') return 'Play is skip'
@@ -269,15 +319,16 @@ export function ineligibleReason(lead, { enrolledEmails = new Set(), suppressed 
   if (lead.outreachStatus === 'Contacted' || ['Contacted', 'Replied', 'Meeting', 'Proposal', 'Won', 'Lost'].includes(lead.salesStage)) return 'Already in conversation'
   if ((lead.contactAttempts || []).length) return 'Already contacted by hand'
   if (!pickObservation(lead) && !lead.autopilotOverrides?.observation) return 'No clear observation to open with'
+  if (requireConcept && lead.concept?.status !== 'live') return 'No live concept yet'
   return null
 }
 
 // The next leads to email, best first, one per business and per address.
-export function pickNewLeads(leads, { limit = DEFAULT_DAILY_NEW, enrolledEmails = new Set(), suppressed = new Set(), skipped = new Set() } = {}) {
+export function pickNewLeads(leads, { limit = DEFAULT_DAILY_NEW, enrolledEmails = new Set(), suppressed = new Set(), skipped = new Set(), requireConcept = false } = {}) {
   const seenEmail = new Set()
   const seenBusiness = new Set()
   return leads
-    .filter((lead) => !skipped.has(lead.id) && !ineligibleReason(lead, { enrolledEmails, suppressed }))
+    .filter((lead) => !skipped.has(lead.id) && !ineligibleReason(lead, { enrolledEmails, suppressed, requireConcept }))
     .sort((a, b) => (b.qualification.priority - a.qualification.priority) || String(a.id).localeCompare(String(b.id)))
     .filter((lead) => {
       const email = lead.qualification.contact.email.toLowerCase()

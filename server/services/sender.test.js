@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  bounceGuard, bouncedAddresses, cleanCompany, contentHash, DEFAULT_AUTOPILOT, followUpAt, ineligibleReason, inWindow, isApproved,
-  isAutoReply, isOptOut, localDay, nextSendDay, nextWindowAt, pickNewLeads, pickObservation, planSlots, renderStep, templateProblems, zonedTime,
+  bounceGuard, bouncedAddresses, cleanCompany, contentHash, DEFAULT_AUTOPILOT, firstNameOf, followUpAt, ineligibleReason, inWindow, isApproved,
+  isAutoReply, isOptOut, localDay, nextSendDay, nextWindowAt, pickNewLeads, pickObservation, planSlots, renderStep, templateProblems, usesConcept, zonedTime,
 } from './sender.js'
 
 const TZ = 'America/Denver'
@@ -26,6 +26,7 @@ function lead(overrides = {}) {
       ],
       contact: { email: 'Office@EpicElectric.co', ownerName: 'Josh Asher' },
     },
+    concept: { status: 'live', url: 'https://epicelectric.goodshigoto.com' },
     ...overrides,
   }
 }
@@ -45,21 +46,72 @@ test('the opening observation prefers a plain visual hook over technical ones', 
   assert.equal(pickObservation(technical), null)
 })
 
+const hooked = (...pitchHooks) => lead({ qualification: { ...lead().qualification, pitchHooks } })
+
+test('the opening observation skips claims a screenshot can get wrong', () => {
+  assert.equal(pickObservation(hooked('The big top section is just solid black', 'The header phone number is tiny')), 'the header phone number is tiny.')
+  assert.equal(pickObservation(hooked('The whole page below the menu is blank white')), null)
+  assert.equal(pickObservation(hooked("A broken YouTube box says Sign in to confirm you're not a bot", 'The menu is hard to read')), 'the menu is hard to read.')
+  assert.equal(pickObservation(hooked('The big top banner is just a grey gradient', 'The menu is hard to read')), 'the menu is hard to read.')
+})
+
+test('a review of a firewall or error page is not used at all', () => {
+  assert.equal(pickObservation(hooked('The whole page just says 403 Forbidden', 'There is no menu or contact form')), null)
+  assert.equal(pickObservation(hooked('There is no menu or logo', 'The whole page says your request cannot be accepted')), null)
+})
+
+test('the opening observation skips insults', () => {
+  assert.equal(pickObservation(hooked('The bright buttons clash and look cheap', 'The headline is hard to read')), 'the headline is hard to read.')
+  assert.equal(pickObservation(hooked('The stats box makes you look worse')), null)
+})
+
+test('the opening observation says hero in plain words', () => {
+  assert.equal(pickObservation(hooked('The big hero photo is a squirrel on a branch')), 'the main photo is a squirrel on a branch.')
+  assert.equal(pickObservation(hooked('The top hero headline is thin white text')), 'the main headline is thin white text.')
+  assert.equal(pickObservation(hooked('The hero is a dark photo of a house')), 'the top of the page is a dark photo of a house.')
+  assert.equal(pickObservation(hooked('The team photo in the hero looks dated')), 'the team photo at the top of the page looks dated.')
+  assert.equal(pickObservation(hooked('The big blue hero at the top is hard to read')), 'the big blue section at the top is hard to read.')
+  assert.equal(pickObservation(hooked('The white hero text is hard to read')), 'the white main text is hard to read.')
+})
+
+test('a mobile observation does not say phones twice', () => {
+  assert.equal(pickObservation(hooked('On phones the text runs off the screen (mobile)')), 'on phones the text runs off the screen.')
+})
+
+test('scraped page text and company names never become a greeting', () => {
+  assert.equal(firstNameOf('Josh Asher'), 'Josh')
+  assert.equal(firstNameOf('Meet Connor'), null)
+  assert.equal(firstNameOf('Milne Co'), null)
+})
+
 test('renders the first email with the lead fields and a reply-threaded follow-up', () => {
   const first = renderStep(signed, 0, lead())
-  assert.equal(first.subject, 'Idea for Epic Electric')
+  assert.equal(first.subject, 'Epic Electric website')
   assert.match(first.text, /^Hi Josh,/)
-  assert.match(first.text, /looking at epicelectric\.co and noticed something: the big mint-green/)
+  assert.match(first.text, /looking at epicelectric\.co and noticed the big mint-green/)
+  assert.match(first.text, /https:\/\/epicelectric\.goodshigoto\.com/)
   assert.match(first.text, /123 Main St/)
   const second = renderStep(signed, 1, lead())
-  assert.equal(second.subject, 'Re: Idea for Epic Electric')
+  assert.equal(second.subject, 'Re: Epic Electric website')
   const noOwner = renderStep(signed, 0, lead({ qualification: { ...lead().qualification, contact: { email: 'a@b.co', ownerName: null } } }))
   assert.match(noOwner.text, /^Hi there,/)
 })
 
 test('per-email overrides replace the observation', () => {
   const email = renderStep(signed, 0, lead(), { overrides: { observation: 'your phone number is hidden on mobile.' } })
-  assert.match(email.text, /noticed something: your phone number is hidden on mobile\./)
+  assert.match(email.text, /noticed your phone number is hidden on mobile\./)
+})
+
+test('a sequence that links the concept only goes to leads with one live', () => {
+  assert.equal(usesConcept(signed), true)
+  assert.equal(ineligibleReason(lead({ concept: { status: 'review' } }), { requireConcept: true }), 'No live concept yet')
+  assert.equal(ineligibleReason(lead(), { requireConcept: true }), null)
+  assert.throws(() => renderStep(signed, 0, lead({ concept: { status: 'review', url: 'https://x.goodshigoto.com' } })), /Missing conceptUrl/)
+})
+
+test('every email has to say how to opt out', () => {
+  const noOptOut = { ...signed, sequence: [{ ...signed.sequence[0], body: 'Hi {{signature}}' }] }
+  assert.ok(templateProblems(noOptOut).some((p) => /opt out/.test(p)))
 })
 
 test('approval needs a postal address and is lost on any edit', () => {
@@ -96,7 +148,7 @@ test('slots fall inside the morning window in the lead time zone, spaced apart',
   const slots = planSlots(day, 10, { timeZone: TZ, seed: 'x' })
   assert.equal(slots.length, 10)
   const start = zonedTime(day, 7 * 60, TZ)
-  const end = zonedTime(day, 9 * 60 + 30, TZ)
+  const end = zonedTime(day, 12 * 60, TZ)
   assert.equal(new Date(start).toISOString(), '2026-10-14T13:00:00.000Z')
   for (let i = 0; i < slots.length; i += 1) {
     assert.ok(slots[i] >= start && slots[i] <= end, `slot ${i} in window`)
@@ -107,7 +159,7 @@ test('slots fall inside the morning window in the lead time zone, spaced apart',
 
 test('weekends and closed windows roll to the next weekday', () => {
   assert.equal(nextSendDay('2026-10-17', undefined, { timeZone: TZ }), '2026-10-19') // Sat → Mon
-  const afterWindow = Date.parse('2026-10-14T17:00:00Z') // 11:00 Denver
+  const afterWindow = Date.parse('2026-10-14T19:00:00Z') // 13:00 Denver
   assert.equal(nextSendDay(localDay(afterWindow, TZ), undefined, { now: afterWindow, timeZone: TZ }), '2026-10-15')
   assert.equal(inWindow(Date.parse('2026-10-14T14:00:00Z'), undefined, TZ), true)
   assert.equal(inWindow(afterWindow, undefined, TZ), false)

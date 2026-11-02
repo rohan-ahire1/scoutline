@@ -33,7 +33,7 @@ discovery (Google Maps via Bright Data, CSV import, or pasted URLs)
 - **Contact finding.** Emails from mailto links, Cloudflare-protected and obfuscated addresses, and JSON-LD, ranked and checked against the domain's MX records.
 - **Visual review.** Headless Chrome captures desktop and mobile screenshots with popups removed. With a model key, a vision model rates them on a fixed rubric, because markup alone can't tell a tidy modern template from a tired one.
 - **Outreach drafts** in three lengths from the Meta Model API or OpenAI with structured output, grounded in the saved evidence. Without a key, it falls back to evidence-based templates.
-- **Email autopilot (optional).** Sends an approved sequence through a Gmail mailbox, at most 40 emails a day inside a sending window, and stops a sequence when the lead replies, opts out or bounces (replies are checked over IMAP). Any edit to the sequence stops sending until it is approved again.
+- **Email autopilot (optional).** Sends an approved sequence through a Gmail mailbox, at most 60 emails a day inside a sending window, and stops a sequence when the lead replies, opts out or bounces (replies are checked over IMAP). Any edit to the sequence stops sending until it is approved again.
 - **Google sign-in with an email allowlist.** ID tokens are verified on the server, sessions are HTTP-only cookies stored in SQLite, and removing an address invalidates its session.
 - **Backups and restore** of the database from the UI and API.
 

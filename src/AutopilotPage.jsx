@@ -21,7 +21,10 @@ const STATUS = {
   failed: ['Failed', 'red'],
 }
 
-const ZONE_LABEL = { 'America/Denver': 'Utah', 'America/New_York': 'New York' }
+const ZONE_LABEL = {
+  'America/New_York': 'Eastern', 'America/Indiana/Indianapolis': 'Eastern', 'America/Chicago': 'Central',
+  'America/Denver': 'Mountain', 'America/Boise': 'Mountain', 'America/Phoenix': 'Arizona', 'America/Los_Angeles': 'Pacific',
+}
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const stepLabel = (step) => (step === 0 ? 'Email 1' : `Follow-up ${step}`)
@@ -413,7 +416,7 @@ function ScheduleView({ data, busy, act }) {
       </div>
       <div className="ap-note">
         <Mail size={15} aria-hidden="true" />
-        <p>Times are in each lead’s own time zone (Utah leads on Utah time, New York leads on New York time; the day is counted on {ZONE_LABEL[timeZone] || timeZone} time). Emails are spread across the window a few minutes apart, never in a burst. Follow-ups count toward a hard limit of 40 emails a day.</p>
+        <p>Times are in each lead’s own time zone (Phoenix leads on Phoenix time, New York leads on New York time; the day is counted on {ZONE_LABEL[timeZone] || timeZone} time). Emails are spread across the window a few minutes apart, never in a burst. Follow-ups count toward a hard limit of 60 emails a day.</p>
         <p>Why early morning: trade owners usually check email before they head out to a job. That’s a best guess, not proven. Once replies come in, the Activity tab shows when people answer, so the window can be moved.</p>
       </div>
     </section>

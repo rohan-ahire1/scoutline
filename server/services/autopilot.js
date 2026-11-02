@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto'
 import {
   bounceGuard, bouncedAddresses, contentHash, DEFAULT_TIMEZONE, followUpAt, ineligibleReason, inWindow, isApproved, isAutoReply,
   isOptOut, localDay, MAX_DAILY_SENDS, MIN_GAP_MINUTES, nextSendDay, nextWindowAt, normalizeAutopilot, pickNewLeads, planSlots, renderStep, templateProblems,
-  TEMPLATE_VARIABLES, timezoneFor,
+  TEMPLATE_VARIABLES, timezoneFor, usesConcept,
 } from './sender.js'
 import { domainAcceptsMail } from './mailbox.js'
 
@@ -124,7 +124,7 @@ export function createAutopilot({ db, mailbox, readLead, saveLead, readLeads, re
   function candidates(config, limit) {
     const known = knownEmails()
     const enrolled = enrolledLeadIds()
-    return pickNewLeads(readLeads(), { limit, ...known, skipped: enrolled })
+    return pickNewLeads(readLeads(), { limit, ...known, skipped: enrolled, requireConcept: usesConcept(config) })
   }
 
   // Queues the next sending day's new emails, once per day. Runs as soon as
@@ -144,7 +144,7 @@ export function createAutopilot({ db, mailbox, readLead, saveLead, readLeads, re
     const known = knownEmails()
     const skip = enrolledLeadIds()
     // Look a little past the limit: some addresses fail the MX check.
-    for (const lead of pickNewLeads(readLeads(), { limit: wanted * 3, ...known, skipped: skip })) {
+    for (const lead of pickNewLeads(readLeads(), { limit: wanted * 3, ...known, skipped: skip, requireConcept: usesConcept(config) })) {
       if (picked.length >= wanted) break
       let ok = true
       try { ok = await checkMx(lead.qualification.contact.email) } catch { ok = true }
@@ -199,7 +199,7 @@ export function createAutopilot({ db, mailbox, readLead, saveLead, readLeads, re
     if (!lead) return updateRow(due.id, { status: 'stopped', reason: 'Lead was deleted', nextAt: null })
     // A lead handled by hand since it was queued is left alone.
     if (due.step === 0) {
-      const reason = ineligibleReason({ ...lead, autopilot: null }, { suppressed: knownEmails().suppressed })
+      const reason = ineligibleReason({ ...lead, autopilot: null }, { suppressed: knownEmails().suppressed, requireConcept: usesConcept(config) })
       if (reason || String(lead.qualification?.contact?.email || '').toLowerCase() !== due.email) {
         setLeadAutopilot(lead.id, { status: 'stopped' })
         return updateRow(due.id, { status: 'stopped', reason: reason || 'Email address changed', nextAt: null })

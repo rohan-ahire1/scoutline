@@ -28,7 +28,7 @@ import { findMarket, resolveMarkets } from './services/markets.js'
 import { PLAYS } from './services/qualify.js'
 import { requalify, scanAndQualify, visualReviewLead } from './services/prospect.js'
 import { getVisionConfig } from './services/visual.js'
-import { conceptCandidates, conceptKey, conceptPreviewHtml, generateConcept, publishConcept, takenKeys, unpublishConcept } from './services/concept.js'
+import { checkConcept, conceptCandidates, conceptKey, conceptPreviewHtml, generateConcept, publishConcept, takenKeys, unpublishConcept } from './services/concept.js'
 import { createAutopilot } from './services/autopilot.js'
 import { createMailbox } from './services/mailbox.js'
 
@@ -1438,6 +1438,32 @@ async function runConceptJob(job) {
   scopedLeadUpdate(lead.id, { concept, updated: 'Just now' })
   updateJob(job.id, { status: 'Completed', progress: 100, result: { key, status: concept.status, problems: concept.problems.length }, error: null })
   recordEvent('lead', lead.id, 'concept_generated', { jobId: job.id, key, status: concept.status, problems: concept.problems, costUsd: concept.costUsd })
+  autoPublishConcepts()
+}
+
+function goLive(lead) {
+  const published = publishConcept({ siteDir: join(dataDir, 'leads', lead.id, 'concept', 'site'), key: lead.concept.key })
+  const concept = { ...lead.concept, status: 'live', url: published.url, approvedAt: nowIso() }
+  scopedLeadUpdate(lead.id, { concept })
+  recordEvent('lead', lead.id, 'concept_published', { key: concept.key, url: concept.url })
+  return concept
+}
+
+// With autopilot running, a concept that passes its checks goes live without a
+// review click, and the next batch can email it. The checks run again here so
+// a concept drafted before a stricter check is held back too.
+function autoPublishConcepts() {
+  if (!autopilot.readConfig().running) return
+  for (const lead of readRows('leads').filter((item) => item.concept?.status === 'review')) {
+    const dir = join(dataDir, 'leads', lead.id, 'concept')
+    try {
+      const problems = checkConcept(join(dir, 'site'), JSON.parse(readFileSync(join(dir, 'facts.json'), 'utf8')))
+      if (problems.length) scopedLeadUpdate(lead.id, { concept: { ...lead.concept, status: 'needs-fix', problems } })
+      else goLive(lead)
+    } catch (error) {
+      console.error(`Could not auto-publish the concept for ${lead.id}: ${error.message}`)
+    }
+  }
 }
 
 // Where a job's events are filed: its lead, else its run, else the job.
@@ -2732,11 +2758,7 @@ app.post('/api/leads/:id/concept/approve', (req, res) => {
   const siteDir = join(dataDir, 'leads', lead.id, 'concept', 'site')
   if (!existsSync(join(siteDir, 'index.html'))) return unprocessable(res, 'The concept files are missing; generate it again', 'concept')
   try {
-    const published = publishConcept({ siteDir, key: lead.concept.key })
-    const concept = { ...lead.concept, status: 'live', url: published.url, approvedAt: nowIso() }
-    scopedLeadUpdate(lead.id, { concept })
-    recordEvent('lead', lead.id, 'concept_published', { key: concept.key, url: concept.url })
-    res.json({ concept })
+    res.json({ concept: goLive(lead) })
   } catch (error) {
     res.status(500).json({ error: `Could not publish the concept: ${error.message}` })
   }
@@ -3337,6 +3359,7 @@ app.post('/api/autopilot/running', (req, res) => {
   try {
     autopilot.setRunning(req.body?.running === true)
     recordEvent('autopilot', 'config', req.body?.running === true ? 'autopilot_started' : 'autopilot_paused', { by: req.user?.email || null })
+    autoPublishConcepts()
     res.json(autopilot.overview())
   } catch (error) { autopilotError(res, error) }
 })
