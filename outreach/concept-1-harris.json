@@ -1,0 +1,18 @@
+{
+  "subject": "{{company}} website",
+  "preheader": "I made a homepage for {{company}}. Worth a look?",
+  "body": [
+    "Hi {{first_name}},",
+    "I saw {{personal_detail}}. {{personal_note}}",
+    "Then I looked at your website. The first thing that loads is a full-screen \"Qualify for Rocky Mountain Discounts!\" popup, so people have to close it before they see who you are. Below that, the services section lists heater repair, fan motor replacement and A/C repair, but not installs.",
+    {
+      "text": "So I made a cleaner, more modern homepage with no popup, installation up front, and a quote form where people pick repair, install or tune-up:",
+      "link": {
+        "url": "{{concept_url}}",
+        "label": "{{concept_label}}"
+      }
+    },
+    "Why? We're a small studio building our portfolio, and {{who_they_are}} is exactly the kind of work we want to show.",
+    "Worth a look? If not, no worries."
+  ]
+}

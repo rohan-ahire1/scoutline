@@ -1,0 +1,18 @@
+{
+  "subject": "{{company}} website",
+  "preheader": "I made a homepage for {{company}}. Worth a look?",
+  "body": [
+    "Hi {{first_name}},",
+    "I went to your website today and noticed {{specific_problem}}. Right now {{what_it_costs_them}}.",
+    {
+      "text": "So I made a homepage you could put back up:",
+      "link": {
+        "url": "{{concept_url}}",
+        "label": "{{concept_label}}"
+      }
+    },
+    "It looks like your old Hibu site is gone, so there's nothing left behind that error. I can put this homepage up on larryslawns.com and clear the error, so anyone who looks you up lands on it.",
+    "Why? We're a small studio building our portfolio, and {{who_they_are}} is exactly the kind of work we want to show.",
+    "Worth a look? If not, no worries."
+  ]
+}

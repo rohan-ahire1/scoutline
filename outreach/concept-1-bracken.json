@@ -1,0 +1,18 @@
+{
+  "subject": "{{company}} website",
+  "preheader": "I made a homepage for {{company}}. Worth a look?",
+  "body": [
+    "Hi {{first_name}},",
+    "I saw {{personal_detail}}. {{personal_note}}",
+    "Then I looked at your website and noticed {{specific_problem}}. On a phone, {{what_it_costs_them}}.",
+    {
+      "text": "So I made a cleaner, more modern homepage with your number right at the top and a short estimate form:",
+      "link": {
+        "url": "{{concept_url}}",
+        "label": "{{concept_label}}"
+      }
+    },
+    "Why? We're a small studio building our portfolio, and {{who_they_are}} is exactly the kind of work we want to show.",
+    "Worth a look? If not, no worries."
+  ]
+}
