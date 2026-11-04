@@ -12,7 +12,8 @@ Bright Data discovery or CSV import
 → optional AI evidence synthesis inside Analyzed
 → human qualification
 → three outreach versions
-→ manual send and Kanban follow-up
+→ reviewed batch sending with automatic follow-ups, or manual send
+→ Kanban follow-up
 → contract record when won
 ```
 
@@ -79,7 +80,7 @@ audit on shortlisted leads, or pass `options: { deepAudit: true }` to a run.
 - Source-required company metrics for employees, revenue, profit, founding year, and total branches; unavailable values remain explicitly unknown
 - Meta Model API and OpenAI Responses API integrations with strict structured output for concise, balanced, and detailed outreach drafts
 - Deterministic outreach fallback when no model API key is configured
-- Manual outreach only; the app does not send email automatically
+- Automated email outreach in dry run by default: approved batches, daily cap, day 3 and day 7 follow-ups, reply and bounce tracking, opt-out and suppression (see below)
 
 Deep audits retain a lightweight HTML fallback. If Lighthouse cannot launch or load a page, the client remains analyzed with a visible partial component state rather than fabricated performance data.
 
@@ -145,6 +146,54 @@ When a provider is not configured, the UI states the fallback explicitly: saved-
 To try Jev, create an API key in the [TypeSafe console](https://console.typesafe.ai), put it in the local `.env` as `TYPESAFE_API_KEY=...`, restart `npm run dev`, and open **Crawl**. Paste a few public URLs and start a local scrape; each successful result shows Jev's advisory `deep-audit`, `review`, or `pass` route alongside Scoutline's deterministic scores.
 
 Secrets, databases, and generated lead artifacts are excluded from Git.
+
+## Automated email outreach
+
+Scoutline can send approved first emails and two follow-ups on its own. It starts in dry run and stays there until you set `MAIL_LIVE=yes`.
+
+How it works:
+
+1. **Sending → Build batch** queues the top leads by qualification priority. A lead is skipped if it has no email, its MX check did not pass, it is marked do-not-contact, it is already in a conversation, it was contacted by hand, it is on the suppression list, someone else at the same company domain is already queued, or its draft makes a claim the evidence does not support.
+2. You review each email (and can edit it), then approve or reject. With **Auto-approve** on, leads at or above the priority threshold skip review.
+3. Approved emails go out on weekdays from 9:00 to 16:00 Denver time, spaced 4 to 11 minutes apart, up to the daily cap (20 by default).
+4. Follow-up 1 goes out on day 3 and follow-up 2 on day 7, threaded on the first email. Both use only the evidence the first email used.
+5. The inbox is checked over IMAP every 3 minutes. A reply stops the sequence and moves the lead to **Replied**. A hard bounce stops it and suppresses the address. An "unsubscribe" reply or a click on the opt-out link suppresses the address for good. Moving a lead to Replied, Meeting, Proposal, Won or Lost by hand also stops its sequence.
+6. If more than 5% of 20 or more contacted leads bounce, sending pauses on its own.
+
+Every email has your postal address, a reply-to-unsubscribe line, and `List-Unsubscribe` headers (mailto, plus one-click HTTPS when `SCOUTLINE_PUBLIC_URL` is set).
+
+### Modes
+
+- Dry run (default): emails are logged to the server console and the queue. Nothing leaves the machine. Dry-run sends do not mark leads as contacted. Use **Reset dry run** to put those sequences back in review before going live.
+- Local catcher: point SMTP at Mailpit (`brew install mailpit && mailpit`, then `MAIL_TRANSPORT=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025`). Emails show up at http://127.0.0.1:8025 and go nowhere else.
+- Live: needs `MAIL_LIVE=yes` and every required variable below. Tests force dry run.
+
+### Setup before going live
+
+1. Use a separate sending domain or subdomain (for example `mail.goodshigoto.com`), so a bad week does not hurt your main domain.
+2. Add DNS records for it: SPF (from your provider), DKIM (your provider gives you the key), and DMARC, starting with `v=DMARC1; p=none; rua=mailto:you@goodshigoto.com`.
+3. Warm it up for 2 to 4 weeks: start at 5 to 10 emails a day and raise the cap slowly. Keep bounces under 2%.
+4. Set the environment, through `.env` or `bws run`:
+
+```bash
+MAIL_TRANSPORT=smtp               # or resend
+MAIL_FROM="Rohan <rohan@mail.goodshigoto.com>"
+MAIL_REPLY_TO=rohan@goodshigoto.com
+MAIL_PHYSICAL_ADDRESS="Street, City, State ZIP, Country"
+SMTP_HOST=smtp.example.com        # SMTP transport
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
+RESEND_API_KEY=...                # Resend transport instead of SMTP
+IMAP_HOST=imap.example.com        # mailbox that receives replies and bounces
+IMAP_USER=...
+IMAP_PASS=...
+SCOUTLINE_PUBLIC_URL=https://scoutline.example.com   # optional, for the one-click opt-out link
+MAIL_LIVE=yes                     # last step
+```
+
+5. The opt-out page lives at `/u/<token>`, outside the login. The server listens on 127.0.0.1, so for the link to work, expose only `/u/` through a reverse proxy or a tunnel (for example Cloudflare Tunnel) and set `SCOUTLINE_PUBLIC_URL` to that address. Without it, people can still opt out by replying "unsubscribe".
+6. Restart the server. The Sending page shows the mode it is in and lists any missing variables.
 
 ## Google login and email allowlist
 
