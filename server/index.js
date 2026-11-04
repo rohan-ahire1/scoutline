@@ -27,6 +27,7 @@ import { findMarket, resolveMarkets } from './services/markets.js'
 import { PLAYS } from './services/qualify.js'
 import { requalify, scanAndQualify, visualReviewLead } from './services/prospect.js'
 import { getVisionConfig } from './services/visual.js'
+import { setupMail } from './mailRoutes.js'
 
 const serverDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(serverDir, '..')
@@ -2990,6 +2991,17 @@ app.post('/api/leads/:id/export', (req, res) => {
   const folder = writeLeadArtifacts(lead, true)
   const filePath = join(folder, 'profile.md')
   res.json({ markdown: leadMarkdown(lead), filePath })
+})
+
+// Automated outreach: send queue, follow-ups, reply tracking, opt-out page.
+const mail = setupMail({
+  app,
+  db,
+  readLead,
+  readRows,
+  updateLead: (id, patch) => scopedLeadUpdate(id, patch),
+  recordEvent,
+  readSettings,
 })
 
 app.use('/api', (req, res) => {
