@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   Radar,
   Search,
+  Send,
   Settings as SettingsIcon,
   Sparkles,
   Star,
@@ -59,13 +60,14 @@ const navItems = [
   { label: 'Research', Icon: Sparkles },
   { label: 'Crawl', Icon: Radar },
   { label: 'Outreach', Icon: Mail },
+  { label: 'Sending', Icon: Send },
   { label: 'Pipeline', Icon: BarChart3 },
   { label: 'Contracts', Icon: Trophy },
 ]
 
 const researchLabels = researchStages.map((stage) => stage.label)
 const pipelineStages = [...salesStages]
-const pagePaths = { Overview: '/overview', Clients: '/clients', Starred: '/starred', Research: '/research', Review: '/review', Crawl: '/crawl', Outreach: '/outreach', Pipeline: '/pipeline', Contracts: '/contracts', Won: '/won', Settings: '/settings', Preview: '/preview' }
+const pagePaths = { Overview: '/overview', Clients: '/clients', Starred: '/starred', Research: '/research', Review: '/review', Crawl: '/crawl', Outreach: '/outreach', Sending: '/sending', Pipeline: '/pipeline', Contracts: '/contracts', Won: '/won', Settings: '/settings', Preview: '/preview' }
 const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]) => [path.slice(1), page]))
 pathPages.won = 'Contracts'
 
@@ -171,6 +173,10 @@ const statusTone = {
   Qualified: 'indigo', Contacted: 'blue', Replied: 'cyan', Meeting: 'amber', Proposal: 'pink', Won: 'green', Lost: 'gray',
   Running: 'orange', Queued: 'purple', Waiting: 'amber', Paused: 'amber', Completed: 'green', Cancelled: 'gray', Failed: 'red',
   Error: 'red', 'Timed out': 'amber', 'Completed with errors': 'amber', Skipped: 'gray',
+}
+
+const sequenceTone = {
+  pending: 'amber', approved: 'purple', active: 'blue', completed: 'slate', replied: 'cyan', bounced: 'red', unsubscribed: 'gray', stopped: 'gray', failed: 'red', rejected: 'gray',
 }
 
 const categoryTone = {
@@ -1209,6 +1215,137 @@ function PipelinePage({ leads, onOpen, onUpdate, goTo, onContract }) {
       <div className="pipeline-lost-note"><span className="e e13" aria-hidden="true">⚠️</span><span>Lost clients are closed separately from this active pipeline.</span><button className="button button-quiet button-small" onClick={() => goTo('Clients', { search: '?filter=Lost' })}>View lost clients</button></div>
       {pipeline.some((lead) => lead.salesStage === 'Lost') && <section className="panel lost-pipeline-panel"><div className="section-heading"><div><h2>Closed as lost</h2><span>Kept here for history; these clients are not active opportunities.</span></div><Badge tone="gray">{pipeline.filter((lead) => lead.salesStage === 'Lost').length}</Badge></div><div className="lost-pipeline-list">{pipeline.filter((lead) => lead.salesStage === 'Lost').map((lead) => <button key={lead.id} onClick={() => onOpen(lead)}><Avatar name={lead.company} /><span><strong>{lead.company}</strong><small>{lead.lostReason || 'Reason not recorded'}</small></span><Score value={lead.opportunityScore} /><ChevronRight size={13} /></button>)}</div></section>}
       </>}
+    </>
+  )
+}
+
+const SENDING_VIEWS = [
+  { label: 'Review', statuses: ['pending'], tone: 'orange' },
+  { label: 'Queued', statuses: ['approved'], tone: 'purple' },
+  { label: 'In sequence', statuses: ['active'], tone: 'blue' },
+  { label: 'Replied', statuses: ['replied'], tone: 'green' },
+  { label: 'Ended', statuses: ['completed', 'bounced', 'unsubscribed', 'stopped', 'failed', 'rejected'], tone: 'gray' },
+]
+const MODE_COPY = {
+  dryrun: { icon: '🧪', title: 'Dry run', detail: 'Emails are logged, nothing is sent.' },
+  catcher: { icon: '📥', title: 'Local catcher', detail: 'Emails go to the SMTP catcher on this machine only.' },
+  live: { icon: '📨', title: 'Live sending', detail: 'Approved emails go to real inboxes.' },
+}
+
+function SequencePreview({ id, onSaved, onToast }) {
+  const [detail, setDetail] = useState(null)
+  const [draft, setDraft] = useState(null)
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    let live = true
+    apiRequest(`/api/mail/sequences/${id}`).then((body) => { if (live) { setDetail(body); setDraft({ subject: body.subject, body: body.body }) } }).catch((error) => onToast({ message: error.message, tone: 'error' }))
+    return () => { live = false }
+  }, [id, onToast])
+  if (!detail) return <div className="sequence-preview"><LoaderCircle className="spin" size={14} /> Loading preview…</div>
+  const editable = ['pending', 'approved'].includes(detail.status)
+  const save = async () => {
+    setSaving(true)
+    try { await apiRequest(`/api/mail/sequences/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) }); onToast('Draft saved'); onSaved() }
+    catch (error) { onToast({ message: error.message, tone: 'error' }) }
+    finally { setSaving(false) }
+  }
+  return (
+    <div className="sequence-preview">
+      {editable && <div className="settings-form"><label><span>Subject</span><input value={draft.subject} onChange={(event) => setDraft((d) => ({ ...d, subject: event.target.value }))} /></label><label><span>First email</span><textarea rows={6} value={draft.body} onChange={(event) => setDraft((d) => ({ ...d, body: event.target.value }))} /></label><button className="button button-secondary button-small settings-save" disabled={saving || (draft.subject === detail.subject && draft.body === detail.body)} onClick={save}>{saving ? 'Saving…' : 'Save draft'}</button></div>}
+      {detail.rendered.map((mail) => <article key={mail.step} className="sequence-mail"><header><Badge tone={mail.step === 1 ? 'indigo' : 'slate'}>{mail.step === 1 ? 'First email' : `Follow-up ${mail.step - 1}`}</Badge><strong>{mail.subject}</strong></header><pre>{mail.text}</pre></article>)}
+      {(detail.messages.length > 0 || detail.inbound.length > 0) && <div className="sequence-log"><span className="detail-label">History</span>{[...detail.messages.map((m) => ({ at: m.created_at, text: `${m.status === 'dry-run' ? 'Dry run' : m.status === 'sent' ? 'Sent' : 'Failed'} · step ${m.step}${m.error ? ` · ${m.error}` : ''}` })), ...detail.inbound.map((m) => ({ at: m.created_at, text: `${m.kind} from ${m.sender}${m.snippet ? ` · “${m.snippet}”` : ''}` }))].sort((a, b) => a.at.localeCompare(b.at)).map((item) => <small key={item.at + item.text}>{new Date(item.at).toLocaleString()} · {item.text}</small>)}</div>}
+    </div>
+  )
+}
+
+function SendingPage({ onToast, onOpenLead, leads }) {
+  const [status, setStatus] = useState(null)
+  const [sequences, setSequences] = useState([])
+  const [view, setView] = useState('Review')
+  const [selected, setSelected] = useState(() => new Set())
+  const [openId, setOpenId] = useState(null)
+  const [busy, setBusy] = useState('')
+  const [draft, setDraft] = useState(null)
+  const load = useCallback(async () => {
+    try {
+      const [nextStatus, nextSequences] = await Promise.all([apiRequest('/api/mail/status'), apiRequest('/api/mail/sequences')])
+      setStatus(nextStatus)
+      setSequences(nextSequences)
+      setDraft((current) => current || { dailyCap: nextStatus.sending.dailyCap, autoApproveMinPriority: nextStatus.sending.autoApproveMinPriority })
+    } catch (error) { onToast({ message: error.message, tone: 'error' }) }
+  }, [onToast])
+  useEffect(() => { load(); const interval = window.setInterval(load, 15_000); return () => window.clearInterval(interval) }, [load])
+  const run = async (label, request, message) => {
+    setBusy(label)
+    try { const body = await request(); if (message) onToast(typeof message === 'function' ? message(body) : message); await load(); return body }
+    catch (error) { onToast({ message: error.message, tone: 'error' }); return null }
+    finally { setBusy('') }
+  }
+  const json = (method, path, body) => apiRequest(path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+  const saveSending = (patch, message) => run('settings', () => json('PATCH', '/api/mail/settings', patch), message)
+  if (!status) return <section className="panel empty-board"><LoaderCircle className="spin" size={18} /><p>Loading the send queue…</p></section>
+  const { stats, sending, mailer, inbox } = status
+  const mode = MODE_COPY[mailer.mode] || MODE_COPY.dryrun
+  const views = SENDING_VIEWS.map((item) => ({ ...item, count: sequences.filter((seq) => item.statuses.includes(seq.status)).length }))
+  const current = SENDING_VIEWS.find((item) => item.label === view) || SENDING_VIEWS[0]
+  const visible = sequences.filter((seq) => current.statuses.includes(seq.status))
+  const selectedVisible = visible.filter((seq) => selected.has(seq.id)).map((seq) => seq.id)
+  const toggle = (id) => setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  const allSelected = visible.length > 0 && selectedVisible.length === visible.length
+  const leadById = new Map(leads.map((lead) => [lead.id, lead]))
+  return (
+    <>
+      <section className="sending-status panel">
+        <div className="outreach-guard"><span className="e e14" aria-hidden="true">{mode.icon}</span><span><strong>{mode.title}</strong><small>{mode.detail}{mailer.missing.length ? ` Missing: ${mailer.missing.join(', ')}.` : ''}</small></span></div>
+        <div className="toggle-list sending-toggles">
+          <button disabled={busy === 'settings'} onClick={() => saveSending({ enabled: !sending.enabled }, sending.enabled ? 'Sending paused' : 'Sending started')}><span className={sending.enabled ? 'toggle-on' : ''}><i /></span><div><strong>{sending.enabled ? 'Sending is on' : 'Sending is paused'}</strong><small>{sending.windowStartHour}:00–{sending.windowEndHour}:00 {sending.timezone.split('/').pop().replace('_', ' ')} time{sending.weekdaysOnly ? ', weekdays' : ''}, {sending.minGapMinutes}–{sending.maxGapMinutes} min apart</small></div></button>
+          <button disabled={busy === 'settings'} onClick={() => saveSending({ autoApprove: !sending.autoApprove }, sending.autoApprove ? 'Auto-approve off' : 'Auto-approve on')}><span className={sending.autoApprove ? 'toggle-on' : ''}><i /></span><div><strong>Auto-approve priority {sending.autoApproveMinPriority}+</strong><small>Lower-priority leads still wait for your review</small></div></button>
+        </div>
+        <div className="settings-form sending-limits">
+          <div className="settings-row">
+            <label><span>Daily cap</span><input type="number" min="0" max="50" value={draft?.dailyCap ?? ''} onChange={(event) => setDraft((d) => ({ ...d, dailyCap: event.target.value }))} /></label>
+            <label><span>Auto-approve at</span><input type="number" min="0" max="100" value={draft?.autoApproveMinPriority ?? ''} onChange={(event) => setDraft((d) => ({ ...d, autoApproveMinPriority: event.target.value }))} /></label>
+          </div>
+          <button className="button button-secondary button-small" disabled={busy === 'settings' || !draft || (Number(draft.dailyCap) === sending.dailyCap && Number(draft.autoApproveMinPriority) === sending.autoApproveMinPriority)} onClick={() => saveSending({ dailyCap: Number(draft.dailyCap), autoApproveMinPriority: Number(draft.autoApproveMinPriority) }, 'Limits saved')}>Save limits</button>
+        </div>
+      </section>
+      {stats.bounceGuard && <p className="field-error sending-alert"><span className="e" aria-hidden="true">⚠️</span> Sending stopped: more than 5% of emails bounced. Clean the list before sending more.</p>}
+      <section className="simple-summary">
+        <div><strong>{stats.sentToday}/{stats.dailyCap}</strong><span>Sent today{stats.inWindow ? '' : ' · outside send hours'}</span></div>
+        <div><strong>{stats.pending}</strong><span>Waiting for review · {stats.approved} queued</span></div>
+        <div><strong>{stats.replied}</strong><span>Replied · {stats.replyRate}% of {stats.contacted} contacted</span></div>
+        <div><strong>{stats.bounced} / {stats.unsubscribed}</strong><span>Bounced / opted out · {stats.suppressed} suppressed</span></div>
+      </section>
+      <section className="panel sending-panel">
+        <div className="section-heading">
+          <div><h2>Send queue</h2><span>{stats.emailsSent} emails out so far{stats.dryRunEmails ? ` (${stats.dryRunEmails} dry run)` : ''}{inbox.configured ? ` · inbox checked ${inbox.lastPollAt ? new Date(inbox.lastPollAt).toLocaleTimeString() : 'soon'}${inbox.lastError ? ` · ${inbox.lastError}` : ''}` : ' · reply tracking off (no IMAP)'}</span></div>
+          <div className="section-heading-side">
+            {inbox.configured && <button className="button button-quiet button-small" disabled={Boolean(busy)} onClick={() => run('poll', () => json('POST', '/api/mail/inbox/poll'), (body) => `Inbox checked · ${body?.processed ?? 0} new`)}>Check inbox</button>}
+            {stats.dryRunEmails > 0 && <button className="button button-quiet button-small" disabled={Boolean(busy)} onClick={() => run('reset', () => json('POST', '/api/mail/dry-run/reset'), (body) => `${body.sequences} dry-run sequences back in review`)}>Reset dry run</button>}
+            <button className="button button-primary button-small" disabled={Boolean(busy)} onClick={() => run('batch', () => json('POST', '/api/mail/batch'), (body) => `${body.queued.length} queued · ${body.skipped.length} skipped`)}>{busy === 'batch' ? <LoaderCircle className="spin" size={12} /> : <span className="e" aria-hidden="true">✉️</span>}Build batch of {sending.batchSize}</button>
+          </div>
+        </div>
+        <div className="view-tabs tabs-dense" role="tablist" aria-label="Send queue views">{views.map((item) => <button role="tab" aria-selected={view === item.label} key={item.label} className={view === item.label ? 'active' : ''} onClick={() => { setView(item.label); setOpenId(null) }}><i className={`filter-dot filter-dot-${item.tone}`} /><span>{item.label}</span><em>{item.count}</em></button>)}</div>
+        {view === 'Review' && visible.length > 0 && <div className="sending-bulk"><label><input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(visible.map((seq) => seq.id)))} /> Select all</label><button className="button button-primary button-small" disabled={!selectedVisible.length || Boolean(busy)} onClick={() => run('approve', () => json('POST', '/api/mail/sequences/approve', { ids: selectedVisible }), (body) => { setSelected(new Set()); return `${body.approved} approved` })}><Check size={12} />Approve {selectedVisible.length || ''}</button><button className="button button-secondary button-small" disabled={!selectedVisible.length || Boolean(busy)} onClick={() => run('reject', () => json('POST', '/api/mail/sequences/reject', { ids: selectedVisible }), (body) => { setSelected(new Set()); return `${body.rejected} rejected` })}><X size={12} />Reject</button></div>}
+        {visible.length === 0 ? <div className="empty-state"><span className="e e20" aria-hidden="true">{view === 'Review' ? '📝' : '📭'}</span><h3>{view === 'Review' ? 'Nothing waiting for review' : `No ${view.toLowerCase()} emails`}</h3><p>{view === 'Review' ? 'Build a batch to queue the best qualified leads with a verified email.' : 'Emails move here as the queue runs.'}</p></div> : <div className="sequence-list">{visible.map((seq) => {
+          const lead = leadById.get(seq.lead_id)
+          return <div key={seq.id} className={cn('sequence-row', openId === seq.id && 'is-open')}>
+            <div className="sequence-row-main">
+              {view === 'Review' && <input type="checkbox" aria-label={`Select ${seq.company}`} checked={selected.has(seq.id)} onChange={() => toggle(seq.id)} />}
+              <button className="sequence-row-open" onClick={() => setOpenId(openId === seq.id ? null : seq.id)} aria-expanded={openId === seq.id}>
+                <Score value={seq.priority} />
+                <span><strong>{seq.company}</strong><small>{seq.email} · {seq.subject}</small></span>
+                <Badge tone={sequenceTone[seq.status] || 'gray'} dot>{seq.status === 'active' ? `Sent ${seq.step} of 3` : seq.status}</Badge>
+                <small className="sequence-when">{seq.next_send_at ? `Next ${new Date(seq.next_send_at).toLocaleDateString()}` : seq.stop_reason || (seq.last_sent_at ? `Last ${new Date(seq.last_sent_at).toLocaleDateString()}` : '')}</small>
+                {openId === seq.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+              </button>
+              {lead && <button className="button button-quiet button-small" onClick={() => onOpenLead(lead)}>Open</button>}
+              {['approved', 'active'].includes(seq.status) && <button className="button button-quiet button-small" disabled={Boolean(busy)} onClick={() => run('stop', () => json('POST', `/api/mail/sequences/${seq.id}/stop`), 'Sequence stopped')}>Stop</button>}
+            </div>
+            {openId === seq.id && <SequencePreview id={seq.id} onToast={onToast} onSaved={load} />}
+          </div>
+        })}</div>}
+      </section>
     </>
   )
 }
@@ -2613,7 +2750,7 @@ function WorkspaceApp({ currentUser, onLogout }) {
     topMeta = `${readyCount} ready to review`
     topActions = <button className="button button-primary button-small" onClick={() => setRunModalOpen(true)}><span className="e" aria-hidden="true">▶️</span>New research run</button>
   } else if (page === 'Outreach') {
-    topActions = <div className="outreach-guard"><span className="e e14" aria-hidden="true">🛡️</span><span><strong>Manual send only</strong><small>Review every draft before it leaves.</small></span></div>
+    topActions = <button className="outreach-guard" onClick={() => navigate('Sending')}><span className="e e14" aria-hidden="true">🛡️</span><span><strong>Reviewed before sending</strong><small>Approve batches in Sending.</small></span></button>
   } else if (page === 'Pipeline') {
     topActions = <button className="button button-secondary button-small" onClick={() => navigate('Outreach')}><span className="e" aria-hidden="true">✉️</span>Open outreach queue</button>
   } else if (page === 'Contracts') {
@@ -2632,6 +2769,7 @@ function WorkspaceApp({ currentUser, onLogout }) {
   else if (page === 'Review') content = selectedLead ? <ReviewWorkspace lead={selectedLead} leads={leads} runs={runs} onBack={backToQueue} onSelect={(id) => navigate('Review', { clientId: id })} onOpenRecord={(lead) => navigate('Clients', { clientId: lead.id, drawer: true })} onUpdate={updateLead} onQualify={(lead) => setQualifyLead(lead)} onAnalyze={analyzeLead} onRetryJob={retryLeadJob} onCancelJob={cancelLeadJob} onExport={exportLead} onOutreach={() => navigate('Outreach')} /> : <ResearchPage leads={leads} runs={runs} activeRunId={activeRunId} onOpen={openLead} onOutreach={() => navigate('Outreach')} onReview={openReview} onExport={exportLead} onUpdate={updateLead} onAnalyze={analyzeLead} onCancelJob={cancelLeadJob} onRetryJob={retryLeadJob} onNewRun={() => setRunModalOpen(true)} onTogglePause={toggleRunPause} onCancel={cancelRun} />
   else if (page === 'Crawl') content = <CrawlPage onLeadAdded={(lead, created) => setLeads((current) => (created || !current.some((item) => item.id === lead.id) ? [...current, lead] : current.map((item) => item.id === lead.id ? lead : item)))} onToast={setToast} brightDataReady={apiStatus?.brightDataAdapterReady} jevConfigured={apiStatus?.jevConfigured} jevModel={apiStatus?.jevModel} localDefaults={{ location: settingsData.defaultLocation || 'Salt Lake City, Utah', category: settingsData.categories?.[0] || 'Roofing', latitude: settingsData.discoveryLatitude ?? '', longitude: settingsData.discoveryLongitude ?? '' }} />
   else if (page === 'Outreach') content = <OutreachPage leads={leads} onOpen={openLead} onReview={openReview} onUpdate={updateLead} onAttempt={recordContactAttempt} onGenerate={generateOutreachVersions} onCandidate={resolveOutreachCandidate} onToast={setToast} goTo={navigate} />
+  else if (page === 'Sending') content = <SendingPage leads={leads} onToast={setToast} onOpenLead={openLead} />
   else if (page === 'Pipeline') content = <PipelinePage leads={leads} onOpen={openLead} onUpdate={updateLead} goTo={navigate} onContract={setContractLead} />
   else if (page === 'Contracts') content = <ContractsPage leads={leads} onOpen={openLead} onContract={setContractLead} goTo={navigate} />
   else if (page === 'Preview') content = <PreviewPage initialScreen={new URLSearchParams(route.search || '').get('screen') || 'home'} />

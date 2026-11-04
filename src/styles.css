@@ -1390,3 +1390,29 @@ html[data-theme="dark"] .pipeline-stage-tabs button.active { color: var(--lav-in
   .crawl-run-head { flex-wrap: wrap; }
   .crawl-run-track { flex-basis: 100%; }
 }
+
+/* Sending page: send queue review and stats */
+.sending-status { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: var(--sp-3); align-items: start; }
+.sending-status .outreach-guard { min-height: 100%; }
+.sending-toggles { margin: 0; }
+.sending-limits { display: grid; gap: var(--sp-2); }
+.sending-limits input { width: 96px; }
+.sending-alert { margin: var(--sp-3) 0 0; }
+.sending-panel { margin-top: var(--sp-4); }
+.sending-bulk { margin: var(--sp-2) 0; display: flex; align-items: center; gap: var(--sp-2); }
+.sending-bulk label { margin-right: auto; display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-secondary); }
+.sequence-list { margin-top: var(--sp-2); display: grid; border: 1px solid var(--border-soft); border-radius: var(--r-md); overflow: hidden; }
+.sequence-row { border-bottom: 1px solid var(--border-soft); background: var(--surface); }
+.sequence-row:last-child { border-bottom: 0; }
+.sequence-row.is-open { background: var(--surface-raised); }
+.sequence-row-main { padding: var(--sp-2) var(--sp-3); display: flex; align-items: center; gap: var(--sp-2); }
+.sequence-row-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-3); border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.sequence-row-open > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.sequence-row-open strong { font-size: var(--fs-body); }
+.sequence-row-open small, .sequence-when { overflow: hidden; color: var(--subtle); font-size: var(--fs-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.sequence-preview { padding: 0 var(--sp-3) var(--sp-3); display: grid; gap: var(--sp-3); color: var(--muted); font-size: var(--fs-secondary); }
+.sequence-mail { border: 1px solid var(--border-soft); border-radius: var(--r-md); background: var(--surface); }
+.sequence-mail header { padding: var(--sp-2) var(--sp-3); display: flex; align-items: center; gap: var(--sp-2); border-bottom: 1px solid var(--border-soft); }
+.sequence-mail pre { margin: 0; padding: var(--sp-3); color: var(--text-soft); font: inherit; font-size: var(--fs-body); white-space: pre-wrap; }
+.sequence-log { display: grid; gap: 4px; }
+@media (max-width: 900px) { .sending-status { grid-template-columns: 1fr; } }
